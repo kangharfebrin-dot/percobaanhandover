@@ -12,10 +12,10 @@ function generateRandomNumberString(length) {
 async function main() {
   // Reset data to avoid unique constraint errors during re-seed
   await prisma.user.deleteMany({});
-  
+
   const adminUsername = 'yoan';
   const adminPassword = '969111';
-  
+
   const userUsername = 'haula';
   const userPassword = '672023';
 
@@ -36,7 +36,7 @@ async function main() {
       name: 'Haula' // Diganti sesuai permintaan
     }
   });
-  
+
   console.log('--- SEEDING DONE ---');
   console.log('Admin Login:');
   console.log('Username:', adminUsername);
