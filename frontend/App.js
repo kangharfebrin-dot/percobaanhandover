@@ -9,6 +9,7 @@ import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import ScannerScreen from './screens/ScannerScreen';
 import HandoverFormScreen from './screens/HandoverFormScreen';
+import CameraScreen from './screens/CameraScreen';
 import HistoryScreen from './screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
@@ -38,6 +39,7 @@ export default function App() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Scanner" component={ScannerScreen} />
         <Stack.Screen name="HandoverForm" component={HandoverFormScreen} />
+        <Stack.Screen name="Camera" component={CameraScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>

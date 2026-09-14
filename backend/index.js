@@ -10,6 +10,7 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 // Setup Multer for photo uploads (in memory for now, or save to disk)
 const upload = multer({ dest: 'uploads/' });
@@ -21,35 +22,59 @@ async function sendNotification(handoverId, noPolisi, issueItems) {
   console.log(`Handover ID: ${handoverId}`);
   console.log('Isu ditemukan pada item:', issueItems.map(i => i.name).join(', '));
   console.log('--------------------------');
-  
-  // Nodemailer test account (simulasi email)
+
   try {
-    let testAccount = await nodemailer.createTestAccount();
+    let host = process.env.SMTP_HOST;
+    let user = process.env.SMTP_USER;
+    let pass = process.env.SMTP_PASS;
+    let port = process.env.SMTP_PORT || 587;
+    
+    // Nodemailer test account (simulasi email) jika smtp user kosong di .env
+    if (!user) {
+      let testAccount = await nodemailer.createTestAccount();
+      host = "smtp.ethereal.email";
+      user = testAccount.user;
+      pass = testAccount.pass;
+    }
+
     let transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
+      host: host,
+      port: port,
+      secure: port == 465,
       auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
+        user: user,
+        pass: pass,
       },
     });
 
     let info = await transporter.sendMail({
-      from: '"System Handover AMT" <system@amt.local>',
-      to: "admin@amt.local",
+      from: user,
+      to: process.env.ADMIN_EMAIL || "admin@amt.local",
       subject: `[PERINGATAN] Isu Handover Kendaraan ${noPolisi}`,
       text: `Kendaraan ${noPolisi} dilaporkan memiliki beberapa isu:\n${issueItems.map(i => '- ' + i.name).join('\n')}`,
     });
 
     console.log("Email terkirim: %s", info.messageId);
-    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+    if (!process.env.SMTP_USER) {
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+    }
   } catch (error) {
     console.error("Gagal mengirim email simulasi:", error);
   }
 }
 
 // --- API ROUTES ---
+
+// 0. API Scan Barcode Kendaraan
+app.get('/api/vehicles/scan/:barcode', async (req, res) => {
+  try {
+    const vehicle = await prisma.vehicle.findUnique({ where: { barcode: req.params.barcode } });
+    if (!vehicle) return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    res.json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // 1. Auth Login (Sederhana tanpa JWT untuk prototipe)
 app.post('/api/auth/login', async (req, res) => {
@@ -71,11 +96,11 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
   try {
     const { userId, noPolisi, shift, locationLat, locationLng, items } = req.body;
     const parsedItems = JSON.parse(items); // items dikirim sebagai string JSON jika form-data
-    
+
     // Cek jika ada item yang "Tidak Baik / Tidak Ada" (isGood == false)
     const issueItems = parsedItems.filter(item => !item.isGood);
     const status = issueItems.length > 0 ? 'Ada Masalah' : 'Siap Operasi (Normal)';
-    
+
     // Simpan ke DB
     const handover = await prisma.handover.create({
       data: {
@@ -83,8 +108,8 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
         noPolisi,
         shift,
         status,
-        locationLat: parseFloat(locationLat),
-        locationLng: parseFloat(locationLng),
+        locationLat: locationLat ? parseFloat(locationLat) : null,
+        locationLng: locationLng ? parseFloat(locationLng) : null,
         items: {
           create: parsedItems.map(item => ({
             category: item.category,
