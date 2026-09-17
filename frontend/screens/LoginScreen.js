@@ -91,10 +91,23 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      const res = await axios.post('http://localhost:3000/api/auth/login', { username, password });
+      let loggedInUser = null;
+
+      // Mock Login untuk Prototipe Sesuai Permintaan
+      if (username.toLowerCase() === 'yoan') {
+        loggedInUser = { id: 'u1', username: 'yoan', name: 'Yoan', role: 'SUPER_ADMIN' };
+      } else if (username.toLowerCase() === 'sekar' && password === '12345') {
+        loggedInUser = { id: 'u2', username: 'sekar', name: 'Sekar', role: 'PENGAWAS' };
+      } else if (username.toLowerCase() === 'haula') {
+        loggedInUser = { id: 'u3', username: 'haula', name: 'Haula', role: 'AMT' };
+      } else {
+        // Fallback ke Backend jika bukan user mock
+        const res = await axios.post('http://localhost:3000/api/auth/login', { username, password });
+        loggedInUser = res.data.user;
+      }
       
-      if (res.data.user) {
-        await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
+      if (loggedInUser) {
+        await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
         navigation.replace('Dashboard');
       }
     } catch (error) {

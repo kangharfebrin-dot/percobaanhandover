@@ -65,12 +65,16 @@ export default function HistoryScreen({ navigation }) {
 
   return (
     <SafeAreaView style={tw`flex-1 bg-gray-50`}>
-      <LinearGradient colors={PERTAMINA_BLUE} style={tw`pt-6 pb-6 px-4 flex-row items-center rounded-b-[30px] shadow-lg z-10`}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-white/20 rounded-full mr-4`}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={tw`text-2xl font-extrabold text-white`}>Riwayat Handover</Text>
-      </LinearGradient>
+      <View style={tw`bg-[#0055A5] z-10 rounded-b-[30px] shadow-lg`}>
+        <LinearGradient colors={PERTAMINA_BLUE} style={tw`pt-6 pb-6 px-4 rounded-b-[30px]`}>
+          <View style={tw`w-full max-w-4xl mx-auto flex-row items-center`}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-white/20 rounded-full mr-4`}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={tw`text-2xl font-extrabold text-white`}>Riwayat Handover</Text>
+          </View>
+        </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={tw`flex-1 justify-center items-center`}>
@@ -79,7 +83,7 @@ export default function HistoryScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={tw`p-6 pt-8`}
+          contentContainerStyle={tw`p-6 pt-8 w-full max-w-4xl mx-auto`}
           data={handovers}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

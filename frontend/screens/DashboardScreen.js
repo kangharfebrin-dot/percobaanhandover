@@ -9,6 +9,7 @@ import axios from 'axios';
 
 const PERTAMINA_BLUE = ['#003366', '#0055A5'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
+const PERTAMINA_GREEN = ['#00A651', '#007A3E'];
 const GLASS_BG = 'rgba(255, 255, 255, 0.7)';
 
 // Helper untuk efek Glassmorphism di Web
@@ -56,7 +57,7 @@ export default function DashboardScreen({ navigation }) {
       if (userStr) {
         const userData = JSON.parse(userStr);
         setUser(userData);
-        if (userData.role === 'ADMIN') {
+        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
           fetchAlerts();
         }
       }
@@ -64,7 +65,7 @@ export default function DashboardScreen({ navigation }) {
     loadData();
     
     const unsubscribe = navigation.addListener('focus', () => {
-      if (user && user.role === 'ADMIN') fetchAlerts();
+      if (user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS' || user.role === 'ADMIN')) fetchAlerts();
     });
     return unsubscribe;
   }, [navigation, user?.role]);
@@ -90,7 +91,18 @@ export default function DashboardScreen({ navigation }) {
 
   if (!user) return null;
 
-  const isAdmin = user.role === 'ADMIN';
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
+  const isPengawas = user.role === 'PENGAWAS' || user.role === 'ADMIN';
+  const isAMT = user.role === 'AMT' || user.role === 'USER';
+
+  const canSeeOverview = isSuperAdmin || isPengawas;
+  const canSeeActions = isSuperAdmin || isAMT;
+
+  const getRoleLabel = () => {
+    if (isSuperAdmin) return 'Super Admin';
+    if (isPengawas) return 'Pengawas';
+    return 'Awak Mobil Tangki';
+  };
 
   const orb1TranslateY = floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, -50] });
   const orb2TranslateY = floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, 60] });
@@ -135,12 +147,12 @@ export default function DashboardScreen({ navigation }) {
             <View style={tw`pt-12 pb-8 flex-1 justify-between`}>
               <View>
                 <View style={tw`items-center mb-12 px-6`}>
-                  <View style={tw`w-24 h-24 bg-gradient-to-tr from-blue-500 to-blue-700 rounded-[30px] items-center justify-center mb-6 shadow-xl shadow-blue-500/30 rotate-3`}>
+                  <View style={tw`w-24 h-24 bg-blue-600 rounded-[30px] items-center justify-center mb-6 shadow-xl shadow-blue-500/30 rotate-3`}>
                     <Text style={tw`text-3xl font-black text-white -rotate-3`}>{user.name.charAt(0)}</Text>
                   </View>
                   <Text style={tw`text-2xl font-black text-gray-800 text-center tracking-tight`}>{user.name}</Text>
                   <View style={tw`bg-blue-100 mt-3 px-4 py-1.5 rounded-full`}>
-                    <Text style={tw`text-xs text-[#0055A5] font-black uppercase tracking-widest`}>{isAdmin ? 'Super Admin' : 'Awak Mobil Tangki'}</Text>
+                    <Text style={tw`text-xs text-[#0055A5] font-black uppercase tracking-widest`}>{getRoleLabel()}</Text>
                   </View>
                 </View>
 
@@ -194,7 +206,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
 
             {/* SUPER CARDS */}
-            {isAdmin && (
+            {canSeeOverview && (
               <View style={tw`flex-row justify-between mb-10`}>
                 <View style={[tw`flex-1 p-6 rounded-[35px] border border-white/60 mr-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 }]}>
                   <View style={tw`w-14 h-14 bg-blue-100 rounded-full items-center justify-center mb-6`}>
@@ -219,20 +231,37 @@ export default function DashboardScreen({ navigation }) {
             )}
 
             {/* Action Card */}
-            {!isAdmin ? (
-              <TouchableOpacity style={tw`w-full mb-10`} onPress={() => navigation.navigate('Scanner')}>
-                <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-8 rounded-[40px] shadow-2xl shadow-blue-500/40 relative overflow-hidden`}>
-                  <View style={tw`absolute -right-10 -bottom-10 opacity-20`}>
-                    <Ionicons name="qr-code" size={200} color="white" />
-                  </View>
-                  <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8 backdrop-blur-md`}>
-                    <Feather name="maximize" size={32} color="white" />
-                  </View>
-                  <Text style={tw`text-blue-200 font-bold text-sm uppercase tracking-widest mb-2`}>Mulai Pekerjaan</Text>
-                  <Text style={tw`text-white font-black text-3xl tracking-tight`}>Pindai QR Code</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
+            {canSeeActions && (
+              <View style={tw`flex-row justify-between mb-10`}>
+                <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
+                  <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-6 rounded-[35px] shadow-2xl shadow-blue-500/40 relative overflow-hidden h-48 justify-center`}>
+                    <View style={tw`absolute -right-5 -bottom-5 opacity-20`}>
+                      <Ionicons name="qr-code" size={120} color="white" />
+                    </View>
+                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4 backdrop-blur-md`}>
+                      <Feather name="log-in" size={24} color="white" />
+                    </View>
+                    <Text style={tw`text-blue-100 font-bold text-xs uppercase tracking-widest mb-1`}>Scan QR</Text>
+                    <Text style={tw`text-white font-black text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
+                  <LinearGradient colors={PERTAMINA_RED} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-6 rounded-[35px] shadow-2xl shadow-red-500/40 relative overflow-hidden h-48 justify-center`}>
+                    <View style={tw`absolute -right-5 -bottom-5 opacity-20`}>
+                      <Ionicons name="qr-code" size={120} color="white" />
+                    </View>
+                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4 backdrop-blur-md`}>
+                      <Feather name="log-out" size={24} color="white" />
+                    </View>
+                    <Text style={tw`text-red-100 font-bold text-xs uppercase tracking-widest mb-1`}>Scan QR</Text>
+                    <Text style={tw`text-white font-black text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {canSeeOverview && (
               <TouchableOpacity style={tw`w-full mb-10`} onPress={() => navigation.navigate('History')}>
                 <LinearGradient colors={PERTAMINA_GREEN} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-8 rounded-[40px] shadow-2xl shadow-green-500/40 relative overflow-hidden`}>
                   <View style={tw`absolute -right-10 -top-10 opacity-20`}>
@@ -248,7 +277,7 @@ export default function DashboardScreen({ navigation }) {
             )}
 
             {/* Live Feed / Alerts */}
-            {isAdmin && (
+            {canSeeOverview && (
               <View>
                 <View style={tw`flex-row justify-between items-center mb-6`}>
                   <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Live Feed Isu</Text>
