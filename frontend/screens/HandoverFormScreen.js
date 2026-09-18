@@ -31,7 +31,7 @@ const PERTAMINA_RED = ['#FF4B4B', '#ED1C24'];
 const PERTAMINA_GREEN = ['#2ECC71', '#00A651'];
 
 export default function HandoverFormScreen({ route, navigation }) {
-  const { noPolisi: initialNoPolisi } = route.params;
+  const { noPolisi: initialNoPolisi } = route?.params || {};
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
   const [shift, setShift] = useState('08:00');
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -50,6 +50,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [location, setLocation] = useState(null);
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [activePhotoType, setActivePhotoType] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -58,10 +59,14 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        let loc = await Location.getCurrentPositionAsync({});
-        setLocation(loc.coords);
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          let loc = await Location.getCurrentPositionAsync({});
+          setLocation(loc.coords);
+        }
+      } catch (err) {
+        console.log("Location fetch silently failed on mount:", err);
       }
     })();
   }, []);
@@ -92,7 +97,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   // CAMERA LOGIC
-  const openCameraFor = (type) => {
+  const openCameraFor = async (type) => {
     if (!permission) return;
     if (!permission.granted) {
       Alert.alert('Izin Diperlukan', 'Kami butuh izin kamera untuk mengambil foto.', [
@@ -101,16 +106,42 @@ export default function HandoverFormScreen({ route, navigation }) {
       ]);
       return;
     }
+
+    setLoading(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLoading(false);
+        Alert.alert("Izin Lokasi Ditolak", "Tolong izinkan akses lokasi Anda dari pengaturan aplikasi.");
+        return;
+      }
+      
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation(loc.coords);
+    } catch (err) {
+      setLoading(false);
+      Alert.alert("Gagal Mendapatkan Lokasi", "Gagal mendapatkan lokasi GPS. Pastikan GPS Anda sudah menyala.");
+      return;
+    }
+    setLoading(false);
+
     setActivePhotoType(type);
     setPreviewPhoto(null);
+    setIsCameraReady(false);
     setIsCameraOpen(true);
   };
 
   const takePicture = async () => {
     if (cameraRef.current) {
       setLoading(true);
-      const photo = await cameraRef.current.takePictureAsync();
-      setPreviewPhoto(photo);
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
+      const now = new Date();
+      const timestampStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      let locStr = 'Lokasi tidak ditemukan';
+      if (location) {
+        locStr = `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`;
+      }
+      setPreviewPhoto({ ...photo, timestampStr, locStr });
       setLoading(false);
     }
   };
@@ -195,7 +226,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
-      await axios.post('http://localhost:3000/api/handovers', formData, {
+      await axios.post('http://192.168.1.5:3000/api/handovers', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -235,7 +266,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             >
               <LinearGradient 
                 colors={isBaik ? PERTAMINA_GREEN : ['#F3F4F6', '#E5E7EB']} 
-                style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl h-full`}
+                style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isBaik ? 'text-white' : 'text-gray-500'}`}>
                   {item.category === 'A' ? 'BAIK' : 'ADA'}
@@ -250,7 +281,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             >
               <LinearGradient 
                 colors={isRusak ? PERTAMINA_RED : ['#F3F4F6', '#E5E7EB']} 
-                style={tw`py-3 px-2 items-center justify-center border ${isRusak ? 'border-transparent' : 'border-gray-200'} rounded-xl h-full`}
+                style={tw`py-3 px-2 items-center justify-center border ${isRusak ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isRusak ? 'text-white' : 'text-gray-500'}`}>
                   {item.category === 'A' ? 'RUSAK' : 'TIDAK ADA'}
@@ -321,7 +352,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     <SafeAreaView style={tw`flex-1 bg-slate-50`}>
       <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
         <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
-          <View style={tw`w-full max-w-4xl mx-auto flex-row items-center justify-between`}>
+          <View style={tw`w-full flex-row items-center justify-between`}>
             <View style={tw`flex-row items-center`}>
               <TouchableOpacity onPress={() => navigation.navigate('Dashboard')} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
                 <Ionicons name="arrow-back" size={24} color="white" />
@@ -340,7 +371,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         </LinearGradient>
       </View>
 
-      <ScrollView style={tw`flex-1`} contentContainerStyle={tw`w-full max-w-4xl mx-auto px-4 pt-8 pb-10`} showsVerticalScrollIndicator={false}>
+      <ScrollView style={tw`flex-1`} contentContainerStyle={tw`w-full px-4 pt-8 pb-10`} showsVerticalScrollIndicator={false}>
         {/* Info Perjalanan */}
         <View style={tw`bg-white p-6 rounded-3xl mb-8 shadow-md border border-gray-100`}>
           <View style={tw`flex-row items-center mb-6`}>
@@ -423,9 +454,16 @@ export default function HandoverFormScreen({ route, navigation }) {
                 {photos[side] ? (
                   <View style={tw`w-full h-full relative`}>
                     <Image source={{ uri: photos[side].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-4`}>
-                      <Ionicons name="checkmark-circle" size={32} color="#2ECC71" style={tw`mb-1 shadow-lg`} />
-                      <Text style={tw`text-white font-extrabold text-xs tracking-wider shadow-lg`}>{side.toUpperCase()}</Text>
+                    
+                    {/* Thumbnail Watermark */}
+                    <View style={tw`absolute top-1 left-1 right-1`}>
+                       <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
+                       <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
+                    </View>
+
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-3`} pointerEvents="none">
+                      <Ionicons name="checkmark-circle" size={24} color="#2ECC71" style={tw`mb-1 shadow-lg`} />
+                      <Text style={tw`text-white font-extrabold text-[10px] tracking-wider shadow-lg`}>{side.toUpperCase()}</Text>
                     </LinearGradient>
                   </View>
                 ) : (
@@ -433,7 +471,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                     <View style={tw`bg-white p-3 rounded-full shadow-sm mb-3`}>
                       <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
                     </View>
-                    <Text style={tw`text-gray-600 font-extrabold tracking-wider`}>{side}</Text>
+                    <Text style={tw`text-gray-600 text-sm font-extrabold tracking-wider`}>{side}</Text>
                     <Text style={tw`text-gray-400 text-xs font-medium mt-1`}>Ketuk untuk foto</Text>
                   </>
                 )}
@@ -446,8 +484,8 @@ export default function HandoverFormScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Tombol Submit Utama */}
-      <View style={tw`p-5 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] pb-10`}>
-        <View style={tw`w-full max-w-4xl mx-auto`}>
+      <View style={[tw`p-5 bg-white border-t border-gray-200 pb-10`, { elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.1, shadowRadius: 10 }]}>
+        <View style={tw`w-full`}>
           <TouchableOpacity
             style={tw`rounded-2xl overflow-hidden shadow-xl ${loading ? 'opacity-70' : ''}`}
             onPress={handleSubmit}
@@ -469,15 +507,15 @@ export default function HandoverFormScreen({ route, navigation }) {
 
       {/* MODAL LOADING */}
       <Modal visible={loading} transparent={true} animationType="fade">
-        <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6 backdrop-blur-sm`}>
+        <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6`}>
           <View style={tw`bg-white w-full max-w-sm rounded-[40px] p-8 items-center shadow-2xl border border-white/20`}>
-            <Image 
-              source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Logo_Pertamina.svg/1200px-Logo_Pertamina.svg.png' }} 
-              style={tw`w-24 h-24 mb-6`} 
+            <Image
+              source={require('../assets/logo.png')} 
+              style={tw`w-16 h-16 mb-4`} 
               resizeMode="contain" 
             />
             <ActivityIndicator size="large" color="#4A90E2" style={tw`mb-5`} />
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center tracking-tight`}>Mohon di Tunggu</Text>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center tracking-tight`}>Mohon Ditunggu</Text>
             <Text style={tw`text-gray-500 text-center font-medium text-sm leading-5`}>
               Sedang memproses dan mengirim data...
             </Text>
@@ -501,7 +539,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             
             <View style={tw`flex-row justify-center items-center mb-10`}>
               {/* Hour Scroll/Selector */}
-              <View style={tw`w-28 h-56 bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-inner`}>
+              <View style={tw`w-28 h-56 bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden`}>
                 <ScrollView showsVerticalScrollIndicator={false} snapToInterval={56} decelerationRate="fast" contentContainerStyle={tw`py-20`}>
                   {Array.from({ length: 24 }).map((_, i) => {
                     const hr = i.toString().padStart(2, '0');
@@ -522,7 +560,7 @@ export default function HandoverFormScreen({ route, navigation }) {
               <Text style={tw`text-4xl font-black text-slate-300 mx-5`}>:</Text>
 
               {/* Minute Scroll/Selector */}
-              <View style={tw`w-28 h-56 bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-inner`}>
+              <View style={tw`w-28 h-56 bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden`}>
                 <ScrollView showsVerticalScrollIndicator={false} snapToInterval={56} decelerationRate="fast" contentContainerStyle={tw`py-20`}>
                   {Array.from({ length: 60 }).map((_, i) => {
                     const min = i.toString().padStart(2, '0');
@@ -557,20 +595,32 @@ export default function HandoverFormScreen({ route, navigation }) {
       </Modal>
 
       {/* MODAL KAMERA FULL SCREEN */}
-      <Modal visible={isCameraOpen} animationType="slide" transparent={false}>
+      <Modal 
+        visible={isCameraOpen} 
+        animationType="slide" 
+        transparent={false}
+        onShow={() => setIsCameraReady(true)}
+      >
         {previewPhoto ? (
-          <View style={tw`flex-1 bg-black`}>
-            <Image source={{ uri: previewPhoto.uri }} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
+          <View style={tw`flex-1 bg-black relative`}>
+            <Image source={{ uri: previewPhoto.uri }} style={tw`w-full h-full absolute inset-0`} resizeMode="contain" />
+            
+            {/* WATERMARK OVERLAY PADA PREVIEW */}
+            <View style={tw`absolute bottom-40 left-6 bg-black/60 p-4 rounded-2xl border border-white/20 shadow-2xl`}>
+               <Text style={tw`text-white font-bold text-xs mb-2`}><Ionicons name="location" size={14} color="#2ECC71"/> {previewPhoto.locStr}</Text>
+               <Text style={tw`text-white font-bold text-xs`}><Ionicons name="time" size={14} color="#2ECC71"/> {previewPhoto.timestampStr}</Text>
+            </View>
+
             <View style={tw`absolute top-14 left-0 right-0 items-center px-4`}>
               <LinearGradient colors={PERTAMINA_GREEN} style={tw`px-6 py-3 rounded-full shadow-2xl border border-white/20`}>
-                <Text style={tw`text-white font-extrabold tracking-wider`}>
-                  HASIL FOTO: {activePhotoType.toUpperCase()}
+                <Text style={tw`text-white font-extrabold tracking-wider text-sm`}>
+                  HASIL FOTO: {activePhotoType?.toUpperCase()}
                 </Text>
               </LinearGradient>
             </View>
             <View style={tw`absolute bottom-12 w-full px-8 flex-row justify-between gap-4`}>
               <TouchableOpacity
-                style={tw`flex-1 bg-white/10 py-5 rounded-2xl items-center border border-white/20 backdrop-blur-md flex-row justify-center`}
+                style={tw`flex-1 bg-white/10 py-5 rounded-2xl items-center border border-white/20 flex-row justify-center`}
                 onPress={() => setPreviewPhoto(null)}
               >
                 <Ionicons name="refresh" size={24} color="white" style={tw`mr-2`} />
@@ -589,21 +639,29 @@ export default function HandoverFormScreen({ route, navigation }) {
           </View>
         ) : (
           <View style={tw`flex-1 bg-black`}>
-            <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef}>
-              <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={tw`absolute top-0 w-full h-40`} />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute bottom-0 w-full h-40`} />
+            {isCameraReady ? (
+              <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} />
+            ) : (
+              <View style={tw`flex-1 items-center justify-center`}>
+                <ActivityIndicator color="white" size="large" />
+                <Text style={tw`text-white font-bold mt-4 text-xs tracking-widest uppercase`}>Menyiapkan Kamera...</Text>
+              </View>
+            )}
+            
+            <View style={tw`absolute inset-0 justify-between`} pointerEvents="box-none">
+              <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={tw`absolute top-0 w-full h-40`} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute bottom-0 w-full h-40`} pointerEvents="none" />
               
-              <View style={tw`absolute top-14 left-0 right-0 items-center px-4`}>
-                <View style={tw`bg-black/50 px-8 py-4 rounded-full border border-white/30 backdrop-blur-lg items-center shadow-2xl`}>
+              <View style={tw`pt-14 px-4 items-center`} pointerEvents="none">
+                <View style={tw`bg-black/50 px-8 py-4 rounded-full border border-white/30 items-center shadow-2xl`}>
                   <Text style={tw`text-white font-bold text-lg tracking-widest`}>
-                    ARAHKAN KE <Text style={tw`text-[#2ECC71] font-black`}>{activePhotoType.toUpperCase()}</Text>
+                    ARAHKAN KE <Text style={tw`text-[#2ECC71] font-black`}>{activePhotoType?.toUpperCase()}</Text>
                   </Text>
                 </View>
               </View>
               
-              <View style={tw`flex-1 justify-center items-center`}>
+              <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-80 h-56 border border-white/30 rounded-3xl relative shadow-2xl bg-white/5`}>
-                  {/* Corners */}
                   <View style={tw`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-[#2ECC71] rounded-tl-3xl`} />
                   <View style={tw`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-[#2ECC71] rounded-tr-3xl`} />
                   <View style={tw`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-[#2ECC71] rounded-bl-3xl`} />
@@ -615,31 +673,31 @@ export default function HandoverFormScreen({ route, navigation }) {
                 </View>
               </View>
 
-              <View style={tw`absolute bottom-12 w-full flex-row justify-center items-center px-8`}>
+              <View style={tw`pb-12 w-full flex-row justify-center items-center px-8`} pointerEvents="box-none">
                 <TouchableOpacity
-                  style={tw`absolute left-8 bg-white/10 p-4 rounded-full border border-white/20 backdrop-blur-md`}
+                  style={tw`absolute left-8 bg-white/10 p-4 rounded-full border border-white/20`}
                   onPress={() => setIsCameraOpen(false)}
                 >
                   <Ionicons name="close" size={32} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={tw`w-24 h-24 bg-white/20 rounded-full border-4 border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] justify-center items-center backdrop-blur-md ${loading ? 'opacity-50' : ''}`}
+                  style={tw`w-24 h-24 bg-white/20 rounded-full border-4 border-white shadow-xl justify-center items-center ${loading ? 'opacity-50' : ''}`}
                   onPress={takePicture}
                   disabled={loading}
                 >
-                  {loading ? <ActivityIndicator color="white" size="large" /> : <View style={tw`w-20 h-20 bg-white rounded-full shadow-inner`} />}
+                  {loading ? <ActivityIndicator color="white" size="large" /> : <View style={tw`w-20 h-20 bg-white rounded-full`} />}
                 </TouchableOpacity>
               </View>
-            </CameraView>
+            </View>
           </View>
         )}
       </Modal>
 
       {/* MODAL SUKSES (BERHASIL KIRIM) */}
       <Modal visible={showSuccessModal} transparent={true} animationType="fade">
-        <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6 backdrop-blur-sm`}>
+        <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6`}>
           <View style={tw`bg-white w-full max-w-sm rounded-[40px] p-8 items-center shadow-2xl border border-white/20`}>
-            <View style={tw`w-28 h-28 bg-green-50 rounded-full items-center justify-center mb-6 border-8 border-green-100 shadow-inner`}>
+            <View style={tw`w-28 h-28 bg-green-50 rounded-full items-center justify-center mb-6 border-8 border-green-100`}>
               <Ionicons name="checkmark-done" size={60} color="#2ECC71" />
             </View>
             <Text style={tw`text-3xl font-black text-gray-800 mb-3 text-center tracking-tight`}>Berhasil!</Text>

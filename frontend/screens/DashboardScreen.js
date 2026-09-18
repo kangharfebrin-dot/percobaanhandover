@@ -73,7 +73,7 @@ export default function DashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const res = await axios.get('http://localhost:3000/api/handovers');
+      const res = await axios.get('http://192.168.1.5:3000/api/handovers');
       setAllHandovers(res.data);
       const issues = res.data.filter(h => h.status !== 'Siap Operasi (Normal)');
       setAlerts(issues);
@@ -238,7 +238,7 @@ export default function DashboardScreen({ navigation }) {
                     <View style={tw`absolute -right-5 -bottom-5 opacity-20`}>
                       <Ionicons name="qr-code" size={120} color="white" />
                     </View>
-                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4 backdrop-blur-md`}>
+                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4`}>
                       <Feather name="log-in" size={24} color="white" />
                     </View>
                     <Text style={tw`text-blue-100 font-bold text-xs uppercase tracking-widest mb-1`}>Scan QR</Text>
@@ -251,7 +251,7 @@ export default function DashboardScreen({ navigation }) {
                     <View style={tw`absolute -right-5 -bottom-5 opacity-20`}>
                       <Ionicons name="qr-code" size={120} color="white" />
                     </View>
-                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4 backdrop-blur-md`}>
+                    <View style={tw`w-12 h-12 bg-white/20 rounded-2xl items-center justify-center mb-4`}>
                       <Feather name="log-out" size={24} color="white" />
                     </View>
                     <Text style={tw`text-red-100 font-bold text-xs uppercase tracking-widest mb-1`}>Scan QR</Text>
@@ -267,7 +267,7 @@ export default function DashboardScreen({ navigation }) {
                   <View style={tw`absolute -right-10 -top-10 opacity-20`}>
                     <Ionicons name="documents" size={200} color="white" />
                   </View>
-                  <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8 backdrop-blur-md`}>
+                  <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8`}>
                     <Feather name="database" size={32} color="white" />
                   </View>
                   <Text style={tw`text-green-200 font-bold text-sm uppercase tracking-widest mb-2`}>Arsip Database</Text>

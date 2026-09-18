@@ -10,17 +10,21 @@ function generateRandomNumberString(length) {
 }
 
 async function main() {
-  // Reset data to avoid unique constraint errors during re-seed
-  await prisma.user.deleteMany({});
-
   const adminUsername = 'yoan';
   const adminPassword = '969111';
 
   const userUsername = 'haula';
   const userPassword = '672023';
 
-  await prisma.user.create({
-    data: {
+  // Gunakan upsert agar tidak error karena foreign key constraints
+  await prisma.user.upsert({
+    where: { username: adminUsername },
+    update: {
+      password: adminPassword,
+      role: 'ADMIN',
+      name: 'Yoan'
+    },
+    create: {
       username: adminUsername,
       password: adminPassword,
       role: 'ADMIN',
@@ -28,8 +32,14 @@ async function main() {
     }
   });
 
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { username: userUsername },
+    update: {
+      password: userPassword,
+      role: 'USER',
+      name: 'Haula'
+    },
+    create: {
       username: userUsername,
       password: userPassword,
       role: 'USER',

@@ -19,7 +19,7 @@ export default function HistoryScreen({ navigation }) {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/handovers');
+      const res = await axios.get('http://192.168.1.5:3000/api/handovers');
       setHandovers(res.data);
     } catch (error) {
       console.error(error);

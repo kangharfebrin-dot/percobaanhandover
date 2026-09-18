@@ -34,7 +34,7 @@ export default function ScannerScreen({ route, navigation }) {
       // 1. Dapatkan info kendaraan (atau fallback gunakan data sbg noPolisi)
       let vehicleNoPolisi = data;
       try {
-        const res = await axios.get(`http://localhost:3000/api/vehicles/scan/${data}`);
+        const res = await axios.get(`http://192.168.1.5:3000/api/vehicles/scan/${data}`);
         if (res.data.success && res.data.vehicle) {
           vehicleNoPolisi = res.data.vehicle.noPolisi;
         }
@@ -46,7 +46,7 @@ export default function ScannerScreen({ route, navigation }) {
 
       if (type === 'mulai') {
         // 2. Fetch Handover Terakhir
-        const hoRes = await axios.get('http://localhost:3000/api/handovers');
+        const hoRes = await axios.get('http://192.168.1.5:3000/api/handovers');
         const prevHandover = hoRes.data.find(h => h.noPolisi === vehicleNoPolisi);
         
         if (prevHandover) {
@@ -163,23 +163,24 @@ export default function ScannerScreen({ route, navigation }) {
   return (
     <View style={tw`flex-1 bg-black`}>
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={tw`absolute inset-0`}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={scanResult === null ? handleBarcodeScanned : undefined}
-      >
-        <View style={tw`flex-1 justify-center items-center`}>
-          <View style={tw`w-72 h-72 border-4 ${scanResult ? 'border-green-500' : 'border-[#0055A5]'} rounded-3xl bg-transparent flex items-center justify-center relative overflow-hidden`}>
-            {scanResult === null && !loading && (
-               <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
-            )}
-            {loading && <ActivityIndicator size="large" color="#0055A5" />}
-          </View>
-          <Text style={tw`text-white bg-black/60 px-4 py-2 mt-6 rounded-full font-bold`}>
-            Arahkan kamera ke QR Kendaraan ({type.toUpperCase()})
-          </Text>
+      />
+      
+      {/* Overlay UI diletakkan di luar CameraView */}
+      <View style={tw`absolute inset-0 justify-center items-center`} pointerEvents="none">
+        <View style={tw`w-72 h-72 border-4 ${scanResult ? 'border-green-500' : 'border-[#0055A5]'} rounded-3xl bg-transparent flex items-center justify-center relative overflow-hidden`}>
+          {scanResult === null && !loading && (
+             <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
+          )}
+          {loading && <ActivityIndicator size="large" color="#0055A5" />}
         </View>
-      </CameraView>
+        <Text style={tw`text-white bg-black/60 px-4 py-2 mt-6 rounded-full font-bold`}>
+          Arahkan kamera ke QR Kendaraan ({type?.toUpperCase() || 'MULAI'})
+        </Text>
+      </View>
 
       <TouchableOpacity 
         style={tw`absolute top-12 left-6 bg-black/50 p-3 rounded-full flex-row items-center`} 
