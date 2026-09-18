@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground, Modal, Linking } from 'react-native';
 import tw from 'twrnc';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,8 +15,9 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); 
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   // Animasi crossfade untuk maskot
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -24,14 +25,14 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: isPasswordFocused ? 1 : 0,
-      duration: 300, // Transisi smooth 300ms
+      duration: 300,
       useNativeDriver: true,
     }).start();
   }, [isPasswordFocused]);
 
   const handleLogin = async () => {
     setErrorMessage('');
-    
+
     const isUsernameEmpty = !username.trim();
     const isPasswordEmpty = !password.trim();
 
@@ -60,7 +61,7 @@ export default function LoginScreen({ navigation }) {
         const res = await axios.post('http://192.168.1.5:3000/api/auth/login', { username, password });
         loggedInUser = res.data.user;
       }
-      
+
       if (loggedInUser) {
         await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
         navigation.replace('Dashboard');
@@ -73,115 +74,173 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-slate-50`}>
-      <View style={tw`absolute inset-0 bg-[#0055A5] opacity-5`} />
-      
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={tw`flex-1`}
-      >
-        <ScrollView contentContainerStyle={tw`flex-grow justify-center items-center px-6`} showsVerticalScrollIndicator={false}>
-          
-          {/* Mascot Animasi - Dibuat lebih kecil */}
-          <View style={tw`z-10 -mb-6 items-center mt-8`}>
-            <View style={tw`w-32 h-44 justify-end items-center relative`}>
-              {/* Maskot Mata Terbuka (Muncul saat tidak fokus password) */}
-              <Animated.Image 
-                source={require('../assets/mascot_open.png')} 
-                style={[tw`absolute w-full h-full`, { 
-                  opacity: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 0]
-                  }) 
-                }]} 
-                resizeMode="contain" 
-              />
-              {/* Maskot Mata Tertutup (Muncul saat fokus password) */}
-              <Animated.Image 
-                source={require('../assets/mascot_closed.png')} 
-                style={[tw`absolute w-full h-full`, { opacity: fadeAnim }]} 
-                resizeMode="contain" 
-              />
-            </View>
-          </View>
-
-          {/* Kotak Login Aesthetic */}
-          <View style={tw`bg-white w-full max-w-sm p-8 rounded-[40px] shadow-2xl border border-blue-50/50 mb-10`}>
-            
-            <View style={tw`items-center mb-8 mt-2`}>
-              <View style={tw`flex-row items-center justify-center mb-2`}>
-                {/* 3 Warna Pertamina */}
-                <View style={tw`w-2 h-8 rounded-full bg-[#ED1C24] mr-2`} />
-                <View style={tw`w-2 h-8 rounded-full bg-[#2ECC71] mr-2`} />
-                <View style={tw`w-2 h-8 rounded-full bg-[#0055A5] mr-3`} />
-                <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>DIGI</Text>
-                <Text style={tw`text-3xl font-black text-[#0055A5] tracking-tighter`}>Handover</Text>
-              </View>
-              <Text style={tw`text-xs font-bold text-gray-400 tracking-widest uppercase`}>PT Pertamina Patra Niaga</Text>
-            </View>
-            
-            <View style={tw`mb-5`}>
-              <Text style={tw`text-gray-500 font-extrabold mb-2 ml-2 text-[10px] uppercase tracking-wider`}>Username</Text>
-              <View style={tw`flex-row items-center bg-slate-50 border-2 rounded-2xl px-4 ${isUsernameFocused ? 'border-[#0055A5] bg-blue-50/30' : 'border-slate-100'}`}>
-                <Ionicons name="person" size={20} color={isUsernameFocused ? "#0055A5" : "#9CA3AF"} />
-                <TextInput
-                  style={tw`flex-1 p-4 text-gray-800 font-bold`}
-                  placeholder="Ketik username Anda"
-                  value={username}
-                  onChangeText={(text) => { setUsername(text); setErrorMessage(''); }}
-                  onFocus={() => { setIsUsernameFocused(true); setIsPasswordFocused(false); }}
-                  onBlur={() => setIsUsernameFocused(false)}
-                  autoCapitalize="none"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <View style={tw`mb-6`}>
-              <Text style={tw`text-gray-500 font-extrabold mb-2 ml-2 text-[10px] uppercase tracking-wider`}>Password</Text>
-              <View style={tw`flex-row items-center bg-slate-50 border-2 rounded-2xl px-4 ${isPasswordFocused ? 'border-[#ED1C24] bg-red-50/30' : 'border-slate-100'}`}>
-                <Ionicons name="lock-closed" size={20} color={isPasswordFocused ? "#ED1C24" : "#9CA3AF"} />
-                <TextInput
-                  style={tw`flex-1 p-4 text-gray-800 font-bold`}
-                  placeholder="Ketik kata sandi"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={(text) => { setPassword(text); setErrorMessage(''); }}
-                  onFocus={() => { setIsPasswordFocused(true); setIsUsernameFocused(false); }}
-                  onBlur={() => setIsPasswordFocused(false)}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            {errorMessage !== '' && (
-              <View style={tw`bg-red-50 p-3 rounded-xl mb-4 border border-red-100`}>
-                <Text style={tw`text-red-600 text-xs font-bold text-center`}>
-                  {errorMessage}
+    <View style={[tw`flex-1`, Platform.OS === 'web' && { minHeight: '100vh', minWidth: '100vw' }]}>
+      <ImageBackground source={require('../assets/background.jpg')} style={tw`absolute inset-0 w-full h-full`} resizeMode="cover">
+        <View style={tw`absolute inset-0 bg-black/10`} />
+        <SafeAreaView style={tw`flex-1`}>
+        
+          {/* Modal Kustom Lupa Password */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={showForgotPasswordModal}
+            onRequestClose={() => setShowForgotPasswordModal(false)}
+          >
+            <View style={tw`flex-1 justify-center items-center bg-black/50 px-4`}>
+              <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
+                <View style={tw`bg-red-50 p-4 rounded-full mb-4`}>
+                  <Ionicons name="help-buoy" size={40} color="#ED1C24" />
+                </View>
+                <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Lupa Password?</Text>
+                <Text style={tw`text-gray-500 text-center mb-6 leading-relaxed`}>
+                  Apakah Anda yakin lupa kata sandi? Jika ya, silakan hubungi Administrator atau Supervisor Anda untuk mereset akun.
                 </Text>
+                
+                <View style={tw`w-full flex-row justify-between`}>
+                  <TouchableOpacity 
+                    style={tw`flex-1 bg-gray-100 py-4 rounded-2xl mr-2 items-center`}
+                    onPress={() => setShowForgotPasswordModal(false)}
+                  >
+                    <Text style={tw`text-gray-600 font-bold`}>Tidak</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={tw`flex-1 bg-[#ED1C24] py-4 rounded-2xl ml-2 items-center shadow-md`}
+                    onPress={() => {
+                      setShowForgotPasswordModal(false);
+                      Linking.openURL('https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20lupa%20password%20akun%20DIGI%20Handover%20saya.%20Mohon%20bantuannya%20untuk%20reset%20password.');
+                    }}
+                  >
+                    <Text style={tw`text-white font-bold`}>Ya, Hubungi</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
+            </View>
+          </Modal>
 
-            <TouchableOpacity 
-              style={tw`rounded-2xl overflow-hidden shadow-xl mt-2 ${loading ? 'opacity-70' : ''}`}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <LinearGradient colors={PERTAMINA_RED} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`p-5 items-center flex-row justify-center`}>
-                {loading ? (
-                  <Text style={tw`text-white font-black text-lg tracking-widest`}>MEMPROSES...</Text>
-                ) : (
-                  <>
-                    <Text style={tw`text-white font-black text-lg tracking-widest mr-2`}>MASUK</Text>
-                    <Ionicons name="arrow-forward" size={20} color="white" />
-                  </>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={tw`flex-1`}
+          >
+            <ScrollView contentContainerStyle={tw`flex-grow justify-center items-center px-6`} showsVerticalScrollIndicator={false}>
+
+              {/* Header Image Area: Truck behind Mascot */}
+              <View style={tw`z-10 mb-0 items-center mt-4 w-80 h-48 justify-end relative`}>
+                {/* Truk di Belakang */}
+                <View style={tw`absolute top-0 w-full h-full items-center justify-end`}>
+                  <Image
+                    source={require('../assets/truck.png')}
+                    style={tw`w-[120%] h-[120%] opacity-90 -mb-5`}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                {/* Maskot Animasi - Dibuat lebih kecil menyesuaikan */}
+                <View style={tw`w-16 h-24 justify-end items-center relative z-20`}>
+                  <Animated.Image
+                    source={require('../assets/mascot_open.png')}
+                    style={[tw`absolute w-full h-full`, {
+                      opacity: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 0]
+                      })
+                    }]}
+                    resizeMode="contain"
+                  />
+                  <Animated.Image
+                    source={require('../assets/mascot_closed.png')}
+                    style={[tw`absolute w-full h-full`, { opacity: fadeAnim }]}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+
+              {/* Kotak Login Solid Putih Lebih Besar untuk Web */}
+              <View style={tw`bg-white w-full max-w-[420px] p-8 rounded-[40px] shadow-2xl mb-10 z-20`}>
+
+                <View style={tw`items-center mb-8 mt-2`}>
+                  <View style={tw`flex-row items-center justify-center mb-2`}>
+                    {/* 3 Warna Pertamina */}
+                    <View style={tw`w-2 h-8 rounded-full bg-[#ED1C24] mr-2`} />
+                    <View style={tw`w-2 h-8 rounded-full bg-[#2ECC71] mr-2`} />
+                    <View style={tw`w-2 h-8 rounded-full bg-[#0055A5] mr-3`} />
+                    <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>DIGI</Text>
+                    <Text style={tw`text-3xl font-black text-[#0055A5] tracking-tighter`}>Handover</Text>
+                  </View>
+                  <Text style={tw`text-xs font-bold text-gray-400 tracking-widest uppercase`}>PT Pertamina Patra Niaga</Text>
+                </View>
+
+                <View style={tw`mb-5`}>
+                  <Text style={tw`text-gray-500 font-extrabold mb-2 ml-2 text-[10px] uppercase tracking-wider`}>Username</Text>
+                  <View style={tw`flex-row items-center bg-slate-50 border-2 rounded-2xl px-4 ${isUsernameFocused ? 'border-[#0055A5] bg-blue-50/50' : 'border-slate-100'}`}>
+                    <Ionicons name="person" size={20} color={isUsernameFocused ? "#0055A5" : "#9CA3AF"} />
+                    <TextInput
+                      style={tw`flex-1 p-4 text-gray-800 font-bold`}
+                      placeholder="Ketik username Anda"
+                      value={username}
+                      onChangeText={(text) => { setUsername(text); setErrorMessage(''); }}
+                      onFocus={() => { setIsUsernameFocused(true); setIsPasswordFocused(false); }}
+                      onBlur={() => setIsUsernameFocused(false)}
+                      autoCapitalize="none"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+
+                <View style={tw`mb-6`}>
+                  <Text style={tw`text-gray-500 font-extrabold mb-2 ml-2 text-[10px] uppercase tracking-wider`}>Password</Text>
+                  <View style={tw`flex-row items-center bg-slate-50 border-2 rounded-2xl px-4 ${isPasswordFocused ? 'border-[#ED1C24] bg-red-50/50' : 'border-slate-100'}`}>
+                    <Ionicons name="lock-closed" size={20} color={isPasswordFocused ? "#ED1C24" : "#9CA3AF"} />
+                    <TextInput
+                      style={tw`flex-1 p-4 text-gray-800 font-bold`}
+                      placeholder="Ketik kata sandi"
+                      secureTextEntry
+                      value={password}
+                      onChangeText={(text) => { setPassword(text); setErrorMessage(''); }}
+                      onFocus={() => { setIsPasswordFocused(true); setIsUsernameFocused(false); }}
+                      onBlur={() => setIsPasswordFocused(false)}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+
+                {errorMessage !== '' && (
+                  <View style={tw`bg-red-50 p-3 rounded-xl mb-4 border border-red-100`}>
+                    <Text style={tw`text-red-600 text-xs font-bold text-center`}>
+                      {errorMessage}
+                    </Text>
+                  </View>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
-            
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+                <TouchableOpacity
+                  style={tw`rounded-2xl overflow-hidden shadow-xl mt-2 ${loading ? 'opacity-70' : ''}`}
+                  onPress={handleLogin}
+                  disabled={loading}
+                >
+                  <LinearGradient colors={PERTAMINA_RED} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`p-5 items-center flex-row justify-center`}>
+                    {loading ? (
+                      <Text style={tw`text-white font-black text-lg tracking-widest`}>MEMPROSES...</Text>
+                    ) : (
+                      <>
+                        <Text style={tw`text-white font-black text-lg tracking-widest mr-2`}>MASUK</Text>
+                        <Ionicons name="arrow-forward" size={20} color="white" />
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Tombol Lupa Password */}
+                <TouchableOpacity 
+                  style={tw`mt-6 items-center`}
+                  onPress={() => setShowForgotPasswordModal(true)}
+                >
+                  <Text style={tw`text-[#ED1C24] font-bold text-sm tracking-wide`}>Lupa Password?</Text>
+                </TouchableOpacity>
+
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </ImageBackground>
+    </View>
   );
 }
