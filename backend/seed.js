@@ -10,52 +10,42 @@ function generateRandomNumberString(length) {
 }
 
 async function main() {
-  const adminUsername = 'yoan';
-  const adminPassword = '969111';
+  // --- SEED USERS ---
+  const users = [
+    { username: 'yoan', password: '123', role: 'SUPER_ADMIN', name: 'Yoan' },
+    { username: 'sekar', password: '123', role: 'PENGAWAS', name: 'Sekar' },
+    { username: 'haula', password: '123', role: 'AMT', name: 'Haula' },
+    { username: 'budi', password: '123', role: 'AMT', name: 'Budi Santoso' },
+    { username: 'andi', password: '123', role: 'AMT', name: 'Andi Pratama' }
+  ];
 
-  const userUsername = 'haula';
-  const userPassword = '672023';
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { username: u.username },
+      update: { password: u.password, role: u.role, name: u.name },
+      create: u
+    });
+  }
 
-  // Gunakan upsert agar tidak error karena foreign key constraints
-  await prisma.user.upsert({
-    where: { username: adminUsername },
-    update: {
-      password: adminPassword,
-      role: 'ADMIN',
-      name: 'Yoan'
-    },
-    create: {
-      username: adminUsername,
-      password: adminPassword,
-      role: 'ADMIN',
-      name: 'Yoan' // Diganti sesuai permintaan
-    }
-  });
+  // --- SEED VEHICLES ---
+  const vehicles = [
+    { noPolisi: 'B 1234 CD', barcode: 'TRK-001', jenisKendaraan: 'Truk Tangki 8KL' },
+    { noPolisi: 'B 5678 EF', barcode: 'TRK-002', jenisKendaraan: 'Truk Tangki 16KL' },
+    { noPolisi: 'B 9101 GH', barcode: 'TRK-003', jenisKendaraan: 'Truk Tangki 24KL' },
+    { noPolisi: 'B 1121 IJ', barcode: 'TRK-004', jenisKendaraan: 'Truk Tangki 8KL' },
+    { noPolisi: 'B 3141 KL', barcode: 'TRK-005', jenisKendaraan: 'Truk Tangki 16KL' }
+  ];
 
-  await prisma.user.upsert({
-    where: { username: userUsername },
-    update: {
-      password: userPassword,
-      role: 'USER',
-      name: 'Haula'
-    },
-    create: {
-      username: userUsername,
-      password: userPassword,
-      role: 'USER',
-      name: 'Haula' // Diganti sesuai permintaan
-    }
-  });
+  for (const v of vehicles) {
+    await prisma.vehicle.upsert({
+      where: { noPolisi: v.noPolisi },
+      update: { barcode: v.barcode, jenisKendaraan: v.jenisKendaraan },
+      create: v
+    });
+  }
 
   console.log('--- SEEDING DONE ---');
-  console.log('Admin Login:');
-  console.log('Username:', adminUsername);
-  console.log('Password:', adminPassword);
-  console.log('--------------------');
-  console.log('User Login:');
-  console.log('Username:', userUsername);
-  console.log('Password:', userPassword);
-  console.log('--------------------');
+  console.log('Truk dan Pekerja telah ditambahkan ke database.');
 }
 
 main()

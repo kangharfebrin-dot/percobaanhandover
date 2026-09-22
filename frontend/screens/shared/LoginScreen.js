@@ -47,6 +47,19 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
+    const isUsernameValid = /^[a-zA-Z]+$/.test(username);
+    const isPasswordValid = /^[0-9]+$/.test(password);
+
+    if (!isUsernameValid) {
+      setErrorMessage('Username hanya boleh berisi huruf (alfabet).');
+      return;
+    }
+    
+    if (!isPasswordValid) {
+      setErrorMessage('Password hanya boleh berisi angka.');
+      return;
+    }
+
     setLoading(true);
     try {
       let loggedInUser = null;
@@ -58,13 +71,19 @@ export default function LoginScreen({ navigation }) {
       } else if (username.toLowerCase() === 'haula') {
         loggedInUser = { id: 'u3', username: 'haula', name: 'Haula', role: 'AMT' };
       } else {
-        const res = await axios.post('http://192.168.1.5:3000/api/auth/login', { username, password });
+        const res = await axios.post('http://192.168.151.137:3000/api/auth/login', { username, password });
         loggedInUser = res.data.user;
       }
 
       if (loggedInUser) {
         await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
-        navigation.replace('Dashboard');
+        if (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN') {
+          navigation.replace('AdminDashboard');
+        } else if (loggedInUser.role === 'PENGAWAS') {
+          navigation.replace('PengawasDashboard');
+        } else {
+          navigation.replace('UserDashboard');
+        }
       }
     } catch (error) {
       setErrorMessage(error.response?.data?.error || 'Login gagal, periksa kembali username & password');
@@ -75,7 +94,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={[tw`flex-1`, Platform.OS === 'web' && { minHeight: '100vh', minWidth: '100vw' }]}>
-      <ImageBackground source={require('../assets/background.jpg')} style={tw`absolute inset-0 w-full h-full`} resizeMode="cover">
+      <ImageBackground source={require('../../assets/background.jpg')} style={tw`absolute inset-0 w-full h-full`} resizeMode="cover">
         <View style={tw`absolute inset-0 bg-black/10`} />
         <SafeAreaView style={tw`flex-1`}>
         
@@ -92,7 +111,7 @@ export default function LoginScreen({ navigation }) {
                   <Ionicons name="help-buoy" size={40} color="#ED1C24" />
                 </View>
                 <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Lupa Password?</Text>
-                <Text style={tw`text-gray-500 text-center mb-6 leading-relaxed`}>
+                <Text style={tw`text-gray-500 text-center text-base mb-6 leading-relaxed`}>
                   Apakah Anda yakin lupa kata sandi? Jika ya, silakan hubungi Administrator atau Supervisor Anda untuk mereset akun.
                 </Text>
                 
@@ -128,7 +147,7 @@ export default function LoginScreen({ navigation }) {
                 {/* Truk di Belakang */}
                 <View style={tw`absolute top-0 w-full h-full items-center justify-end`}>
                   <Image
-                    source={require('../assets/truck.png')}
+                    source={require('../../assets/truck.png')}
                     style={tw`w-[120%] h-[120%] opacity-90 -mb-5`}
                     resizeMode="contain"
                   />
@@ -137,7 +156,7 @@ export default function LoginScreen({ navigation }) {
                 {/* Maskot Animasi - Dibuat lebih kecil menyesuaikan */}
                 <View style={tw`w-16 h-24 justify-end items-center relative z-20`}>
                   <Animated.Image
-                    source={require('../assets/mascot_open.png')}
+                    source={require('../../assets/mascot_open.png')}
                     style={[tw`absolute w-full h-full`, {
                       opacity: fadeAnim.interpolate({
                         inputRange: [0, 1],
@@ -147,7 +166,7 @@ export default function LoginScreen({ navigation }) {
                     resizeMode="contain"
                   />
                   <Animated.Image
-                    source={require('../assets/mascot_closed.png')}
+                    source={require('../../assets/mascot_closed.png')}
                     style={[tw`absolute w-full h-full`, { opacity: fadeAnim }]}
                     resizeMode="contain"
                   />

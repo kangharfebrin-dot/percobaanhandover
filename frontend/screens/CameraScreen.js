@@ -12,6 +12,7 @@ export default function CameraScreen({ route, navigation }) {
   const { noPolisi, shift, items, odoMeter } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
+  const [userRole, setUserRole] = useState('USER');
   const [photos, setPhotos] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,17 @@ export default function CameraScreen({ route, navigation }) {
     );
   }
 
+  
+  const goToDashboard = () => {
+    if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+      navigation.navigate('AdminDashboard');
+    } else if (userRole === 'PENGAWAS') {
+      navigation.navigate('PengawasDashboard');
+    } else {
+      navigation.navigate('UserDashboard');
+    }
+  };
+
   const takePicture = async () => {
     if (cameraRef.current) {
       const photo = await cameraRef.current.takePictureAsync();
@@ -60,6 +72,7 @@ export default function CameraScreen({ route, navigation }) {
     try {
       const userStr = await AsyncStorage.getItem('user');
       const user = JSON.parse(userStr);
+      setUserRole(user?.role || 'USER');
 
       const formData = new FormData();
       formData.append('userId', user.id);
@@ -87,13 +100,13 @@ export default function CameraScreen({ route, navigation }) {
       });
 
       // API call (adjust IP address if testing on real device)
-      const res = await axios.post('http://10.0.2.2:3000/api/handovers', formData, {
+      const res = await axios.post('http://192.168.151.137:3000/api/handovers', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setLoading(false);
       Alert.alert('Sukses', 'Handover berhasil disimpan!', [
-        { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
+        { text: 'OK', onPress: () => goToDashboard() }
       ]);
     } catch (error) {
       setLoading(false);

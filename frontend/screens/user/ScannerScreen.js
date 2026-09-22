@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,42 +28,45 @@ export default function ScannerScreen({ route, navigation }) {
   }
 
   const handleBarcodeScanned = async ({ data }) => {
-    if (loading || scanResult !== null) return;
-    setLoading(true);
-    try {
-      // 1. Dapatkan info kendaraan (atau fallback gunakan data sbg noPolisi)
-      let vehicleNoPolisi = data;
-      try {
-        const res = await axios.get(`http://192.168.1.5:3000/api/vehicles/scan/${data}`);
-        if (res.data.success && res.data.vehicle) {
-          vehicleNoPolisi = res.data.vehicle.noPolisi;
-        }
-      } catch (err) {
-        console.log("Fallback to raw data as noPolisi");
-      }
-      
-      setScannedNoPolisi(vehicleNoPolisi);
+    if (loading) return;
 
-      if (type === 'mulai') {
-        // 2. Fetch Handover Terakhir
-        const hoRes = await axios.get('http://192.168.1.5:3000/api/handovers');
-        const prevHandover = hoRes.data.find(h => h.noPolisi === vehicleNoPolisi);
-        
-        if (prevHandover) {
-          setLastHandover(prevHandover);
-          setScanResult('recap');
-        } else {
-          setScanResult('success');
+    // Bersihkan data dari spasi tambahan dan jadikan huruf besar semua
+    const cleanedData = data.trim().toUpperCase();
+
+    setLoading(true);
+
+    // Gunakan data yang sudah dibersihkan
+    const scannedText = cleanedData;
+
+    try {
+      // CEK STATUS MAINTENANCE KE BACKEND (Penting!)
+      const fetchPromise = axios.get(`http://192.168.151.137:3000/api/vehicles/scan/${scannedText}`);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000));
+
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (res && res.data && res.data.success && res.data.vehicle) {
+        if (res.data.vehicle.status === 'Maintenance') {
+          Alert.alert(
+            "KENDARAAN DIBLOKIR",
+            "Truk ini sedang dalam status MAINTENANCE. Tidak dapat digunakan untuk perjalanan."
+          );
+          setLoading(false);
+          return;
         }
-      } else {
-        // Akhiri pekerjaan -> langsung sukses
+        // Jika lolos (Active), gunakan Nomor Polisi aslinya!
+        setScannedNoPolisi(res.data.vehicle.noPolisi);
+        setLoading(false);
         setScanResult('success');
+      } else {
+        throw new Error('Barcode tidak valid atau data kendaraan tidak ditemukan');
       }
 
     } catch (error) {
-      setScanResult('error');
-    } finally {
+      console.error(error);
+      Alert.alert("Scan Gagal", "Kendaraan tidak terdaftar di database atau masalah jaringan.");
       setLoading(false);
+      setScanResult('error');
     }
   };
 
@@ -74,12 +77,12 @@ export default function ScannerScreen({ route, navigation }) {
 
   const renderRecapModal = () => {
     if (!lastHandover) return null;
-    
+
     // Hitung status checklist
     const itemsA = lastHandover.items.filter(i => i.category === 'A');
     const itemsB = lastHandover.items.filter(i => i.category === 'B');
     const odoItem = lastHandover.items.find(i => i.category === 'C');
-    
+
     const countAGood = itemsA.filter(i => i.isGood).length;
     const countBGood = itemsB.filter(i => i.isGood).length;
     const odoMeter = odoItem ? odoItem.name.replace('Odo Meter: ', '') : '-';
@@ -90,7 +93,7 @@ export default function ScannerScreen({ route, navigation }) {
           {/* Header Recap */}
           <View style={tw`items-center mb-6`}>
             <View style={tw`w-20 h-20 bg-green-50 rounded-full items-center justify-center mb-4`}>
-               <Ionicons name="checkmark" size={48} color="#00A651" />
+              <Ionicons name="checkmark" size={48} color="#00A651" />
             </View>
             <View style={tw`bg-green-100 px-3 py-1 rounded-full mb-3`}>
               <Text style={tw`text-[#00A651] font-bold text-[10px] uppercase tracking-widest`}>RECAP TERAKHIR</Text>
@@ -166,14 +169,14 @@ export default function ScannerScreen({ route, navigation }) {
         style={tw`absolute inset-0`}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={scanResult === null ? handleBarcodeScanned : undefined}
+        onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
       />
-      
+
       {/* Overlay UI diletakkan di luar CameraView */}
       <View style={tw`absolute inset-0 justify-center items-center`} pointerEvents="none">
         <View style={tw`w-72 h-72 border-4 ${scanResult ? 'border-green-500' : 'border-[#0055A5]'} rounded-3xl bg-transparent flex items-center justify-center relative overflow-hidden`}>
           {scanResult === null && !loading && (
-             <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
+            <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
           )}
           {loading && <ActivityIndicator size="large" color="#0055A5" />}
         </View>
@@ -182,8 +185,8 @@ export default function ScannerScreen({ route, navigation }) {
         </Text>
       </View>
 
-      <TouchableOpacity 
-        style={tw`absolute top-12 left-6 bg-black/50 p-3 rounded-full flex-row items-center`} 
+      <TouchableOpacity
+        style={tw`absolute top-12 left-6 bg-black/50 p-3 rounded-full flex-row items-center`}
         onPress={() => navigation.goBack()}
       >
         <Ionicons name="arrow-back" size={24} color="white" />
@@ -191,7 +194,7 @@ export default function ScannerScreen({ route, navigation }) {
 
       {scanResult === 'recap' && renderRecapModal()}
       {scanResult === 'success' && renderSuccessModal()}
-      
+
       {scanResult === 'error' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
           <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
@@ -200,7 +203,7 @@ export default function ScannerScreen({ route, navigation }) {
             </View>
             <Text style={tw`text-2xl font-extrabold text-gray-800 mb-2`}>Scan Gagal</Text>
             <Text style={tw`text-gray-500 text-center mb-8 font-medium`}>Kode QR tidak valid atau jaringan bermasalah.</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
               onPress={() => setScanResult(null)}
             >

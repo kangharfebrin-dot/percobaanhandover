@@ -61,6 +61,8 @@ model Vehicle {
   noPolisi        String   @unique
   barcode         String   @unique
   jenisKendaraan  String?  // e.g., Truk Tangki, Mobil Box, dll
+  brand           String?
+  status          String   @default("Active") // 'Active' or 'Maintenance'
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

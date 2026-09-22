@@ -4,6 +4,15 @@ const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
+const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
+
+// Pastikan folder barcodes ada
+const barcodesDir = path.join(__dirname, 'barcodes');
+if (!fs.existsSync(barcodesDir)) {
+  fs.mkdirSync(barcodesDir, { recursive: true });
+}
 
 const app = express();
 const prisma = new PrismaClient();
@@ -11,7 +20,7 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
-
+app.use('/barcodes', express.static('barcodes'));
 // Setup Multer for photo uploads (in memory for now, or save to disk)
 const upload = multer({ dest: 'uploads/' });
 
@@ -151,6 +160,192 @@ app.get('/api/handovers', async (req, res) => {
       }
     });
     res.json(handovers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. GET All Vehicles (Untuk Admin)
+app.get('/api/vehicles', async (req, res) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(vehicles);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. POST Vehicle (Tambah Truk Baru)
+app.post('/api/vehicles', async (req, res) => {
+  try {
+    const { noPolisi, barcode, jenisKendaraan, brand, status } = req.body;
+    
+    // Validasi input
+    if (!noPolisi || !barcode) {
+      return res.status(400).json({ error: 'No Polisi dan Barcode harus diisi' });
+    }
+
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        noPolisi,
+        barcode,
+        jenisKendaraan,
+        brand,
+        status: status || 'Baik'
+      }
+    });
+
+    // Generate QR Code image
+    const qrPath = path.join(barcodesDir, `${barcode}.jpg`);
+    await QRCode.toFile(qrPath, barcode, { errorCorrectionLevel: 'H' });
+
+    res.status(201).json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5a. PUT Vehicle (Ubah Truk)
+app.put('/api/vehicles/:id', async (req, res) => {
+  try {
+    const { noPolisi, barcode, jenisKendaraan, brand, status } = req.body;
+    const vehicleId = req.params.id;
+
+    // Cek kendaraan lama
+    const oldVehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!oldVehicle) {
+      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    const vehicle = await prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { noPolisi, barcode, jenisKendaraan, brand, status: status || oldVehicle.status }
+    });
+
+    // Jika barcode berubah, generate QR code baru dan hapus yang lama
+    if (oldVehicle.barcode !== barcode) {
+      const oldQrPath = path.join(barcodesDir, `${oldVehicle.barcode}.jpg`);
+      if (fs.existsSync(oldQrPath)) {
+        fs.unlinkSync(oldQrPath);
+      }
+      const newQrPath = path.join(barcodesDir, `${barcode}.jpg`);
+      await QRCode.toFile(newQrPath, barcode, { errorCorrectionLevel: 'H' });
+    }
+
+    res.json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5b. DELETE Vehicle (Hapus Truk)
+app.delete('/api/vehicles/:id', async (req, res) => {
+  try {
+    const vehicleId = req.params.id;
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    await prisma.vehicle.delete({ where: { id: vehicleId } });
+
+    // Hapus QR code
+    const qrPath = path.join(barcodesDir, `${vehicle.barcode}.jpg`);
+    if (fs.existsSync(qrPath)) {
+      fs.unlinkSync(qrPath);
+    }
+
+    res.json({ success: true, message: 'Kendaraan berhasil dihapus' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 6. PUT Vehicle Status (Ubah ke Maintenance / Active)
+app.put('/api/vehicles/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const vehicle = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: { status }
+    });
+    res.json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// 7. GET Workers (Pekerja)
+app.get('/api/workers', async (req, res) => {
+  try {
+    // Ambil user dengan role AMT atau USER
+    const workers = await prisma.user.findMany({
+      where: {
+        role: {
+          in: ['AMT', 'USER']
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(workers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. POST Worker (Tambah Pekerja)
+app.post('/api/workers', async (req, res) => {
+  try {
+    const { name, username, password, role } = req.body;
+    
+    // Cek apakah username sudah ada
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username sudah digunakan' });
+    }
+
+    const newWorker = await prisma.user.create({
+      data: {
+        name,
+        username,
+        password, // Dalam aplikasi nyata, password harus di-hash (misal dg bcrypt)
+        role: role || 'AMT'
+      }
+    });
+    res.status(201).json({ success: true, worker: newWorker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. PUT Worker (Ubah Data Pekerja)
+app.put('/api/workers/:id', async (req, res) => {
+  try {
+    const { name, username, role, password } = req.body;
+    
+    const updateData = { name, username, role };
+    if (password) {
+      updateData.password = password; // Jika password diisi, ikut diubah
+    }
+
+    const updatedWorker = await prisma.user.update({
+      where: { id: req.params.id },
+      data: updateData
+    });
+    res.json({ success: true, worker: updatedWorker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 10. DELETE Worker (Hapus Pekerja)
+app.delete('/api/workers/:id', async (req, res) => {
+  try {
+    await prisma.user.delete({
+      where: { id: req.params.id }
+    });
+    res.json({ success: true, message: 'Pekerja berhasil dihapus' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

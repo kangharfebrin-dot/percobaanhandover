@@ -1,0 +1,288 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, Easing, Dimensions } from 'react-native';
+import tw from 'twrnc';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
+
+const DEFAULT_ITEMS = [
+  { id: 'A1', category: 'A', name: 'Kondisi Rem', severity: 'Major' },
+  { id: 'A2', category: 'A', name: 'Kondisi Wiper', severity: 'Minor' },
+  { id: 'A3', category: 'A', name: 'Kondisi Kompartemen Tangki', severity: 'Major' },
+  { id: 'A4', category: 'A', name: 'Keberadaan DCP/ CO2', severity: 'Major' },
+  { id: 'A5', category: 'A', name: 'Oli Mesin', severity: 'Major' },
+  { id: 'A6', category: 'A', name: 'Air Radiator', severity: 'Minor' },
+  { id: 'A7', category: 'A', name: 'Keberadaan STNK', severity: 'Major' },
+  { id: 'A8', category: 'A', name: 'Keberadaan Surat Keur', severity: 'Major' },
+  { id: 'A9', category: 'A', name: 'Keberadaan Surat Tera', severity: 'Major' },
+  { id: 'A10', category: 'A', name: 'Keberadaan Kotak P3K', severity: 'Minor' },
+  { id: 'A11', category: 'A', name: 'Keberadaan Flame Trap', severity: 'Major' },
+  { id: 'A12', category: 'A', name: 'Keberadaan Tools Kit termasuk dongkrak', severity: 'Minor' },
+  { id: 'A13', category: 'A', name: 'Keberadaan Selang bongkar', severity: 'Major' },
+  { id: 'A14', category: 'A', name: 'Keberadaan Grounding Cable', severity: 'Major' },
+  { id: 'A15', category: 'A', name: 'Keberadaan Spill Kit', severity: 'Minor' },
+  { id: 'B1', category: 'B', name: 'Membawa SIM Sesuai Kendaraan', severity: 'Major' },
+  { id: 'B2', category: 'B', name: 'ID/ HSE Paspor Berlaku', severity: 'Major' },
+  { id: 'B3', category: 'B', name: 'Dokumen KIM', severity: 'Major' },
+  { id: 'B4', category: 'B', name: 'Menggunakan Seragam Kerja', severity: 'Minor' },
+  { id: 'B5', category: 'B', name: 'Menggunakan Safety Shoes', severity: 'Major' },
+  { id: 'B6', category: 'B', name: 'Menggunakan Safety Helm', severity: 'Major' },
+  { id: 'B7', category: 'B', name: 'Menggunakan Safety Glove', severity: 'Minor' },
+  { id: 'B8', category: 'B', name: 'Membawa Jas Hujan', severity: 'Minor' },
+  { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: 'Minor' }
+];
+
+export default function ChecklistManagerScreen({ navigation }) {
+  const [items, setItems] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  
+  const [newName, setNewName] = useState('');
+  const [newCategory, setNewCategory] = useState('A');
+  const [newSeverity, setNewSeverity] = useState('Minor');
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [user, setUser] = useState(null);
+  const isLargeScreen = screenWidth > 768;
+
+  const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const subscription = Dimensions.addEventListener('change', onChange);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orb1TranslateY, { toValue: -40, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(orb1TranslateY, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+    
+    loadItems();
+    loadUser();
+    return () => subscription?.remove();
+  }, []);
+
+  const loadUser = async () => {
+    const userStr = await AsyncStorage.getItem('user');
+    if (userStr) setUser(JSON.parse(userStr));
+  };
+
+  const loadItems = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('HANDOVER_CHECKLIST_V2');
+      if (stored) {
+        setItems(JSON.parse(stored));
+      } else {
+        setItems(DEFAULT_ITEMS);
+        await AsyncStorage.setItem('HANDOVER_CHECKLIST_V2', JSON.stringify(DEFAULT_ITEMS));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveItems = async (newItems) => {
+    try {
+      await AsyncStorage.setItem('HANDOVER_CHECKLIST_V2', JSON.stringify(newItems));
+      setItems(newItems);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSave = () => {
+    if (!newName.trim()) {
+      Alert.alert('Error', 'Nama pengecekan tidak boleh kosong.');
+      return;
+    }
+
+    let updatedList;
+    if (editingItem) {
+      updatedList = items.map(i => i.id === editingItem.id ? { ...i, name: newName, category: newCategory, severity: newSeverity } : i);
+    } else {
+      updatedList = [...items, { id: Date.now().toString(), name: newName, category: newCategory, severity: newSeverity }];
+    }
+    
+    saveItems(updatedList);
+    setModalVisible(false);
+  };
+
+  const handleDelete = (id) => {
+    Alert.alert('Hapus Item', 'Yakin ingin menghapus form pengecekan ini?', [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Hapus', style: 'destructive', onPress: () => {
+        saveItems(items.filter(i => i.id !== id));
+      }}
+    ]);
+  };
+
+  const openAddModal = () => {
+    setEditingItem(null);
+    setNewName('');
+    setNewCategory('A');
+    setNewSeverity('Minor');
+    setModalVisible(true);
+  };
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setNewName(item.name);
+    setNewCategory(item.category);
+    setNewSeverity(item.severity || 'Minor');
+    setModalVisible(true);
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={tw`bg-white p-4 rounded-xl mb-3 shadow-sm border border-gray-100 flex-row justify-between items-center`}>
+      <View style={tw`flex-1`}>
+        <View style={tw`flex-row items-center mb-1`}>
+          <View style={tw`bg-blue-100 px-2 py-0.5 rounded-md mr-2`}>
+            <Text style={tw`text-blue-700 text-[10px] font-black`}>KATEGORI {item.category}</Text>
+          </View>
+          <View style={tw`${item.severity === 'Major' ? 'bg-red-100' : 'bg-amber-100'} px-2 py-0.5 rounded-md`}>
+            <Text style={tw`${item.severity === 'Major' ? 'text-red-700' : 'text-amber-700'} text-[10px] font-black uppercase`}>{item.severity || 'Minor'}</Text>
+          </View>
+        </View>
+        <Text style={tw`text-gray-800 font-bold text-base`}>{item.name}</Text>
+      </View>
+      <View style={tw`flex-row`}>
+        <TouchableOpacity style={tw`p-2 bg-blue-50 rounded-lg mr-2`} onPress={() => openEditModal(item)}>
+          <Feather name="edit-2" size={18} color="#0055A5" />
+        </TouchableOpacity>
+        <TouchableOpacity style={tw`p-2 bg-red-50 rounded-lg`} onPress={() => handleDelete(item.id)}>
+          <Feather name="trash-2" size={18} color="#ED1C24" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={tw`flex-1 bg-[#F4F7FA]`}>
+      <Animated.View style={[tw`absolute -top-20 -left-10 w-[30rem] h-[30rem] rounded-full opacity-15`, { transform: [{ translateY: orb1TranslateY }] }]}>
+        <LinearGradient colors={['#00A651', '#0055A5']} style={tw`flex-1 rounded-full`} />
+      </Animated.View>
+
+      <SafeAreaView style={tw`flex-1 relative`}>
+        <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
+          <View style={tw`flex-row items-center`}>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+              <Ionicons name="arrow-back" size={24} color="#00A651" />
+            </TouchableOpacity>
+            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
+          </View>
+          <TouchableOpacity onPress={openAddModal}>
+             <Ionicons name="add-circle" size={28} color="#00A651" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={tw`px-6 mb-2`}>
+          <Text style={tw`text-gray-500 font-medium text-sm`}>Edit pertanyaan yang akan muncul di Form Handover AMT secara real-time.</Text>
+        </View>
+
+        <FlatList
+          contentContainerStyle={tw`p-6 pb-40 w-full max-w-4xl mx-auto`}
+          data={items}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+        />
+      </SafeAreaView>
+
+      {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
+      {!isLargeScreen && user && (
+        <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
+          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('AdminDashboard')}>
+            <Feather name="grid" size={26} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          {user.role === 'SUPER_ADMIN' && (
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
+              <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                <Animated.View style={[tw`h-full w-[64px]`]}>
+                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                </Animated.View>
+              </View>
+              <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                <Animated.View style={[tw`h-full w-[64px]`]}>
+                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                </Animated.View>
+              </View>
+              <Feather name="check-square" size={26} color="#1F2937" />
+            </TouchableOpacity>
+          )}
+
+          {(user.role === 'AMT' || user.role === 'USER') && (
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
+              <Feather name="file-text" size={26} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+
+          {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
+              <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
+              <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
+            <Feather name="log-out" size={26} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* CRUD MODAL */}
+      <Modal visible={modalVisible} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center bg-black/60 px-4`}>
+          <View style={tw`bg-white rounded-[25px] p-6 shadow-2xl w-full max-w-sm self-center`}>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-4`}>{editingItem ? 'Edit Item' : 'Tambah Item'}</Text>
+            
+            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pengecekan</Text>
+            <TextInput 
+              style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold mb-4`} 
+              placeholder="Misal: Periksa APAR" 
+              value={newName} 
+              onChangeText={setNewName} 
+            />
+
+            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Kategori (A/B/C)</Text>
+            <View style={tw`flex-row gap-2 mb-4`}>
+              {['A', 'B', 'C'].map(cat => (
+                <TouchableOpacity 
+                  key={cat} 
+                  style={tw`flex-1 py-3 rounded-lg border ${newCategory === cat ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'} items-center`}
+                  onPress={() => setNewCategory(cat)}
+                >
+                  <Text style={tw`font-bold ${newCategory === cat ? 'text-white' : 'text-gray-600'}`}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Keparahan (Tingkat Isu)</Text>
+            <View style={tw`flex-row gap-2 mb-8`}>
+              {['Minor', 'Major'].map(sev => (
+                <TouchableOpacity 
+                  key={sev} 
+                  style={tw`flex-1 py-3 rounded-lg border ${newSeverity === sev ? (sev === 'Major' ? 'bg-red-600 border-red-600' : 'bg-amber-500 border-amber-500') : 'bg-white border-gray-300'} items-center`}
+                  onPress={() => setNewSeverity(sev)}
+                >
+                  <Text style={tw`font-bold ${newSeverity === sev ? 'text-white' : 'text-gray-600'} uppercase`}>{sev}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={tw`flex-row justify-end gap-3`}>
+              <TouchableOpacity style={tw`px-6 py-3 rounded-xl bg-gray-100`} onPress={() => setModalVisible(false)}>
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={tw`px-6 py-3 rounded-xl bg-[#00A651]`} onPress={handleSave}>
+                <Text style={tw`font-bold text-white`}>Simpan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+    </View>
+  );
+}

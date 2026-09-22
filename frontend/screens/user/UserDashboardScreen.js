@@ -1,0 +1,583 @@
+import React, { useEffect, useState } from 'react';
+import TextLogo from '../../components/TextLogo';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, ScrollView, Animated, Easing, Platform, Alert, Image, Modal } from 'react-native';
+import tw from 'twrnc';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import axios from 'axios';
+
+const PERTAMINA_BLUE = ['#003366', '#0055A5'];
+const PERTAMINA_RED = ['#ED1C24', '#B30000'];
+const PERTAMINA_GREEN = ['#00A651', '#007A3E'];
+const GLASS_BG = 'rgba(255, 255, 255, 0.7)';
+
+// Helper untuk efek Glassmorphism di Web
+const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
+
+export default function UserDashboardScreen({ navigation }) {
+  const [user, setUser] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [allHandovers, setAllHandovers] = useState([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [activeMenu, setActiveMenu] = useState('Home');
+  const [previousMenu, setPreviousMenu] = useState('Home');
+  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  // Animasi Background Orbs
+  const floatAnim1 = React.useRef(new Animated.Value(0)).current;
+  const floatAnim2 = React.useRef(new Animated.Value(0)).current;
+  const floatAnim3 = React.useRef(new Animated.Value(0)).current;
+  const spinAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim1, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim1, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim2, { toValue: 1, duration: 10000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim2, { toValue: 0, duration: 10000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim3, { toValue: 1, duration: 12000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim3, { toValue: 0, duration: 12000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 2500,
+        easing: Easing.linear,
+        useNativeDriver: false
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(slideAnim, { toValue: 1, duration: 1500, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 1500, easing: Easing.linear, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const subscription = Dimensions.addEventListener('change', onChange);
+    return () => subscription?.remove();
+  }, []);
+
+  const isLargeScreen = screenWidth > 768;
+
+  useEffect(() => {
+    const loadData = async () => {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
+          fetchAlerts();
+        }
+      }
+    };
+    loadData();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS' || user.role === 'ADMIN')) fetchAlerts();
+    });
+    return unsubscribe;
+  }, [navigation, user?.role]);
+
+  const fetchAlerts = async () => {
+    setLoadingAlerts(true);
+    try {
+      const res = await axios.get('http://192.168.151.137:3000/api/handovers');
+      setAllHandovers(res.data);
+      const issues = res.data.filter(h => h.status !== 'Siap Operasi (Normal)');
+      setAlerts(issues);
+    } catch (error) {
+      console.log("Gagal mengambil data alert:", error.message);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setPreviousMenu(activeMenu);
+    setActiveMenu('Logout');
+    setIsLogoutVisible(true);
+  };
+
+  const handleCancelLogout = () => {
+    setIsLogoutVisible(false);
+    setActiveMenu(previousMenu);
+  };
+
+  const confirmLogout = async () => {
+    setIsLogoutVisible(false);
+    await AsyncStorage.removeItem('user');
+    navigation.replace('Login');
+  };
+
+  if (!user) {
+    return (
+      <View style={tw`flex-1 bg-[#F4F7FA] justify-center items-center`}>
+        <ActivityIndicator size="large" color="#0055A5" />
+      </View>
+    );
+  }
+
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
+  const isPengawas = user.role === 'PENGAWAS' || user.role === 'ADMIN';
+  const isAMT = user.role === 'AMT' || user.role === 'USER';
+
+  const canSeeOverview = false;
+  const canSeeActions = true;
+
+  const getRoleLabel = () => {
+    if (isSuperAdmin) return 'Super Admin';
+    if (isPengawas) return 'Pengawas';
+    return 'Awak Mobil Tangki';
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'Selamat Pagi,';
+    if (hour < 15) return 'Selamat Siang,';
+    if (hour < 18) return 'Selamat Sore,';
+    return 'Selamat Malam,';
+  };
+
+  const getInitials = () => {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'AD';
+    if (user.role === 'PENGAWAS') return 'PS';
+    const parts = user.name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  };
+
+  const orb1TranslateY = floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, -50] });
+  const orb2TranslateY = floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, 60] });
+  const orb3TranslateY = floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, -70] });
+  const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
+
+  const renderAlertItem = ({ item }) => (
+    <View style={[tw`p-5 rounded-3xl mb-4 flex-row items-center overflow-hidden border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }]}>
+      <View style={tw`bg-red-100 p-4 rounded-2xl mr-4 items-center justify-center`}>
+        <Feather name="alert-triangle" size={28} color="#ED1C24" />
+      </View>
+      <View style={tw`flex-1`}>
+        <View style={tw`flex-row justify-between items-center mb-1`}>
+          <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
+          <View style={tw`bg-red-500 px-3 py-1 rounded-full`}>
+            <Text style={tw`text-[10px] text-white font-bold uppercase tracking-widest`}>Kritis</Text>
+          </View>
+        </View>
+        <Text style={tw`text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider`}>{item.shift} • {item.user.name}</Text>
+        <View style={tw`bg-red-50/50 p-3 rounded-xl border border-red-100/50`}>
+          {item.items.filter(i => !i.isGood).map((issue, idx) => (
+            <Text key={idx} style={tw`text-red-700 text-xs font-bold mb-1`}>• {issue.name}</Text>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={tw`flex-1 bg-[#F4F7FA]`}>
+      {/* Animated Background Orbs for Premium Vibe */}
+      <Animated.View style={[tw`absolute -top-20 -left-10 w-[35rem] h-[35rem] rounded-full opacity-15`, { transform: [{ translateY: orb1TranslateY }] }]}>
+        <LinearGradient colors={['#0055A5', '#003366']} style={tw`flex-1 rounded-full`} />
+      </Animated.View>
+      <Animated.View style={[tw`absolute -top-20 -right-20 w-[25rem] h-[25rem] rounded-full opacity-15`, { transform: [{ translateY: orb3TranslateY }] }]}>
+        <LinearGradient colors={['#00A651', '#007A3B']} style={tw`flex-1 rounded-full`} />
+      </Animated.View>
+      <Animated.View style={[tw`absolute -bottom-40 -right-10 w-[30rem] h-[30rem] rounded-full opacity-15`, { transform: [{ translateY: orb2TranslateY }] }]}>
+        <LinearGradient colors={['#ED1C24', '#B30000']} style={tw`flex-1 rounded-full`} />
+      </Animated.View>
+
+      <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+
+        {/* ULTRA PREMIUM SIDEBAR */}
+        {isLargeScreen && (
+          <View style={[tw`w-72 m-6 rounded-[40px] border border-white/50 overflow-hidden`, { backgroundColor: GLASS_BG, ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 30 }]}>
+            <View style={tw`pt-12 pb-8 flex-1 justify-between`}>
+              <View>
+                <View style={tw`items-center mb-12 px-6`}>
+                  <View style={tw`w-24 h-24 bg-blue-600 rounded-[30px] items-center justify-center mb-6 shadow-xl shadow-blue-500/30 rotate-3`}>
+                    <Text style={tw`text-3xl font-black text-white -rotate-3`}>{getInitials()}</Text>
+                  </View>
+                  <Text style={tw`text-2xl font-black text-gray-800 text-center tracking-tight`}>{user.name}</Text>
+                  <View style={tw`bg-blue-100 mt-3 px-4 py-1.5 rounded-full`}>
+                    <Text style={tw`text-xs text-[#0055A5] font-black uppercase tracking-widest`}>{getRoleLabel()}</Text>
+                  </View>
+                </View>
+
+                {/* Sidebar Navigation */}
+                <View style={tw`px-6`}>
+                  <TouchableOpacity
+                    style={tw`flex-row items-center p-5 mb-4 rounded-3xl ${activeMenu === 'Home' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
+                    onPress={() => setActiveMenu('Home')}
+                  >
+                    <Feather name="grid" size={22} color={activeMenu === 'Home' ? 'white' : '#6B7280'} />
+                    <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'Home' ? 'text-white' : 'text-gray-500'}`}>Beranda</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={tw`flex-row items-center p-5 mb-4 rounded-3xl ${activeMenu === 'History' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
+                    onPress={() => {
+                      setActiveMenu('History');
+                      navigation.navigate('History');
+                      setTimeout(() => setActiveMenu('Home'), 500);
+                    }}
+                  >
+                    <Feather name="file-text" size={22} color={activeMenu === 'History' ? 'white' : '#6B7280'} />
+                    <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-500'}`}>Log Riwayat</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={tw`px-6`}>
+                <TouchableOpacity
+                  style={tw`flex-row items-center p-5 rounded-3xl bg-red-50 border border-red-100`}
+                  onPress={handleLogout}
+                >
+                  <Feather name="log-out" size={22} color="#ED1C24" />
+                  <Text style={tw`ml-4 font-bold text-[15px] text-[#ED1C24]`}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <View style={tw`flex-1 relative`}>
+
+          {/* STICKY NAVBAR (Floating Modern Style) */}
+          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            {/* Faint Logo Watermark with Clip */}
+            <View style={tw`absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-3xl`}>
+              <TextLogo style={[tw`absolute`, { top: 15, right: -10, transform: [{ scale: 0.65 }] }]} />
+            </View>
+
+            <View style={tw`flex-row items-center`}>
+              <View style={tw`w-[50px] h-[50px] mr-4 shadow-lg shadow-gray-300 relative justify-center items-center`}>
+                <Animated.View style={[tw`absolute w-full h-full rounded-full overflow-hidden`, { transform: [{ rotate: spinInterpolate }] }]}>
+                  <LinearGradient
+                    colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={tw`flex-1 w-full h-full`}
+                  />
+                </Animated.View>
+                <View style={tw`w-[44px] h-[44px] rounded-full bg-white items-center justify-center`}>
+                  <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`}>{getInitials()}</Text>
+                </View>
+              </View>
+              <View>
+                <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
+                <Text style={tw`text-gray-800 text-lg font-black`}>{user.name}</Text>
+              </View>
+            </View>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6' : 'p-6 pt-6 pb-32'}`}>
+
+            {/* Title Section */}
+            <View style={tw`mb-8`}>
+              <Text style={tw`text-xs font-black text-[#0055A5] uppercase tracking-widest mb-1`}>SISTEM TERINTEGRASI PERTAMINA</Text>
+              <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>
+                Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text>
+              </Text>
+            </View>
+
+            {/* SUPER CARDS */}
+            {canSeeOverview && (
+              <>
+                <View style={tw`flex-row justify-between mb-4`}>
+                  <TouchableOpacity
+                    style={[tw`flex-1 p-6 rounded-[35px] border border-white/60 mr-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 }]}
+                    onPress={() => navigation.navigate('VehicleList')}
+                  >
+                    <View style={tw`w-14 h-14 bg-blue-100 rounded-full items-center justify-center mb-6`}>
+                      <Feather name="truck" size={26} color="#0055A5" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-5xl font-black text-gray-800 tracking-tighter`}>{allHandovers.length > 0 ? allHandovers.length : 1}</Text>
+                      <Text style={tw`text-xs text-gray-500 font-black uppercase tracking-widest mt-2`}>Total Kendaraan</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[tw`flex-1 p-6 rounded-[35px] border border-white/60 ml-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                    onPress={() => navigation.navigate('IssueList')}
+                  >
+                    <View style={tw`w-14 h-14 bg-red-100 rounded-full items-center justify-center mb-6`}>
+                      <Feather name="alert-circle" size={26} color="#ED1C24" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-5xl font-black text-[#ED1C24] tracking-tighter`}>{alerts.length}</Text>
+                      <Text style={tw`text-xs text-red-400 font-black uppercase tracking-widest mt-2`}>Isu Ditemukan</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Daftar Pekerja Full Width Card */}
+                <TouchableOpacity
+                  style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                  onPress={() => navigation.navigate('WorkerList')}
+                >
+                  <View style={tw`flex-row items-center flex-1`}>
+                    <View style={tw`w-14 h-14 bg-green-100 rounded-full items-center justify-center mr-4`}>
+                      <Feather name="users" size={26} color="#00A651" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pekerja</Text>
+                      <Text style={tw`text-xs text-green-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                    </View>
+                  </View>
+                  <View style={tw`w-10 h-10 bg-green-50 rounded-full items-center justify-center`}>
+                    <Feather name="chevron-right" size={20} color="#00A651" />
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Action Card */}
+            {canSeeActions && (
+              <View style={tw`flex-row justify-between mb-10`}>
+                <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
+                  <LinearGradient colors={PERTAMINA_GREEN} style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}>
+                    <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                      <Ionicons name="qr-code" size={180} color="white" />
+                    </View>
+                    <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                      <Feather name="log-in" size={24} color="white" />
+                    </View>
+                    <View style={tw`mt-6`}>
+                      <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                      <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
+                  <LinearGradient colors={['#dc2626', '#7f1d1d']} style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}>
+                    <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                      <Ionicons name="qr-code" size={180} color="white" />
+                    </View>
+                    <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                      <Feather name="log-out" size={24} color="white" />
+                    </View>
+                    <View style={tw`mt-6`}>
+                      <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                      <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {canSeeOverview && (
+              <TouchableOpacity style={tw`w-full mb-10`} onPress={() => navigation.navigate('History')}>
+                <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`p-8 rounded-[40px] shadow-2xl shadow-blue-500/40 relative overflow-hidden`}>
+                  <View style={tw`absolute -right-10 -top-10 opacity-20`}>
+                    <Ionicons name="documents" size={200} color="white" />
+                  </View>
+                  <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8`}>
+                    <Feather name="database" size={32} color="white" />
+                  </View>
+                  <Text style={tw`text-blue-200 font-bold text-sm uppercase tracking-widest mb-2`}>Arsip Database</Text>
+                  <Text style={tw`text-white font-black text-3xl tracking-tight`}>Lihat Seluruh Laporan</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* Live Feed / Alerts */}
+            {canSeeOverview && (
+              <View>
+                <View style={tw`flex-row justify-between items-center mb-6`}>
+                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Live Feed Isu</Text>
+                  <View style={tw`bg-red-100 px-4 py-1.5 rounded-full`}>
+                    <Text style={tw`text-[#ED1C24] text-xs font-black uppercase tracking-widest`}>Realtime</Text>
+                  </View>
+                </View>
+
+                {loadingAlerts ? (
+                  <ActivityIndicator size="large" color="#ED1C24" style={tw`my-10`} />
+                ) : alerts.length > 0 ? (
+                  alerts.map(item => <React.Fragment key={item.id}>{renderAlertItem({ item })}</React.Fragment>)
+                ) : (
+                  <View style={[tw`items-center justify-center py-16 px-6 rounded-[35px] border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }]}>
+                    <View style={tw`w-24 h-24 bg-green-100 rounded-full items-center justify-center mb-6`}>
+                      <Feather name="check-circle" size={48} color="#00A651" />
+                    </View>
+                    <Text style={tw`text-gray-800 font-black text-2xl tracking-tight`}>Status Aman Beroperasi</Text>
+                    <Text style={tw`text-gray-500 text-center text-sm mt-3 font-semibold px-4`}>Semua kendaraan siap digunakan. Tidak ada anomali yang dilaporkan.</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
+        {!isLargeScreen && (
+          <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
+
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('UserDashboard')}>
+              {activeMenu === 'Home' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                </>
+              )}
+              <Feather name="grid" size={26} color={activeMenu === 'Home' ? '#1F2937' : '#9CA3AF'} />
+            </TouchableOpacity>
+
+            {isSuperAdmin && (
+              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
+                {activeMenu === 'Checklist' && (
+                  <>
+                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                  </>
+                )}
+                <Feather name="check-square" size={26} color={activeMenu === 'Checklist' ? '#1F2937' : '#9CA3AF'} />
+              </TouchableOpacity>
+            )}
+
+            {isAMT && (
+              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
+                {activeMenu === 'History' && (
+                  <>
+                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                  </>
+                )}
+                <Feather name="file-text" size={26} color={activeMenu === 'History' ? '#1F2937' : '#9CA3AF'} />
+              </TouchableOpacity>
+            )}
+
+
+            {(isSuperAdmin || isPengawas) && (
+              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
+                {activeMenu === 'Messages' && (
+                  <>
+                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                      </Animated.View>
+                    </View>
+                  </>
+                )}
+                <View style={tw`relative`}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
+                  {/* RED DOT BADGE */}
+                  <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
+              {activeMenu === 'Logout' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                </>
+              )}
+              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+      </SafeAreaView>
+
+      {/* Logout Modal */}
+      <Modal
+        visible={isLogoutVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelLogout}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-2xl relative overflow-hidden`}>
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-10`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
+            <View style={tw`w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4`}>
+              <Feather name="log-out" size={32} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Konfirmasi Keluar</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 px-4`}>
+              Apakah Anda yakin ingin keluar dari akun ini?
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 p-4 rounded-xl mr-2 items-center`}
+                onPress={handleCancelLogout}
+              >
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#ED1C24] p-4 rounded-xl ml-2 items-center shadow-lg shadow-red-500/30`}
+                onPress={confirmLogout}
+              >
+                <Text style={tw`font-bold text-white`}>Ya, Keluar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
