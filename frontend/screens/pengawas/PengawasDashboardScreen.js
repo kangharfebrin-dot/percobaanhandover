@@ -19,6 +19,7 @@ const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {}
 export default function PengawasDashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [activeIssuesCount, setActiveIssuesCount] = useState(0);
   const [allHandovers, setAllHandovers] = useState([]);
   const [vehiclesCount, setVehiclesCount] = useState(0);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
@@ -106,9 +107,28 @@ export default function PengawasDashboardScreen({ navigation }) {
       const vehicleRes = await axios.get('http://192.168.1.4:3000/api/vehicles');
       const activeVehicles = vehicleRes.data;
       setVehiclesCount(activeVehicles.length);
+      const activePolisi = activeVehicles.map(v => v.noPolisi);
 
       const res = await axios.get('http://192.168.1.4:3000/api/handovers');
       setAllHandovers(res.data);
+      
+      // Calculate Active Issues (latest handover per vehicle)
+      const latestHandoversMap = new Map();
+      res.data.forEach(h => {
+        if (!latestHandoversMap.has(h.noPolisi)) {
+          latestHandoversMap.set(h.noPolisi, h);
+        } else {
+          const existing = latestHandoversMap.get(h.noPolisi);
+          if (new Date(h.timestamp) > new Date(existing.timestamp)) {
+            latestHandoversMap.set(h.noPolisi, h);
+          }
+        }
+      });
+      
+      const activeIssues = Array.from(latestHandoversMap.values())
+        .filter(h => h.status !== 'Siap Operasi (Normal)' && activePolisi.includes(h.noPolisi));
+      
+      setActiveIssuesCount(activeIssues.length);
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -350,7 +370,7 @@ export default function PengawasDashboardScreen({ navigation }) {
                       <Feather name="alert-circle" size={26} color="#ED1C24" />
                     </View>
                     <View>
-                      <Text style={tw`text-5xl font-black text-[#ED1C24] tracking-tighter`}>{alerts.length}</Text>
+                      <Text style={tw`text-5xl font-black text-[#ED1C24] tracking-tighter`}>{activeIssuesCount}</Text>
                       <Text style={tw`text-xs text-red-400 font-black uppercase tracking-widest mt-2`}>Isu Ditemukan</Text>
                     </View>
                   </TouchableOpacity>
