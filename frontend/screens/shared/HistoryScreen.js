@@ -10,13 +10,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-export default function HistoryScreen({ navigation }) {
+export default function HistoryScreen({ route, navigation }) {
   const [handovers, setHandovers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
   // Filter states
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(route?.params?.noPolisi || '');
   const [selectedStatus, setSelectedStatus] = useState('Semua'); 
   const [selectedShift, setSelectedShift] = useState('Semua');
   const [selectedMonth, setSelectedMonth] = useState('Semua');
@@ -98,7 +98,7 @@ export default function HistoryScreen({ navigation }) {
 
   const fetchHistory = async (userData) => {
     try {
-      const res = await axios.get('http://192.168.151.137:3000/api/handovers');
+      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
       let data = res.data;
       if (userData && (userData.role === 'AMT' || userData.role === 'USER')) {
         // Asumsi data res.data berisi relasi user, atau memiliki userId
@@ -138,12 +138,19 @@ export default function HistoryScreen({ navigation }) {
 
   const filteredHandovers = handovers.filter((item) => {
     let matchesSearch = false;
+    const dateStr = new Date(item.timestamp).toLocaleString('id-ID'); // e.g. "22/9/2026, 09:27:00"
+    const monthStr = new Date(item.timestamp).toLocaleString('id-ID', { month: 'long' }).toLowerCase();
+    
     if (user && (user.role === 'AMT' || user.role === 'USER')) {
-      matchesSearch = item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase());
+      matchesSearch = item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      dateStr.includes(searchQuery) ||
+                      monthStr.includes(searchQuery.toLowerCase());
     } else {
       matchesSearch = 
         item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (item.user && item.user.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        (item.user && item.user.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        dateStr.includes(searchQuery) ||
+        monthStr.includes(searchQuery.toLowerCase());
     }
       
     const isNormal = item.status === 'Siap Operasi (Normal)';

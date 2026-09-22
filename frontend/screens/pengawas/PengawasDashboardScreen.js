@@ -20,6 +20,7 @@ export default function PengawasDashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [allHandovers, setAllHandovers] = useState([]);
+  const [vehiclesCount, setVehiclesCount] = useState(0);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Home');
   const [previousMenu, setPreviousMenu] = useState('Home');
@@ -102,10 +103,20 @@ export default function PengawasDashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const res = await axios.get('http://192.168.151.137:3000/api/handovers');
+      const vehicleRes = await axios.get('http://192.168.1.4:3000/api/vehicles');
+      const activeVehicles = vehicleRes.data;
+      setVehiclesCount(activeVehicles.length);
+
+      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
       setAllHandovers(res.data);
-      const issues = res.data.filter(h => h.status !== 'Siap Operasi (Normal)');
-      setAlerts(issues);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Hanya ambil handover hari ini, tampilkan semua (Baik & Buruk)
+      const todaysHandovers = res.data.filter(h => new Date(h.timestamp) >= today);
+      
+      setAlerts(todaysHandovers);
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
     } finally {
@@ -175,27 +186,36 @@ export default function PengawasDashboardScreen({ navigation }) {
   const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
-  const renderAlertItem = ({ item }) => (
-    <View style={[tw`p-5 rounded-3xl mb-4 flex-row items-center overflow-hidden border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }]}>
-      <View style={tw`bg-red-100 p-4 rounded-2xl mr-4 items-center justify-center`}>
-        <Feather name="alert-triangle" size={28} color="#ED1C24" />
-      </View>
-      <View style={tw`flex-1`}>
-        <View style={tw`flex-row justify-between items-center mb-1`}>
-          <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
-          <View style={tw`bg-red-500 px-3 py-1 rounded-full`}>
-            <Text style={tw`text-[10px] text-white font-bold uppercase tracking-widest`}>Kritis</Text>
+  const renderAlertItem = ({ item }) => {
+    const isBad = item.status !== 'Siap Operasi (Normal)';
+    
+    return (
+      <View style={[tw`p-5 rounded-3xl mb-4 flex-row items-center overflow-hidden border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: isBad ? '#ED1C24' : '#00A651', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }]}>
+        <View style={tw`${isBad ? 'bg-red-100' : 'bg-green-100'} p-4 rounded-2xl mr-4 items-center justify-center`}>
+          <Feather name={isBad ? "alert-triangle" : "check-circle"} size={28} color={isBad ? "#ED1C24" : "#00A651"} />
+        </View>
+        <View style={tw`flex-1`}>
+          <View style={tw`flex-row justify-between items-center mb-1`}>
+            <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
+            <View style={tw`${isBad ? 'bg-red-500' : 'bg-green-500'} px-3 py-1 rounded-full`}>
+              <Text style={tw`text-[10px] text-white font-bold uppercase tracking-widest`}>
+                {isBad ? 'Kritis' : 'Aman'}
+              </Text>
+            </View>
           </View>
-        </View>
-        <Text style={tw`text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider`}>{item.shift} • {item.user.name}</Text>
-        <View style={tw`bg-red-50/50 p-3 rounded-xl border border-red-100/50`}>
-          {item.items.filter(i => !i.isGood).map((issue, idx) => (
-            <Text key={idx} style={tw`text-red-700 text-xs font-bold mb-1`}>• {issue.name}</Text>
-          ))}
+          <Text style={tw`text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider`}>{item.shift} • {item.user.name}</Text>
+          
+          {isBad && (
+            <View style={tw`bg-red-50/50 p-3 rounded-xl border border-red-100/50`}>
+              {item.items.filter(i => !i.isGood).map((issue, idx) => (
+                <Text key={idx} style={tw`text-red-700 text-xs font-bold mb-1`}>• {issue.name}</Text>
+              ))}
+            </View>
+          )}
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={tw`flex-1 bg-[#F4F7FA]`}>
@@ -317,7 +337,7 @@ export default function PengawasDashboardScreen({ navigation }) {
                       <Feather name="truck" size={26} color="#0055A5" />
                     </View>
                     <View>
-                      <Text style={tw`text-5xl font-black text-gray-800 tracking-tighter`}>{allHandovers.length > 0 ? allHandovers.length : 1}</Text>
+                      <Text style={tw`text-5xl font-black text-gray-800 tracking-tighter`}>{vehiclesCount}</Text>
                       <Text style={tw`text-xs text-gray-500 font-black uppercase tracking-widest mt-2`}>Total Kendaraan</Text>
                     </View>
                   </TouchableOpacity>
@@ -411,9 +431,9 @@ export default function PengawasDashboardScreen({ navigation }) {
             {canSeeOverview && (
               <View>
                 <View style={tw`flex-row justify-between items-center mb-6`}>
-                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Live Feed Isu</Text>
-                  <View style={tw`bg-red-100 px-4 py-1.5 rounded-full`}>
-                    <Text style={tw`text-[#ED1C24] text-xs font-black uppercase tracking-widest`}>Realtime</Text>
+                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Live Record Handover</Text>
+                  <View style={tw`bg-blue-100 px-4 py-1.5 rounded-full`}>
+                    <Text style={tw`text-blue-600 text-xs font-black uppercase tracking-widest`}>Hari Ini</Text>
                   </View>
                 </View>
 
@@ -423,11 +443,11 @@ export default function PengawasDashboardScreen({ navigation }) {
                   alerts.map(item => <React.Fragment key={item.id}>{renderAlertItem({ item })}</React.Fragment>)
                 ) : (
                   <View style={[tw`items-center justify-center py-16 px-6 rounded-[35px] border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }]}>
-                    <View style={tw`w-24 h-24 bg-green-100 rounded-full items-center justify-center mb-6`}>
-                      <Feather name="check-circle" size={48} color="#00A651" />
+                    <View style={tw`w-24 h-24 bg-gray-100 rounded-full items-center justify-center mb-6`}>
+                      <Feather name="inbox" size={48} color="#9CA3AF" />
                     </View>
-                    <Text style={tw`text-gray-800 font-black text-2xl tracking-tight`}>Status Aman Beroperasi</Text>
-                    <Text style={tw`text-gray-500 text-center text-sm mt-3 font-semibold px-4`}>Semua kendaraan siap digunakan. Tidak ada anomali yang dilaporkan.</Text>
+                    <Text style={tw`text-gray-800 font-black text-2xl tracking-tight`}>Belum Ada Laporan</Text>
+                    <Text style={tw`text-gray-500 text-center text-sm mt-3 font-semibold px-4`}>Belum ada pekerja yang mengirimkan form handover hari ini.</Text>
                   </View>
                 )}
               </View>

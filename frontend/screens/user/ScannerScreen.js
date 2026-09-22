@@ -40,7 +40,7 @@ export default function ScannerScreen({ route, navigation }) {
 
     try {
       // CEK STATUS MAINTENANCE KE BACKEND (Penting!)
-      const fetchPromise = axios.get(`http://192.168.151.137:3000/api/vehicles/scan/${scannedText}`);
+      const fetchPromise = axios.get(`http://192.168.1.4:3000/api/vehicles/scan/${scannedText}`);
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000));
 
       const res = await Promise.race([fetchPromise, timeoutPromise]);

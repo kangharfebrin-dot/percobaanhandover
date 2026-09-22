@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const API_URL = 'http://192.168.151.137:3000/api'; // Sesuaikan IP backend
+const API_URL = 'http://192.168.1.4:3000/api'; // Sesuaikan IP backend
 
 export default function WorkerListScreen({ navigation }) {
   const [workers, setWorkers] = useState([]);

@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, Modal, Animated, Image, Easing, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import axios from 'axios';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const MOCK_ISSUES = [];
+const API_URL = 'http://192.168.1.4:3000/api';
 
 export default function IssueListScreen({ navigation }) {
-  const [issues, setIssues] = useState(MOCK_ISSUES);
-  const [manageModalVisible, setManageModalVisible] = useState(false);
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [manageModalVisible, setManageModalVisible] = useState(false);
+  
+  // Custom Modals State
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
   const [user, setUser] = useState(null);
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -29,13 +36,47 @@ export default function IssueListScreen({ navigation }) {
       Animated.timing(orb2TranslateY, { toValue: 0, duration: 10000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
     ])).start();
 
-    const loadUser = async () => {
+    const loadData = async () => {
       const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
       const userStr = await AsyncStorage.getItem('user');
       if (userStr) setUser(JSON.parse(userStr));
+      fetchIssues();
     };
-    loadUser();
+    loadData();
   }, []);
+
+  const fetchIssues = async () => {
+    setLoading(true);
+    try {
+      const [vehicleRes, handoverRes] = await Promise.all([
+        axios.get(`${API_URL}/vehicles`),
+        axios.get(`${API_URL}/handovers`)
+      ]);
+      
+      const activePolisi = vehicleRes.data.map(v => v.noPolisi);
+      const allHandovers = handoverRes.data;
+      
+      // Ambil handover terbaru per kendaraan, lalu cek apakah statusnya bermasalah
+      const latestHandoversMap = new Map();
+      allHandovers.forEach(h => {
+        if (!latestHandoversMap.has(h.noPolisi)) {
+          latestHandoversMap.set(h.noPolisi, h);
+        } else {
+          const existing = latestHandoversMap.get(h.noPolisi);
+          if (new Date(h.timestamp) > new Date(existing.timestamp)) {
+            latestHandoversMap.set(h.noPolisi, h);
+          }
+        }
+      });
+      
+      const activeIssues = Array.from(latestHandoversMap.values()).filter(h => h.status !== 'Siap Operasi (Normal)' && activePolisi.includes(h.noPolisi));
+      setIssues(activeIssues);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openManageModal = (vehicle) => {
     setSelectedVehicle(vehicle);
@@ -44,61 +85,59 @@ export default function IssueListScreen({ navigation }) {
 
   const toggleMaintenance = () => {
     if (!selectedVehicle) return;
-    const isCurrentlyMaintenance = selectedVehicle.isMaintenance;
-    
-    Alert.alert(
-      isCurrentlyMaintenance ? "Buka Blokir Kendaraan" : "Blokir Kendaraan",
-      isCurrentlyMaintenance 
-        ? `Apakah Anda yakin ingin membuka blokir ${selectedVehicle.noPolisi}? Truk ini akan kembali bisa digunakan.` 
-        : `Apakah Anda yakin ingin memblokir ${selectedVehicle.noPolisi} untuk maintenance? AMT tidak akan bisa menggunakan truk ini.`,
-      [
-        { text: "Batal", style: "cancel" },
-        { 
-          text: isCurrentlyMaintenance ? "Ya, Buka Blokir" : "Ya, Blokir", 
-          style: isCurrentlyMaintenance ? "default" : "destructive",
-          onPress: () => {
-            setIssues(prev => prev.map(v => 
-              v.id === selectedVehicle.id ? { ...v, isMaintenance: !isCurrentlyMaintenance } : v
-            ));
-            setManageModalVisible(false);
-          }
-        }
-      ]
-    );
+    // Buka Custom Confirmation Modal
+    setConfirmModalVisible(true);
+  };
+
+  const executeResolveIssue = async () => {
+    setIsResolving(true);
+    try {
+      await axios.put(`${API_URL}/handovers/${selectedVehicle.id}`, { status: 'Siap Operasi (Normal)' });
+      setManageModalVisible(false);
+      setConfirmModalVisible(false);
+      fetchIssues();
+      setSuccessModalVisible(true);
+      
+      // Auto close success modal after 2.5 seconds
+      setTimeout(() => {
+        setSuccessModalVisible(false);
+      }, 2500);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Gagal", "Terjadi kesalahan server saat menyelesaikan isu.");
+    } finally {
+      setIsResolving(false);
+    }
   };
 
   const renderItem = ({ item }) => {
-    const isMaintenance = item.isMaintenance;
-
     return (
       <TouchableOpacity 
-        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border ${isMaintenance ? 'border-red-500 bg-red-50' : 'border-red-200'}`}
-        onPress={() => { if (user?.role === 'SUPER_ADMIN') openManageModal(item); }}
-        activeOpacity={user?.role === 'SUPER_ADMIN' ? 0.7 : 1}
+        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
+        onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS') openManageModal(item); }}
+        activeOpacity={0.7}
       >
         <View style={tw`flex-row justify-between items-start mb-3`}>
           <View style={tw`flex-row items-center`}>
-            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isMaintenance ? 'bg-red-200' : 'bg-red-100'}`}>
-              <Ionicons name={isMaintenance ? "build" : "warning"} size={28} color={isMaintenance ? "#991B1B" : "#ED1C24"} />
+            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 bg-red-200`}>
+              <Ionicons name="build" size={28} color="#991B1B" />
             </View>
             <View>
-              <Text style={tw`text-xl font-black ${isMaintenance ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
-              <Text style={tw`text-sm font-bold text-gray-500`}>{item.brand} • {item.type}</Text>
+              <Text style={tw`text-xl font-black text-red-900`}>{item.noPolisi}</Text>
+              <Text style={tw`text-sm font-bold text-gray-500`}>Pelapor: {item.user?.name}</Text>
             </View>
           </View>
-          <View style={tw`px-3 py-1 rounded-full ${isMaintenance ? 'bg-red-600' : 'bg-red-500'}`}>
-            <Text style={tw`text-xs font-bold text-white`}>
-              {isMaintenance ? 'MAINTENANCE' : 'ADA ISU'}
-            </Text>
+          <View style={tw`px-3 py-1 rounded-full bg-red-600`}>
+            <Text style={tw`text-xs font-bold text-white`}>ADA ISU</Text>
           </View>
         </View>
 
-        <Text style={tw`text-xs font-medium text-gray-400 mb-2`}>Inspeksi Terakhir: {new Date(item.lastInspection).toLocaleString('id-ID')} oleh {item.reportedBy}</Text>
+        <Text style={tw`text-xs font-medium text-gray-400 mb-2`}>Inspeksi Terakhir: {new Date(item.timestamp).toLocaleString('id-ID')}</Text>
 
-        <View style={tw`mt-2 bg-red-50 p-3 rounded-xl border border-red-100`}>
+        <View style={tw`mt-2 bg-red-100 p-3 rounded-xl border border-red-200`}>
           <Text style={tw`text-red-800 font-bold mb-1 text-sm`}>Isu Ditemukan:</Text>
-          {item.issues.map((issue, idx) => (
-            <Text key={idx} style={tw`text-red-600 text-xs my-1 font-medium`}>• {issue}</Text>
+          {item.items && item.items.filter(i => !i.isGood).map((issue, idx) => (
+            <Text key={idx} style={tw`text-red-700 text-xs my-1 font-medium`}>• {issue.name}</Text>
           ))}
         </View>
       </TouchableOpacity>
@@ -138,37 +177,107 @@ export default function IssueListScreen({ navigation }) {
 
       {/* MANAGE VEHICLE MODAL */}
       <Modal visible={manageModalVisible} transparent={true} animationType="fade" onRequestClose={() => setManageModalVisible(false)}>
-        <View style={tw`flex-1 justify-center items-center bg-black/60 px-4`}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
           {selectedVehicle && (
-            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-6 shadow-2xl`}>
-              <View style={tw`flex-row justify-between items-center mb-6`}>
-                <Text style={tw`text-xl font-black text-gray-800`}>Tindakan Admin</Text>
-                <TouchableOpacity onPress={() => setManageModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={20} color="#6B7280" /></TouchableOpacity>
+            <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl border border-red-100 relative overflow-hidden`}>
+              {/* Background Accent */}
+              <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
+              <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+              
+              {/* Logo Digihandover background watermark */}
+              <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-5`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
+              
+              <View style={tw`w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-5 shadow-lg shadow-red-500/30 z-10 border-4 border-white`}>
+                <Ionicons name="build" size={40} color="#ED1C24" />
               </View>
               
-              <View style={tw`items-center mb-6`}>
-                <View style={tw`w-20 h-20 rounded-full bg-red-50 items-center justify-center mb-3 border-4 ${selectedVehicle.isMaintenance ? 'border-red-500 bg-red-100' : 'border-red-100'}`}>
-                  <Ionicons name={selectedVehicle.isMaintenance ? 'build' : 'warning'} size={40} color={'#ED1C24'} />
-                </View>
-                <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>{selectedVehicle.noPolisi}</Text>
-                {selectedVehicle.isMaintenance && (
-                   <Text style={tw`text-red-600 font-black uppercase text-xs mt-3 bg-red-100 px-3 py-1 rounded-full`}>STATUS: MAINTENANCE (DIBLOKIR)</Text>
-                )}
-              </View>
+              <Text style={tw`text-xs font-bold text-red-500 uppercase tracking-widest z-10 mb-1`}>KENDARAAN BERMASALAH</Text>
+              <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter z-10 text-center mb-8`}>{selectedVehicle.noPolisi}</Text>
+              
+              <TouchableOpacity 
+                style={tw`bg-green-500 w-full p-4 rounded-2xl items-center flex-row justify-center shadow-lg shadow-green-500/40 z-10 mb-3`}
+                onPress={toggleMaintenance}
+              >
+                <Ionicons name="checkmark-circle" size={24} color="white" style={tw`mr-2`} />
+                <Text style={tw`text-white font-black text-lg tracking-wide`}>SUDAH DIPERBAIKI</Text>
+              </TouchableOpacity>
 
-              <View style={tw`gap-3`}>
-                <TouchableOpacity 
-                  style={tw`p-4 rounded-2xl items-center flex-row justify-center ${selectedVehicle.isMaintenance ? 'bg-green-600' : 'bg-red-600'}`}
-                  onPress={toggleMaintenance}
-                >
-                  <Ionicons name={selectedVehicle.isMaintenance ? 'checkmark-circle' : 'construct'} size={20} color="white" style={tw`mr-2`} />
-                  <Text style={tw`text-white font-bold text-base`}>
-                    {selectedVehicle.isMaintenance ? 'Selesai Perbaikan (Aktifkan)' : 'Blokir untuk Maintenance'}
-                  </Text>
-                </TouchableOpacity>
+              <TouchableOpacity 
+                style={tw`bg-gray-100 w-full p-4 rounded-2xl items-center flex-row justify-center z-10 mb-6`}
+                onPress={() => setManageModalVisible(false)}
+              >
+                <Text style={tw`text-gray-500 font-bold text-base`}>Batal</Text>
+              </TouchableOpacity>
+
+              {/* Small Footer Logo */}
+              <View style={tw`flex-row items-center justify-center z-10`}>
+                <View style={tw`flex-row items-center mr-2`}>
+                  <View style={tw`w-1 h-4 rounded-full bg-[#ED1C24] mr-0.5`} />
+                  <View style={tw`w-1 h-4 rounded-full bg-[#2ECC71] mr-0.5`} />
+                  <View style={tw`w-1 h-4 rounded-full bg-[#0055A5]`} />
+                </View>
+                <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-widest`}>DigiHandover</Text>
               </View>
             </View>
           )}
+        </View>
+      </Modal>
+
+      {/* CUSTOM CONFIRMATION MODAL */}
+      <Modal visible={confirmModalVisible} transparent={true} animationType="fade" onRequestClose={() => !isResolving && setConfirmModalVisible(false)}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl`}>
+            <View style={tw`w-20 h-20 bg-orange-50 rounded-full items-center justify-center mb-5`}>
+              <Ionicons name="warning" size={40} color="#F59E0B" />
+            </View>
+            <Text style={tw`text-xl font-black text-gray-800 text-center mb-2`}>Selesaikan Isu?</Text>
+            <Text style={tw`text-sm text-gray-500 text-center mb-8 font-medium leading-5`}>
+              Apakah Anda yakin kendaraan <Text style={tw`font-bold text-gray-800`}>{selectedVehicle?.noPolisi}</Text> sudah diperbaiki dan benar-benar siap beroperasi normal kembali?
+            </Text>
+            
+            <View style={tw`w-full flex-row justify-between gap-4`}>
+              <TouchableOpacity 
+                style={tw`flex-1 py-4 rounded-2xl items-center bg-gray-100`}
+                onPress={() => setConfirmModalVisible(false)}
+                disabled={isResolving}
+              >
+                <Text style={tw`text-gray-500 font-bold`}>Batal</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={tw`flex-1 py-4 rounded-2xl items-center bg-green-500 shadow-md shadow-green-500/30 flex-row justify-center`}
+                onPress={executeResolveIssue}
+                disabled={isResolving}
+              >
+                {isResolving ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-done" size={20} color="white" style={tw`mr-2`} />
+                    <Text style={tw`text-white font-bold`}>Ya, Selesai</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CUSTOM SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent={true} animationType="zoomIn">
+        <View style={tw`flex-1 justify-center items-center bg-black/50 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl border border-green-100`}>
+            {/* Background Accent */}
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full`} />
+            
+            <View style={tw`w-24 h-24 bg-green-500 rounded-full items-center justify-center mb-6 shadow-xl shadow-green-500/40 border-4 border-white z-10`}>
+              <Ionicons name="checkmark" size={60} color="white" />
+            </View>
+            <Text style={tw`text-3xl font-black text-green-500 tracking-tighter mb-2 z-10`}>SUKSES!</Text>
+            <Text style={tw`text-sm font-medium text-gray-500 text-center z-10`}>
+              Isu pada kendaraan {selectedVehicle?.noPolisi} telah diselesaikan.
+            </Text>
+          </View>
         </View>
       </Modal>
 

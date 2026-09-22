@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
-const API_URL = 'http://192.168.151.137:3000/api';
+const API_URL = 'http://192.168.1.4:3000/api';
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 export default function VehicleListScreen({ navigation }) {
@@ -31,7 +33,21 @@ export default function VehicleListScreen({ navigation }) {
   const [newBrand, setNewBrand] = useState('');
   const [newType, setNewType] = useState('');
   const [newBarcode, setNewBarcode] = useState('');
-  const [newStatus, setNewStatus] = useState('Baik');
+
+  // Custom Success Notification Modal
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Custom Warning Modal
+  const [warningModalVisible, setWarningModalVisible] = useState(false);
+  const [warningTitle, setWarningTitle] = useState('');
+  const [warningMessage, setWarningMessage] = useState('');
+
+  const showWarningModal = (title, message) => {
+    setWarningTitle(title);
+    setWarningMessage(message);
+    setWarningModalVisible(true);
+  };
   
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -40,13 +56,75 @@ export default function VehicleListScreen({ navigation }) {
   const fetchVehicles = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/vehicles`);
-      setVehicles(res.data);
+      const [vehicleRes, handoverRes] = await Promise.all([
+        axios.get(`${API_URL}/vehicles`),
+        axios.get(`${API_URL}/handovers`)
+      ]);
+      
+      const vehiclesData = vehicleRes.data;
+      const handoversData = handoverRes.data;
+      
+      const updatedVehicles = vehiclesData.map(vehicle => {
+        const vehicleHandovers = handoversData.filter(h => h.noPolisi === vehicle.noPolisi);
+        if (vehicleHandovers.length > 0) {
+          // data dari API diurutkan berdasarkan timestamp descending, jadi index 0 adalah yang terbaru
+          const latestHandover = vehicleHandovers[0];
+          vehicle.dynamicStatus = latestHandover.status !== 'Siap Operasi (Normal)' ? 'Buruk' : 'Baik';
+        } else {
+          vehicle.dynamicStatus = 'Baik';
+        }
+        return vehicle;
+      });
+      
+      setVehicles(updatedVehicles);
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Gagal memuat data kendaraan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const showSuccessModal = (message) => {
+    setSuccessMessage(message);
+    setSuccessModalVisible(true);
+    setTimeout(() => {
+      setSuccessModalVisible(false);
+    }, 2500);
+  };
+
+  const handleDownloadBarcode = async () => {
+    if (!selectedVehicle) return;
+    
+    const imageUrl = `${API_URL.replace('/api', '')}/barcodes/${selectedVehicle.barcode}.jpg`;
+
+    if (Platform.OS === 'web') {
+      window.open(imageUrl, '_blank');
+      setFullScreenBarcode(false);
+      showSuccessModal('Barcode dibuka di tab baru! Silakan klik kanan dan Simpan Gambar.');
+      return;
+    }
+
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Gagal', 'Fitur berbagi tidak tersedia di perangkat ini.');
+        return;
+      }
+
+      const fileUri = FileSystem.documentDirectory + `${selectedVehicle.barcode}.jpg`;
+      const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri);
+      
+      await Sharing.shareAsync(uri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: 'Simpan Barcode Kendaraan',
+        UTI: 'public.jpeg'
+      });
+      
+      setFullScreenBarcode(false);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Gagal', error.message || 'Terjadi kesalahan saat memproses barcode.');
     }
   };
 
@@ -81,7 +159,7 @@ export default function VehicleListScreen({ navigation }) {
                           (item.brand || '').toLowerCase().includes(searchQuery.toLowerCase());
       
     let matchesStatus = true;
-    if (selectedStatus !== 'Semua') matchesStatus = item.status === selectedStatus;
+    if (selectedStatus !== 'Semua') matchesStatus = item.dynamicStatus === selectedStatus;
     
     return matchesSearch && matchesStatus;
   });
@@ -93,7 +171,7 @@ export default function VehicleListScreen({ navigation }) {
 
   const openAddModal = () => {
     setIsEditMode(false);
-    setNewNoPolisi(''); setNewBrand(''); setNewType(''); setNewBarcode(''); setNewStatus('Baik');
+    setNewNoPolisi(''); setNewBrand(''); setNewType(''); setNewBarcode('');
     setAddModalVisible(true);
   };
 
@@ -104,7 +182,6 @@ export default function VehicleListScreen({ navigation }) {
     setNewBrand(vehicle.brand || '');
     setNewType(vehicle.jenisKendaraan || '');
     setNewBarcode(vehicle.barcode || '');
-    setNewStatus(vehicle.status === 'Buruk' || vehicle.status === 'Maintenance' ? 'Buruk' : 'Baik');
     setManageModalVisible(false);
     setAddModalVisible(true);
   };
@@ -123,7 +200,7 @@ export default function VehicleListScreen({ navigation }) {
               await axios.delete(`${API_URL}/vehicles/${vehicle.id}`);
               setManageModalVisible(false);
               fetchVehicles();
-              Alert.alert('Sukses', 'Kendaraan berhasil dihapus');
+              showSuccessModal('Kendaraan berhasil dihapus!');
             } catch (error) {
               console.error(error);
               Alert.alert('Error', 'Gagal menghapus kendaraan');
@@ -140,10 +217,29 @@ export default function VehicleListScreen({ navigation }) {
       return;
     }
 
-    // Validasi format barcode agar aman dijadikan nama file (hanya huruf, angka, dan strip)
     const isBarcodeValid = /^[a-zA-Z0-9-]+$/.test(newBarcode);
     if (!isBarcodeValid) {
       Alert.alert("Format Tidak Valid", "Barcode hanya boleh berisi huruf, angka, dan tanda strip (-), tanpa spasi atau simbol lain.");
+      return;
+    }
+
+    // Cek duplikasi
+    const isDuplicateBarcode = vehicles.some(v => v.barcode.toLowerCase() === newBarcode.toLowerCase() && (!isEditMode || v.id !== selectedVehicle?.id));
+    const isDuplicateNoPolisi = vehicles.some(v => v.noPolisi.toLowerCase() === newNoPolisi.toLowerCase() && (!isEditMode || v.id !== selectedVehicle?.id));
+
+    if (isDuplicateBarcode) {
+      showWarningModal(
+        "Barcode Terpakai!", 
+        `Kode barcode "${newBarcode}" sudah dipakai oleh kendaraan lain. Mohon gunakan kode yang unik.`
+      );
+      return;
+    }
+
+    if (isDuplicateNoPolisi) {
+      showWarningModal(
+        "Plat Terdaftar!", 
+        `Plat nomor "${newNoPolisi}" sudah ada di database. Silakan periksa kembali.`
+      );
       return;
     }
 
@@ -153,17 +249,17 @@ export default function VehicleListScreen({ navigation }) {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
-          barcode: newBarcode, status: newStatus
+          barcode: newBarcode
         });
-        Alert.alert('Sukses', 'Kendaraan berhasil diperbarui');
+        showSuccessModal('Kendaraan berhasil diperbarui!');
       } else {
         await axios.post(`${API_URL}/vehicles`, {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
-          barcode: newBarcode, status: newStatus
+          barcode: newBarcode
         });
-        Alert.alert('Sukses', 'Kendaraan berhasil ditambahkan');
+        showSuccessModal('Kendaraan baru berhasil ditambahkan!');
       }
       
       setAddModalVisible(false);
@@ -175,25 +271,35 @@ export default function VehicleListScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const isNormal = item.status === 'Baik' || item.status === 'Active';
-    const isMaintenance = item.status === 'Buruk' || item.status === 'Maintenance';
+    // Gunakan dynamicStatus yang sudah dikalkulasi dari laporan handover terbaru
+    const currentStatus = item.dynamicStatus || item.status || 'Baik';
+    const isMaintenance = currentStatus === 'Buruk' || currentStatus === 'Maintenance';
 
     return (
       <TouchableOpacity 
-        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 flex-row justify-between items-center`}
+        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isMaintenance ? 'border-red-100' : 'border-gray-100'} flex-row justify-between items-center`}
         onPress={() => openManageModal(item)}
         activeOpacity={0.7}
       >
         <View style={tw`flex-row items-center flex-1`}>
-          <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isMaintenance ? 'bg-red-200' : (isNormal ? 'bg-green-100' : 'bg-red-100')}`}>
-            <Ionicons name={isMaintenance ? "build" : (isNormal ? "car" : "warning")} size={28} color={isMaintenance ? "#991B1B" : (isNormal ? "#00A651" : "#ED1C24")} />
+          <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isMaintenance ? 'bg-red-100' : 'bg-green-100'}`}>
+            <MaterialCommunityIcons name="truck" size={26} color={isMaintenance ? "#ED1C24" : "#00A651"} />
           </View>
-          <View>
+          <View style={tw`flex-1 pr-2`}>
             <Text style={tw`text-xl font-black ${isMaintenance ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
-            <Text style={tw`text-sm font-bold text-gray-500`}>{item.brand || 'Truk'} • {item.jenisKendaraan || 'Umum'}</Text>
+            <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>{item.brand || 'Truk'} • {item.jenisKendaraan || 'Umum'}</Text>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+        
+        <View style={tw`items-end`}>
+          <View style={tw`px-3 py-1.5 rounded-lg mb-1 flex-row items-center ${isMaintenance ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+            <View style={tw`w-1.5 h-1.5 rounded-full mr-1.5 ${isMaintenance ? 'bg-red-500' : 'bg-green-500'}`} />
+            <Text style={tw`text-[10px] font-black uppercase tracking-widest ${isMaintenance ? 'text-red-600' : 'text-green-600'}`}>
+              {currentStatus}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -273,8 +379,8 @@ export default function VehicleListScreen({ navigation }) {
             </View>
             <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Berdasarkan Status Isu</Text>
             <View style={tw`flex-row flex-wrap mb-6`}>
-              {['Semua', 'Active', 'Maintenance'].map(status => (
-                <TouchableOpacity key={status} style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedStatus === status ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`} onPress={() => setSelectedStatus(status)}>
+              {['Semua', 'Baik', 'Buruk'].map(status => (
+                <TouchableOpacity key={status} style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedStatus === status ? (status === 'Buruk' ? 'bg-[#ED1C24] border-[#ED1C24]' : 'bg-[#0055A5] border-[#0055A5]') : 'bg-transparent border-gray-300'}`} onPress={() => setSelectedStatus(status)}>
                   <Text style={tw`text-sm font-bold ${selectedStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
                 </TouchableOpacity>
               ))}
@@ -301,12 +407,18 @@ export default function VehicleListScreen({ navigation }) {
                   <Text style={tw`text-white text-2xl font-black mb-10`}>{selectedVehicle.noPolisi}</Text>
                   <View style={tw`w-80 h-80 bg-white rounded-3xl p-4`}>
                     <Image 
-                      source={{ uri: `http://192.168.151.137:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
+                      source={{ uri: `http://192.168.1.4:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
                       style={tw`w-full h-full`} 
                       resizeMode="contain" 
                     />
                   </View>
-                  <Text style={tw`text-gray-300 text-sm mt-6 text-center px-10`}>Silakan screenshot layar ini untuk menyimpan atau mencetak barcode.</Text>
+                  
+                  <TouchableOpacity style={tw`bg-[#0055A5] mt-8 px-6 py-4 rounded-full flex-row items-center shadow-lg shadow-blue-500/50`} onPress={handleDownloadBarcode}>
+                    <Feather name="download" size={20} color="white" />
+                    <Text style={tw`text-white font-bold text-lg ml-3 tracking-wide`}>Simpan Barcode</Text>
+                  </TouchableOpacity>
+                  
+                  <Text style={tw`text-gray-300 text-sm mt-6 text-center px-10`}>Barcode akan diunduh dan Anda bisa menyimpannya ke galeri.</Text>
                 </>
               )}
             </View>
@@ -349,7 +461,7 @@ export default function VehicleListScreen({ navigation }) {
                       onPress={() => setFullScreenBarcode(true)}
                     >
                       <Image 
-                        source={{ uri: `http://192.168.151.137:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
+                        source={{ uri: `http://192.168.1.4:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
                         style={tw`w-full h-full`} 
                         resizeMode="contain" 
                       />
@@ -384,58 +496,100 @@ export default function VehicleListScreen({ navigation }) {
 
           {/* ADD / EDIT VEHICLE MODAL */}
           <Modal visible={addModalVisible} transparent={true} animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
-            <View style={tw`flex-1 justify-end bg-black/60`}>
-              <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
-                <View style={tw`flex-row justify-between items-center mb-6`}>
-                  <Text style={tw`text-2xl font-black text-gray-800`}>{isEditMode ? 'Edit Kendaraan' : 'Tambah Kendaraan'}</Text>
-                  <TouchableOpacity onPress={() => setAddModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
-                </View>
-                
-                <View style={tw`mb-4`}>
-                  <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>No Polisi</Text>
-                  <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: B 1234 XYZ" value={newNoPolisi} onChangeText={setNewNoPolisi} autoCapitalize="characters" />
-                </View>
-                
-                <View style={tw`mb-4`}>
-                  <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Merek Kendaraan</Text>
-                  <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: Hino 500" value={newBrand} onChangeText={setNewBrand} />
-                </View>
-                
-                <View style={tw`mb-4`}>
-                  <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Tipe / Kapasitas</Text>
-                  <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: Tangki 16KL" value={newType} onChangeText={setNewType} />
-                </View>
-
-                                <View style={tw`mb-4`}>
-                  <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Status Truk</Text>
-                  <View style={tw`flex-row`}>
-                    <TouchableOpacity 
-                      style={tw`flex-1 py-3 items-center rounded-l-xl border ${newStatus === 'Baik' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`} 
-                      onPress={() => setNewStatus('Baik')}>
-                      <Text style={tw`font-bold ${newStatus === 'Baik' ? 'text-white' : 'text-gray-500'}`}>Baik</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={tw`flex-1 py-3 items-center rounded-r-xl border border-l-0 ${newStatus === 'Buruk' ? 'bg-[#ED1C24] border-[#ED1C24]' : 'bg-white border-gray-200'}`} 
-                      onPress={() => setNewStatus('Buruk')}>
-                      <Text style={tw`font-bold ${newStatus === 'Buruk' ? 'text-white' : 'text-gray-500'}`}>Buruk</Text>
-                    </TouchableOpacity>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`flex-1 justify-end bg-black/60`}>
+              <View style={[tw`bg-white rounded-t-[30px] shadow-2xl`, { maxHeight: '90%' }]}>
+                <ScrollView contentContainerStyle={tw`p-6 pb-12`} showsVerticalScrollIndicator={false}>
+                  <View style={tw`flex-row justify-between items-center mb-6`}>
+                    <Text style={tw`text-2xl font-black text-gray-800`}>{isEditMode ? 'Edit Kendaraan' : 'Tambah Kendaraan'}</Text>
+                    <TouchableOpacity onPress={() => setAddModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
                   </View>
-                </View>
+                  
+                  <View style={tw`mb-4`}>
+                    <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nomor Polisi</Text>
+                    <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder={vehicles.length > 0 ? `Misal: ${vehicles[0].noPolisi}` : "Misal: B 1234 XYZ"} value={newNoPolisi} onChangeText={setNewNoPolisi} autoCapitalize="characters" />
+                  </View>
+                  
+                  <View style={tw`mb-4`}>
+                    <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Merek Kendaraan</Text>
+                    <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: Hino 500" value={newBrand} onChangeText={setNewBrand} />
+                  </View>
+                  
+                  <View style={tw`mb-4`}>
+                    <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Tipe / Kapasitas</Text>
+                    <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: Tangki 16KL" value={newType} onChangeText={setNewType} />
+                  </View>
 
-                <View style={tw`mb-8`}>
-                  <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Data Barcode</Text>
-                  <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: TRK-006" value={newBarcode} onChangeText={setNewBarcode} />
-                  <Text style={tw`text-[10px] text-gray-400 mt-1`}>*Barcode akan otomatis digenerate sebagai gambar QR Code di backend.</Text>
-                </View>
+                  <View style={tw`mb-8`}>
+                    <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Data Barcode</Text>
+                    <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: TRK-006" value={newBarcode} onChangeText={setNewBarcode} />
+                    <Text style={tw`text-[10px] text-gray-400 mt-1`}>*Barcode akan otomatis digenerate sebagai gambar QR Code di backend.</Text>
+                  </View>
 
-                <TouchableOpacity style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveVehicle}>
-                  <Text style={tw`text-white font-black text-lg tracking-wide`}>{isEditMode ? 'SIMPAN PERUBAHAN' : 'SIMPAN KENDARAAN'}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40 mb-4`} onPress={handleSaveVehicle}>
+                    <Text style={tw`text-white font-black text-lg tracking-wide`}>{isEditMode ? 'SIMPAN PERUBAHAN' : 'SIMPAN KENDARAAN'}</Text>
+                  </TouchableOpacity>
+                </ScrollView>
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
         </>
       )}
+
+      {/* SUCCESS NOTIFICATION MODAL */}
+      <Modal visible={successModalVisible} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center items-center bg-black/40 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl border border-green-100 relative overflow-hidden`}>
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full`} />
+            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-blue-50 rounded-full`} />
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-5`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
+            
+            <View style={tw`w-20 h-20 bg-green-100 rounded-full items-center justify-center mb-5 shadow-lg shadow-green-500/30 z-10 border-4 border-white`}>
+              <Feather name="check-circle" size={40} color="#00A651" />
+            </View>
+            
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 tracking-tight z-10 text-center`}>Sukses!</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-6 z-10 px-4`}>{successMessage}</Text>
+            
+            <View style={tw`flex-row items-center justify-center mt-2 z-10`}>
+              <View style={tw`flex-row items-center mr-2`}>
+                <View style={tw`w-1 h-4 rounded-full bg-[#ED1C24] mr-0.5`} />
+                <View style={tw`w-1 h-4 rounded-full bg-[#2ECC71] mr-0.5`} />
+                <View style={tw`w-1 h-4 rounded-full bg-[#0055A5]`} />
+              </View>
+              <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-widest`}>DigiHandover</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* WARNING NOTIFICATION MODAL */}
+      <Modal visible={warningModalVisible} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center items-center bg-black/40 px-6 z-50`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl border border-red-100 relative overflow-hidden`}>
+            {/* Background Accent */}
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
+            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+            
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-5`, { width: 250, height: 250, bottom: -50, left: -50 }]} resizeMode="contain" />
+            
+            <View style={tw`w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-5 shadow-lg shadow-red-500/30 z-10 border-4 border-white`}>
+              <Feather name="alert-triangle" size={40} color="#ED1C24" />
+            </View>
+            
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 tracking-tight z-10 text-center`}>{warningTitle}</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 z-10 px-4`}>
+              {warningMessage}
+            </Text>
+            
+            <TouchableOpacity 
+              style={tw`bg-[#ED1C24] px-8 py-4 rounded-2xl shadow-lg shadow-red-500/30 z-10 w-full items-center`}
+              onPress={() => setWarningModalVisible(false)}
+            >
+              <Text style={tw`text-white text-sm font-black tracking-widest uppercase`}>OK, MENGERTI</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );

@@ -102,7 +102,7 @@ export default function UserDashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const res = await axios.get('http://192.168.151.137:3000/api/handovers');
+      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
       setAllHandovers(res.data);
       const issues = res.data.filter(h => h.status !== 'Siap Operasi (Normal)');
       setAlerts(issues);

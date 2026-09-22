@@ -71,7 +71,7 @@ export default function LoginScreen({ navigation }) {
       } else if (username.toLowerCase() === 'haula') {
         loggedInUser = { id: 'u3', username: 'haula', name: 'Haula', role: 'AMT' };
       } else {
-        const res = await axios.post('http://192.168.151.137:3000/api/auth/login', { username, password });
+        const res = await axios.post('http://192.168.1.4:3000/api/auth/login', { username, password });
         loggedInUser = res.data.user;
       }
 
@@ -250,7 +250,15 @@ export default function LoginScreen({ navigation }) {
                 {/* Tombol Lupa Password */}
                 <TouchableOpacity 
                   style={tw`mt-6 items-center`}
-                  onPress={() => setShowForgotPasswordModal(true)}
+                  onPress={() => {
+                    if (!username.trim()) {
+                      setErrorMessage('Silakan isi Username terlebih dahulu agar admin tahu akun siapa yang lupa password.');
+                      return;
+                    }
+                    const waNumber = '6287795078087';
+                    const message = `Halo Admin, saya ${username.trim()}, minta tolong reset password saya.`;
+                    Linking.openURL(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`);
+                  }}
                 >
                   <Text style={tw`text-[#ED1C24] font-bold text-sm tracking-wide`}>Lupa Password?</Text>
                 </TouchableOpacity>

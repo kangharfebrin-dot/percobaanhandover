@@ -110,6 +110,22 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
     const issueItems = parsedItems.filter(item => !item.isGood);
     const status = issueItems.length > 0 ? 'Ada Masalah' : 'Siap Operasi (Normal)';
 
+    // Pastikan user exists untuk menghindari Foreign Key Constraint error (terutama untuk akun dummy frontend)
+    if (userId) {
+      const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+      if (!existingUser) {
+        await prisma.user.create({
+          data: {
+            id: userId,
+            username: `dummy_${userId}`,
+            password: '123',
+            role: 'USER',
+            name: 'Dummy User'
+          }
+        });
+      }
+    }
+
     // Simpan ke DB
     const handover = await prisma.handover.create({
       data: {
@@ -165,6 +181,23 @@ app.get('/api/handovers', async (req, res) => {
   }
 });
 
+// 3b. PUT Handover (Selesaikan Isu)
+app.put('/api/handovers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const updatedHandover = await prisma.handover.update({
+      where: { id },
+      data: { status }
+    });
+    
+    res.json({ success: true, handover: updatedHandover });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 4. GET All Vehicles (Untuk Admin)
 app.get('/api/vehicles', async (req, res) => {
   try {
@@ -197,9 +230,9 @@ app.post('/api/vehicles', async (req, res) => {
       }
     });
 
-    // Generate QR Code image
+    // Generate QR Code image in HD
     const qrPath = path.join(barcodesDir, `${barcode}.jpg`);
-    await QRCode.toFile(qrPath, barcode, { errorCorrectionLevel: 'H' });
+    await QRCode.toFile(qrPath, barcode, { errorCorrectionLevel: 'H', width: 1024, margin: 4, color: { dark: '#000000', light: '#FFFFFF' } });
 
     res.status(201).json({ success: true, vehicle });
   } catch (error) {
@@ -231,7 +264,7 @@ app.put('/api/vehicles/:id', async (req, res) => {
         fs.unlinkSync(oldQrPath);
       }
       const newQrPath = path.join(barcodesDir, `${barcode}.jpg`);
-      await QRCode.toFile(newQrPath, barcode, { errorCorrectionLevel: 'H' });
+      await QRCode.toFile(newQrPath, barcode, { errorCorrectionLevel: 'H', width: 1024, margin: 4, color: { dark: '#000000', light: '#FFFFFF' } });
     }
 
     res.json({ success: true, vehicle });

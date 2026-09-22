@@ -27,8 +27,8 @@ async function main() {
     try {
       await QRCode.toFile(filePath, qrData, {
         color: { dark: '#000000', light: '#FFFFFF' },
-        width: 300,
-        margin: 2
+        width: 1024,
+        margin: 4
       });
       console.log(`✅ Berhasil membuat QR code untuk: ${qrData} (Plat: ${vehicle.noPolisi})`);
     } catch (err) {

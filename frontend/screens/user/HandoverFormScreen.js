@@ -151,7 +151,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         Alert.alert("Izin Lokasi Ditolak", "Tolong izinkan akses lokasi Anda dari pengaturan aplikasi.");
         return;
       }
-      
+
       let loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
     } catch (err) {
@@ -167,19 +167,30 @@ export default function HandoverFormScreen({ route, navigation }) {
     setIsCameraOpen(true);
   };
 
-  const takePicture = async () => {
-    if (cameraRef.current) {
+  const takePicture = () => {
+    if (cameraRef.current && !loading) {
       setLoading(true);
-      // Mempercepat performa kamera dengan kualitas lebih rendah dan skipProcessing
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.1, skipProcessing: true });
-      const now = new Date();
-      const timestampStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      let locStr = 'Lokasi tidak ditemukan';
-      if (location) {
-        locStr = `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`;
-      }
-      setPreviewPhoto({ ...photo, timestampStr, locStr });
-      setLoading(false);
+
+      // Beri jeda sedikit agar UI (Loading Indicator) ter-render mulus sebelum membebani Native Camera
+      setTimeout(async () => {
+        try {
+          const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
+
+          const now = new Date();
+          const timestampStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+          let locStr = 'Lokasi tidak ditemukan';
+          if (location) {
+            locStr = `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`;
+          }
+
+          setPreviewPhoto({ ...photo, timestampStr, locStr });
+        } catch (error) {
+          console.error("Gagal mengambil foto:", error);
+        } finally {
+          setLoading(false);
+        }
+      }, 50); // 50ms sudah cukup untuk 3 frame UI (60fps)
     }
   };
 
@@ -191,7 +202,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   // SUBMIT LOGIC
-  
+
   const goToDashboard = () => {
     if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
       navigation.navigate('AdminDashboard');
@@ -223,12 +234,7 @@ export default function HandoverFormScreen({ route, navigation }) {
       // showValidationError("KENDARAAN DIBLOKIR", "Terdapat temuan MAJOR. Kendaraan diblokir dan laporan akan langsung diteruskan ke Admin!");
     }
 
-    // 4. Validasi Catatan
-    const missingNotes = items.find(item => item.status === 'RUSAK' && !item.catatan.trim());
-    if (missingNotes) {
-      showValidationError("Perhatian", `Terdapat indikasi tidak baik pada "${missingNotes.name}". Wajib mengisi detail kerusakan / catatan!`);
-      return;
-    }
+    // 4. (Dihapus) Validasi Catatan sekarang opsional (tidak wajib diisi)
 
     // 5. Validasi Foto Lengkap
     const missingPhotos = REQUIRED_PHOTOS.filter(p => !photos[p]);
@@ -249,8 +255,8 @@ export default function HandoverFormScreen({ route, navigation }) {
       formData.append('noPolisi', noPolisi);
       formData.append('shift', shift);
 
-      const finalItems = items.map(i => ({ 
-        ...i, 
+      const finalItems = items.map(i => ({
+        ...i,
         isGood: i.status === 'BAIK',
         name: i.name + (i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
       }));
@@ -272,15 +278,15 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
-      await axios.post('http://192.168.151.137:3000/api/handovers', formData, {
+      await axios.post('http://192.168.1.4:3000/api/handovers', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setLoading(false);
-      
+
       // Tampilkan Modal Sukses Cantik
       setShowSuccessModal(true);
-      
+
       // Otomatis kembali ke dashboard setelah 2 detik
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -299,7 +305,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     const originalIdx = items.findIndex(x => x.name === item.name);
     const isBaik = item.status === 'BAIK';
     const isRusak = item.status === 'RUSAK';
-    
+
     return (
       <View key={originalIdx} style={tw`border-b border-gray-100 p-5 ${isRusak ? 'bg-red-50/50' : isBaik ? 'bg-green-50/30' : 'bg-white'}`}>
         <View style={tw`flex-col`}>
@@ -310,8 +316,8 @@ export default function HandoverFormScreen({ route, navigation }) {
               style={tw`flex-1 rounded-xl overflow-hidden shadow-sm`}
               onPress={() => setItemStatus(originalIdx, 'BAIK')}
             >
-              <LinearGradient 
-                colors={isBaik ? PERTAMINA_GREEN : ['#F3F4F6', '#E5E7EB']} 
+              <LinearGradient
+                colors={isBaik ? PERTAMINA_GREEN : ['#F3F4F6', '#E5E7EB']}
                 style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isBaik ? 'text-white' : 'text-gray-500'}`}>
@@ -325,8 +331,8 @@ export default function HandoverFormScreen({ route, navigation }) {
               style={tw`flex-1 rounded-xl overflow-hidden shadow-sm`}
               onPress={() => setItemStatus(originalIdx, 'RUSAK')}
             >
-              <LinearGradient 
-                colors={isRusak ? PERTAMINA_RED : ['#F3F4F6', '#E5E7EB']} 
+              <LinearGradient
+                colors={isRusak ? PERTAMINA_RED : ['#F3F4F6', '#E5E7EB']}
                 style={tw`py-3 px-2 items-center justify-center border ${isRusak ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isRusak ? 'text-white' : 'text-gray-500'}`}>
@@ -346,12 +352,13 @@ export default function HandoverFormScreen({ route, navigation }) {
 
             <View style={tw`bg-white rounded-xl shadow-sm border border-red-100 p-1`}>
               <TextInput
-                style={tw`p-3 text-sm text-gray-800 font-medium h-20`}
-                placeholder="Ketik detail kerusakan di sini..."
+                style={[tw`p-3 text-sm text-gray-800 font-medium`, { minHeight: 80 }]}
+                placeholder="Ketik detail kerusakan di sini... (Opsional)"
                 placeholderTextColor="#9CA3AF"
                 value={item.catatan}
                 onChangeText={(text) => updateItemCatatan(originalIdx, text)}
                 multiline
+                scrollEnabled={false} // Supaya otomatis memanjang ke bawah
                 textAlignVertical="top"
               />
             </View>
@@ -373,7 +380,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   return (
     <SafeAreaView style={tw`flex-1 bg-slate-50`}>
       <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
-        <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
+        <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
           <View style={tw`w-full flex-row items-center justify-between`}>
             <View style={tw`flex-row items-center`}>
               <TouchableOpacity onPress={() => goToDashboard()} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
@@ -408,14 +415,14 @@ export default function HandoverFormScreen({ route, navigation }) {
             style={tw`p-4 rounded-2xl border mb-5 font-bold text-base shadow-sm ${initialNoPolisi ? 'bg-gray-200 border-gray-300 text-gray-600' : 'bg-slate-50 border-slate-200 text-black'}`}
             value={noPolisi}
             onChangeText={setNoPolisi}
-            placeholder="Ketik Plat Nomor (Misal: B 1234 XYZ)"
+            placeholder="Ketik Plat Nomor (Sesuai Kendaraan)"
             placeholderTextColor="#9CA3AF"
             autoCapitalize="characters"
             editable={!initialNoPolisi}
           />
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>Waktu Jam / Shift</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5 flex-row justify-between items-center shadow-sm`}
             onPress={() => setShowTimePicker(true)}
           >
@@ -477,11 +484,11 @@ export default function HandoverFormScreen({ route, navigation }) {
                 {photos[side] ? (
                   <View style={tw`w-full h-full relative`}>
                     <Image source={{ uri: photos[side].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-                    
+
                     {/* Thumbnail Watermark */}
                     <View style={tw`absolute top-1 left-1 right-1`}>
-                       <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
-                       <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
+                      <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
+                      <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
                     </View>
 
                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-3`} pointerEvents="none">
@@ -514,7 +521,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             onPress={handleSubmit}
             disabled={loading}
           >
-            <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-5 items-center flex-row justify-center`}>
+            <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`p-5 items-center flex-row justify-center`}>
               {loading ? (
                 <ActivityIndicator color="white" style={tw`mr-3`} />
               ) : (
@@ -555,7 +562,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                 <Ionicons name="close" size={24} color="#4B5563" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={tw`flex-row justify-center items-center mb-10`}>
               {/* Hour Scroll/Selector */}
               <View style={tw`w-28 h-56 bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden`}>
@@ -564,8 +571,8 @@ export default function HandoverFormScreen({ route, navigation }) {
                     const hr = i.toString().padStart(2, '0');
                     const isSelected = hr === selectedHour;
                     return (
-                      <TouchableOpacity 
-                        key={hr} 
+                      <TouchableOpacity
+                        key={hr}
                         style={tw`h-[56px] justify-center items-center ${isSelected ? 'bg-blue-500 rounded-2xl mx-2 shadow-md' : ''}`}
                         onPress={() => setSelectedHour(hr)}
                       >
@@ -585,8 +592,8 @@ export default function HandoverFormScreen({ route, navigation }) {
                     const min = i.toString().padStart(2, '0');
                     const isSelected = min === selectedMinute;
                     return (
-                      <TouchableOpacity 
-                        key={min} 
+                      <TouchableOpacity
+                        key={min}
                         style={tw`h-[56px] justify-center items-center ${isSelected ? 'bg-blue-500 rounded-2xl mx-2 shadow-md' : ''}`}
                         onPress={() => setSelectedMinute(min)}
                       >
@@ -598,14 +605,14 @@ export default function HandoverFormScreen({ route, navigation }) {
               </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={tw`rounded-2xl overflow-hidden shadow-xl`}
               onPress={() => {
                 setShift(`${selectedHour}:${selectedMinute}`);
                 setShowTimePicker(false);
               }}
             >
-              <LinearGradient colors={PERTAMINA_BLUE} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={tw`p-5 items-center justify-center`}>
+              <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`p-5 items-center justify-center`}>
                 <Text style={tw`text-white font-extrabold text-lg tracking-wide`}>SIMPAN WAKTU</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -614,20 +621,20 @@ export default function HandoverFormScreen({ route, navigation }) {
       </Modal>
 
       {/* MODAL KAMERA FULL SCREEN */}
-      <Modal 
-        visible={isCameraOpen} 
-        animationType="slide" 
+      <Modal
+        visible={isCameraOpen}
+        animationType="slide"
         transparent={false}
         onShow={() => setIsCameraReady(true)}
       >
         {previewPhoto ? (
           <View style={tw`flex-1 bg-black relative`}>
             <Image source={{ uri: previewPhoto.uri }} style={tw`w-full h-full absolute inset-0`} resizeMode="contain" />
-            
+
             {/* WATERMARK OVERLAY PADA PREVIEW */}
             <View style={tw`absolute bottom-40 left-6 bg-black/60 p-4 rounded-2xl border border-white/20 shadow-2xl`}>
-               <Text style={tw`text-white font-bold text-xs mb-2`}><Ionicons name="location" size={14} color="#2ECC71"/> {previewPhoto.locStr}</Text>
-               <Text style={tw`text-white font-bold text-xs`}><Ionicons name="time" size={14} color="#2ECC71"/> {previewPhoto.timestampStr}</Text>
+              <Text style={tw`text-white font-bold text-xs mb-2`}><Ionicons name="location" size={14} color="#2ECC71" /> {previewPhoto.locStr}</Text>
+              <Text style={tw`text-white font-bold text-xs`}><Ionicons name="time" size={14} color="#2ECC71" /> {previewPhoto.timestampStr}</Text>
             </View>
 
             <View style={tw`absolute top-14 left-0 right-0 items-center px-4`}>
@@ -666,11 +673,11 @@ export default function HandoverFormScreen({ route, navigation }) {
                 <Text style={tw`text-white font-bold mt-4 text-xs tracking-widest uppercase`}>Menyiapkan Kamera...</Text>
               </View>
             )}
-            
+
             <View style={tw`absolute inset-0 justify-between`} pointerEvents="box-none">
               <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={tw`absolute top-0 w-full h-40`} pointerEvents="none" />
               <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute bottom-0 w-full h-40`} pointerEvents="none" />
-              
+
               <View style={tw`pt-14 px-4 items-center`} pointerEvents="none">
                 <View style={tw`bg-black/50 px-8 py-4 rounded-full border border-white/30 items-center shadow-2xl`}>
                   <Text style={tw`text-white font-bold text-lg tracking-widest`}>
@@ -678,14 +685,14 @@ export default function HandoverFormScreen({ route, navigation }) {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-80 h-56 border border-white/30 rounded-3xl relative shadow-2xl bg-white/5`}>
                   <View style={tw`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-[#2ECC71] rounded-tl-3xl`} />
                   <View style={tw`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-[#2ECC71] rounded-tr-3xl`} />
                   <View style={tw`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-[#2ECC71] rounded-bl-3xl`} />
                   <View style={tw`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-[#2ECC71] rounded-br-3xl`} />
-                  
+
                   <View style={tw`flex-1 items-center justify-center`}>
                     <Ionicons name="scan-outline" size={48} color="rgba(255,255,255,0.3)" />
                   </View>
@@ -735,17 +742,17 @@ export default function HandoverFormScreen({ route, navigation }) {
           <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl relative overflow-hidden`}>
             {/* Watermark Logo Samar */}
             <TextLogo style={[tw`absolute opacity-10`, { top: -20, right: -40, transform: [{ scale: 1.2 }] }]} />
-            
+
             <View style={tw`w-20 h-20 bg-red-50 rounded-full items-center justify-center mb-6 border-4 border-red-100`}>
               <Ionicons name="alert-circle" size={48} color="#ED1C24" />
             </View>
-            
+
             <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center tracking-tight`}>{validationTitle}</Text>
             <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6 px-2`}>
               {validationMessage}
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={tw`w-full bg-[#ED1C24] py-4 rounded-xl items-center shadow-lg shadow-red-500/30`}
               onPress={() => setValidationModalVisible(false)}
             >
