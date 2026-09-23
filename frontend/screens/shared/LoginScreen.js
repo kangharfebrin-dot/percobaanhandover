@@ -39,44 +39,29 @@ export default function LoginScreen({ navigation }) {
     if (isUsernameEmpty && isPasswordEmpty) {
       setErrorMessage('Mohon isi Username dan Password terlebih dahulu!');
       return;
-    } else if (isUsernameEmpty) {
+    }
+    // Remove restrictive regex validation, just check for empty strings
+    if (isUsernameEmpty) {
       setErrorMessage('Mohon isi Username terlebih dahulu!');
       return;
-    } else if (isPasswordEmpty) {
+    }
+    if (isPasswordEmpty) {
       setErrorMessage('Mohon isi Password terlebih dahulu!');
-      return;
-    }
-
-    const isUsernameValid = /^[a-zA-Z]+$/.test(username);
-    const isPasswordValid = /^[0-9]+$/.test(password);
-
-    if (!isUsernameValid) {
-      setErrorMessage('Username hanya boleh berisi huruf (alfabet).');
-      return;
-    }
-    
-    if (!isPasswordValid) {
-      setErrorMessage('Password hanya boleh berisi angka.');
       return;
     }
 
     setLoading(true);
     try {
-      let loggedInUser = null;
+      const res = await axios.post('http://192.168.1.7:3000/api/auth/login', { username, password });
+      const loggedInUser = res.data.user;
+      const token = res.data.token;
 
-      if (username.toLowerCase() === 'yoan') {
-        loggedInUser = { id: 'u1', username: 'yoan', name: 'Yoan', role: 'SUPER_ADMIN' };
-      } else if (username.toLowerCase() === 'sekar' && password === '12345') {
-        loggedInUser = { id: 'u2', username: 'sekar', name: 'Sekar', role: 'PENGAWAS' };
-      } else if (username.toLowerCase() === 'haula') {
-        loggedInUser = { id: 'u3', username: 'haula', name: 'Haula', role: 'AMT' };
-      } else {
-        const res = await axios.post('http://192.168.1.4:3000/api/auth/login', { username, password });
-        loggedInUser = res.data.user;
-      }
-
-      if (loggedInUser) {
+      if (loggedInUser && token) {
         await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
+        await AsyncStorage.setItem('token', token);
+        
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
         if (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN') {
           navigation.replace('AdminDashboard');
         } else if (loggedInUser.role === 'PENGAWAS') {

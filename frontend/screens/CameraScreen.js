@@ -100,7 +100,7 @@ export default function CameraScreen({ route, navigation }) {
       });
 
       // API call (adjust IP address if testing on real device)
-      const res = await axios.post('http://192.168.1.4:3000/api/handovers', formData, {
+      const res = await axios.post('http://192.168.1.7:3000/api/handovers', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

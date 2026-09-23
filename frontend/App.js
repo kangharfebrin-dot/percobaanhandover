@@ -5,10 +5,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import axios from 'axios';
 
 // Screens
 import LoginScreen from './screens/shared/LoginScreen';
 import HistoryScreen from './screens/shared/HistoryScreen';
+import HandoverDetailScreen from './screens/shared/HandoverDetailScreen';
 import AdminDashboardScreen from './screens/admin/AdminDashboardScreen';
 import WorkerListScreen from './screens/admin/WorkerListScreen';
 import VehicleListScreen from './screens/admin/VehicleListScreen';
@@ -28,8 +30,12 @@ export default function App() {
     const checkLogin = async () => {
       try {
         const userStr = await AsyncStorage.getItem('user');
-        if (userStr) {
+        const token = await AsyncStorage.getItem('token');
+        
+        if (userStr && token) {
           const user = JSON.parse(userStr);
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
           if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
             setInitialRoute('AdminDashboard');
           } else if (user.role === 'PENGAWAS') {
@@ -108,6 +114,7 @@ export default function App() {
         <Stack.Screen name="Scanner" component={ScannerScreen} />
         <Stack.Screen name="HandoverForm" component={HandoverFormScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="HandoverDetail" component={HandoverDetailScreen} />
         <Stack.Screen name="VehicleList" component={VehicleListScreen} />
         <Stack.Screen name="IssueList" component={IssueListScreen} />
         <Stack.Screen name="MessageCenter" component={MessageCenterScreen} />

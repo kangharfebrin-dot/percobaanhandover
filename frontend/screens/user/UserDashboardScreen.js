@@ -102,10 +102,11 @@ export default function UserDashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
-      setAllHandovers(res.data);
-      const issues = res.data.filter(h => h.status !== 'Siap Operasi (Normal)');
-      setAlerts(issues);
+      const handoverRes = await axios.get('http://192.168.1.7:3000/api/handovers');
+      const dataHandovers = handoverRes.data.data || handoverRes.data;
+      setAllHandovers(dataHandovers);
+      const issuesRes = await axios.get('http://192.168.1.7:3000/api/issues/ongoing');
+      setAlerts(issuesRes.data.map(i => i.handover));
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
     } finally {

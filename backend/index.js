@@ -7,6 +7,11 @@ const nodemailer = require('nodemailer');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const xlsx = require('xlsx');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_negara_pertamina_123';
 
 // Pastikan folder barcodes ada
 const barcodesDir = path.join(__dirname, 'barcodes');
@@ -23,6 +28,20 @@ app.use('/uploads', express.static('uploads'));
 app.use('/barcodes', express.static('barcodes'));
 // Setup Multer for photo uploads (in memory for now, or save to disk)
 const upload = multer({ dest: 'uploads/' });
+
+// Middleware Autentikasi
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
+  
+  if (token == null) return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Akses ditolak: Token tidak valid atau kadaluarsa' });
+    req.user = user;
+    next();
+  });
+}
 
 // --- MOCK NOTIFICATION SYSTEM ---
 async function sendNotification(handoverId, noPolisi, issueItems) {
@@ -85,19 +104,46 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
   }
 });
 
-// 1. Auth Login (Sederhana tanpa JWT untuk prototipe)
+// 1. Auth Login
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const user = await prisma.user.findUnique({ where: { username } });
-    if (!user || user.password !== password) {
+    
+    if (!user) {
       return res.status(401).json({ error: 'Username atau password salah' });
     }
-    // Untuk prototipe, kembalikan data user langsung
-    res.json({ user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+
+    let validPassword = false;
+    
+    // Cek apakah password sudah di-hash (bcrypt hash biasanya dimulai dengan $2b$ atau $2a$)
+    if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+      validPassword = await bcrypt.compare(password, user.password);
+    } else {
+      // Fallback untuk pekerja lama yang password-nya belum di-hash di database
+      validPassword = (password === user.password);
+    }
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Username atau password salah' });
+    }
+
+    const payload = { id: user.id, username: user.username, role: user.role };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ 
+      token,
+      user: { id: user.id, username: user.username, name: user.name, role: user.role, jabatan: user.jabatan } 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Protect all /api routes except /api/auth/login and /api/handovers/export
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/login' || req.path === '/handovers/export') return next();
+  authenticateToken(req, res, next);
 });
 
 // 2. Submit Handover (Termasuk foto dan checklist)
@@ -146,9 +192,12 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
         photos: {
           create: req.files ? req.files.map(file => ({
             type: 'TERLAMPIR', // Untuk detail, bisa dipisah berdasarkan nama field
-            url: file.path
+            url: file.path.replace(/\\/g, '/')
           })) : []
-        }
+        },
+        issue: status === 'Ada Masalah' ? {
+          create: { status: 'ONGOING' }
+        } : undefined
       }
     });
 
@@ -164,18 +213,75 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
   }
 });
 
-// 3. Get Handovers (Untuk Admin / History)
+// 3. Get Handovers (Untuk Admin / History) - Dengan Paginasi
 app.get('/api/handovers', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const handovers = await prisma.handover.findMany({
+      skip,
+      take: limit,
+      orderBy: { timestamp: 'desc' },
+      include: {
+        user: { select: { name: true, jabatan: true } },
+        items: true,
+        photos: true,
+        issue: true
+      }
+    });
+
+    // Mengambil total count untuk frontend jika butuh tahu apakah masih ada data
+    const total = await prisma.handover.count();
+    
+    res.json({
+      data: handovers,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3a. Export Handovers to Excel
+app.get('/api/handovers/export', async (req, res) => {
   try {
     const handovers = await prisma.handover.findMany({
       orderBy: { timestamp: 'desc' },
       include: {
-        user: { select: { name: true } },
-        items: true,
-        photos: true
+        user: { select: { name: true, jabatan: true } },
+        items: true
       }
     });
-    res.json(handovers);
+
+    const exportData = handovers.map(h => {
+      const issueItems = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
+      return {
+        'Waktu': h.timestamp.toISOString().replace('T', ' ').substring(0, 19),
+        'Nama Pekerja': h.user.name,
+        'Jabatan': h.user.jabatan || '-',
+        'No Polisi': h.noPolisi,
+        'Shift': h.shift,
+        'Status': h.status,
+        'Detail Isu': issueItems || '-'
+      };
+    });
+
+    const ws = xlsx.utils.json_to_sheet(exportData);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Riwayat_Handover');
+    
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    
+    res.setHeader('Content-Disposition', 'attachment; filename="Laporan_Handover.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -231,7 +337,7 @@ app.post('/api/vehicles', async (req, res) => {
     });
 
     // Generate QR Code image in HD
-    const qrPath = path.join(barcodesDir, `${barcode}.jpg`);
+    const qrPath = path.join(barcodesDir, `${barcode}.png`);
     await QRCode.toFile(qrPath, barcode, { errorCorrectionLevel: 'H', width: 1024, margin: 4, color: { dark: '#000000', light: '#FFFFFF' } });
 
     res.status(201).json({ success: true, vehicle });
@@ -259,11 +365,11 @@ app.put('/api/vehicles/:id', async (req, res) => {
 
     // Jika barcode berubah, generate QR code baru dan hapus yang lama
     if (oldVehicle.barcode !== barcode) {
-      const oldQrPath = path.join(barcodesDir, `${oldVehicle.barcode}.jpg`);
+      const oldQrPath = path.join(barcodesDir, `${oldVehicle.barcode}.png`);
       if (fs.existsSync(oldQrPath)) {
         fs.unlinkSync(oldQrPath);
       }
-      const newQrPath = path.join(barcodesDir, `${barcode}.jpg`);
+      const newQrPath = path.join(barcodesDir, `${barcode}.png`);
       await QRCode.toFile(newQrPath, barcode, { errorCorrectionLevel: 'H', width: 1024, margin: 4, color: { dark: '#000000', light: '#FFFFFF' } });
     }
 
@@ -285,7 +391,7 @@ app.delete('/api/vehicles/:id', async (req, res) => {
     await prisma.vehicle.delete({ where: { id: vehicleId } });
 
     // Hapus QR code
-    const qrPath = path.join(barcodesDir, `${vehicle.barcode}.jpg`);
+    const qrPath = path.join(barcodesDir, `${vehicle.barcode}.png`);
     if (fs.existsSync(qrPath)) {
       fs.unlinkSync(qrPath);
     }
@@ -330,7 +436,7 @@ app.get('/api/workers', async (req, res) => {
 // 8. POST Worker (Tambah Pekerja)
 app.post('/api/workers', async (req, res) => {
   try {
-    const { name, username, password, role } = req.body;
+    const { name, username, password, role, jabatan } = req.body;
     
     // Cek apakah username sudah ada
     const existingUser = await prisma.user.findUnique({ where: { username } });
@@ -342,8 +448,9 @@ app.post('/api/workers', async (req, res) => {
       data: {
         name,
         username,
-        password, // Dalam aplikasi nyata, password harus di-hash (misal dg bcrypt)
-        role: role || 'AMT'
+        password: password ? password : username,
+        role: role || 'AMT',
+        jabatan: jabatan || null
       }
     });
     res.status(201).json({ success: true, worker: newWorker });
@@ -355,11 +462,11 @@ app.post('/api/workers', async (req, res) => {
 // 9. PUT Worker (Ubah Data Pekerja)
 app.put('/api/workers/:id', async (req, res) => {
   try {
-    const { name, username, role, password } = req.body;
+    const { name, username, role, password, jabatan } = req.body;
     
-    const updateData = { name, username, role };
-    if (password) {
-      updateData.password = password; // Jika password diisi, ikut diubah
+    const updateData = { name, username, role, jabatan };
+    if (password && password.trim() !== '') {
+      updateData.password = password;
     }
 
     const updatedWorker = await prisma.user.update({
@@ -384,7 +491,106 @@ app.delete('/api/workers/:id', async (req, res) => {
   }
 });
 
+// --- CHECKLIST ROUTES ---
+
+// GET All Checklists
+app.get('/api/checklists', async (req, res) => {
+  try {
+    const items = await prisma.checklistItem.findMany({ orderBy: { createdAt: 'asc' } });
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST New Checklist Item
+app.post('/api/checklists', async (req, res) => {
+  try {
+    const { name, category, severity } = req.body;
+    const newItem = await prisma.checklistItem.create({
+      data: { name, category, severity }
+    });
+    res.status(201).json(newItem);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT Update Checklist Item
+app.put('/api/checklists/:id', async (req, res) => {
+  try {
+    const { name, category, severity } = req.body;
+    const updated = await prisma.checklistItem.update({
+      where: { id: req.params.id },
+      data: { name, category, severity }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE Checklist Item
+app.delete('/api/checklists/:id', async (req, res) => {
+  try {
+    await prisma.checklistItem.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- ISSUE ROUTES ---
+
+// GET Ongoing Issues
+app.get('/api/issues/ongoing', async (req, res) => {
+  try {
+    const issues = await prisma.issue.findMany({
+      where: { status: 'ONGOING' },
+      include: {
+        handover: {
+          include: { user: true, items: true, photos: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(issues);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET All Issues
+app.get('/api/issues', async (req, res) => {
+  try {
+    const issues = await prisma.issue.findMany({
+      include: {
+        handover: {
+          include: { user: true, items: true, photos: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(issues);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT Resolve Issue
+app.put('/api/issues/:id/resolve', async (req, res) => {
+  try {
+    const updatedIssue = await prisma.issue.update({
+      where: { id: req.params.id },
+      data: { status: 'RESOLVED', resolvedAt: new Date() }
+    });
+    res.json({ success: true, issue: updatedIssue });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Backend server running on port ${PORT} (0.0.0.0)`);
 });

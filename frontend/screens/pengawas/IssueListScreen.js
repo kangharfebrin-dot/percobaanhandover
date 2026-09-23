@@ -8,7 +8,7 @@ import axios from 'axios';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const API_URL = 'http://192.168.1.4:3000/api';
+const API_URL = 'http://192.168.1.7:3000/api';
 
 export default function IssueListScreen({ navigation }) {
   const [issues, setIssues] = useState([]);
@@ -48,28 +48,20 @@ export default function IssueListScreen({ navigation }) {
   const fetchIssues = async () => {
     setLoading(true);
     try {
-      const [vehicleRes, handoverRes] = await Promise.all([
+      const [vehicleRes, issueRes] = await Promise.all([
         axios.get(`${API_URL}/vehicles`),
-        axios.get(`${API_URL}/handovers`)
+        axios.get(`${API_URL}/issues/ongoing`)
       ]);
       
       const activePolisi = vehicleRes.data.map(v => v.noPolisi);
-      const allHandovers = handoverRes.data;
       
-      // Ambil handover terbaru per kendaraan, lalu cek apakah statusnya bermasalah
-      const latestHandoversMap = new Map();
-      allHandovers.forEach(h => {
-        if (!latestHandoversMap.has(h.noPolisi)) {
-          latestHandoversMap.set(h.noPolisi, h);
-        } else {
-          const existing = latestHandoversMap.get(h.noPolisi);
-          if (new Date(h.timestamp) > new Date(existing.timestamp)) {
-            latestHandoversMap.set(h.noPolisi, h);
-          }
-        }
-      });
-      
-      const activeIssues = Array.from(latestHandoversMap.values()).filter(h => h.status !== 'Siap Operasi (Normal)' && activePolisi.includes(h.noPolisi));
+      const activeIssues = issueRes.data
+        .map(issue => ({
+          ...issue.handover,
+          issueId: issue.id
+        }))
+        .filter(h => activePolisi.includes(h.noPolisi));
+        
       setIssues(activeIssues);
     } catch (error) {
       console.error(error);
@@ -92,7 +84,7 @@ export default function IssueListScreen({ navigation }) {
   const executeResolveIssue = async () => {
     setIsResolving(true);
     try {
-      await axios.put(`${API_URL}/handovers/${selectedVehicle.id}`, { status: 'Siap Operasi (Normal)' });
+      await axios.put(`${API_URL}/issues/${selectedVehicle.issueId}/resolve`);
       setManageModalVisible(false);
       setConfirmModalVisible(false);
       fetchIssues();
@@ -264,7 +256,7 @@ export default function IssueListScreen({ navigation }) {
       </Modal>
 
       {/* CUSTOM SUCCESS MODAL */}
-      <Modal visible={successModalVisible} transparent={true} animationType="zoomIn">
+      <Modal visible={successModalVisible} transparent={true} animationType="fade">
         <View style={tw`flex-1 justify-center items-center bg-black/50 px-6`}>
           <View style={tw`bg-white w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl border border-green-100`}>
             {/* Background Accent */}

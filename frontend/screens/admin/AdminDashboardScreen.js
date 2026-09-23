@@ -104,29 +104,17 @@ export default function AdminDashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const vehicleRes = await axios.get('http://192.168.1.4:3000/api/vehicles');
+      const vehicleRes = await axios.get('http://192.168.1.7:3000/api/vehicles');
       const activeVehicles = vehicleRes.data;
       setVehiclesCount(activeVehicles.length);
       const activePolisi = activeVehicles.map(v => v.noPolisi);
 
-      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
-      setAllHandovers(res.data);
+      const res = await axios.get('http://192.168.1.7:3000/api/handovers');
+      const dataHandovers = res.data.data || res.data;
+      setAllHandovers(dataHandovers);
       
-      // Calculate Active Issues (latest handover per vehicle)
-      const latestHandoversMap = new Map();
-      res.data.forEach(h => {
-        if (!latestHandoversMap.has(h.noPolisi)) {
-          latestHandoversMap.set(h.noPolisi, h);
-        } else {
-          const existing = latestHandoversMap.get(h.noPolisi);
-          if (new Date(h.timestamp) > new Date(existing.timestamp)) {
-            latestHandoversMap.set(h.noPolisi, h);
-          }
-        }
-      });
-      
-      const activeIssues = Array.from(latestHandoversMap.values())
-        .filter(h => h.status !== 'Siap Operasi (Normal)' && activePolisi.includes(h.noPolisi));
+      const issueRes = await axios.get('http://192.168.1.7:3000/api/issues/ongoing');
+      const activeIssues = issueRes.data.filter(issue => activePolisi.includes(issue.handover.noPolisi));
       
       setActiveIssuesCount(activeIssues.length);
       
@@ -134,7 +122,7 @@ export default function AdminDashboardScreen({ navigation }) {
       today.setHours(0, 0, 0, 0);
 
       // Hanya ambil handover hari ini, tampilkan semua (Baik & Buruk)
-      const todaysHandovers = res.data.filter(h => new Date(h.timestamp) >= today);
+      const todaysHandovers = dataHandovers.filter(h => new Date(h.timestamp) >= today);
       
       setAlerts(todaysHandovers);
     } catch (error) {
@@ -207,7 +195,7 @@ export default function AdminDashboardScreen({ navigation }) {
   const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
   const renderAlertItem = ({ item }) => {
-    const isBad = item.status !== 'Siap Operasi (Normal)';
+    const isBad = item.status !== 'Siap Operasi (Normal)' && !item.isResolved;
     
     return (
       <View style={[tw`p-5 rounded-3xl mb-4 flex-row items-center overflow-hidden border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: isBad ? '#ED1C24' : '#00A651', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }]}>

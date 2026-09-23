@@ -1,40 +1,61 @@
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+const { PrismaClient } = require('@prisma/client');
 
-async function main() {
+const prisma = new PrismaClient();
+
+async function syncBarcodes() {
   const barcodesDir = path.join(__dirname, 'barcodes');
   
   if (!fs.existsSync(barcodesDir)) {
-    fs.mkdirSync(barcodesDir);
+    fs.mkdirSync(barcodesDir, { recursive: true });
   }
 
-  // Hardcoded dari seed.js
-  const vehicles = [
-    { noPolisi: 'B 1234 CD', barcode: 'TRK-001', jenisKendaraan: 'Truk Tangki 8KL' },
-    { noPolisi: 'B 5678 EF', barcode: 'TRK-002', jenisKendaraan: 'Truk Tangki 16KL' },
-    { noPolisi: 'B 9101 GH', barcode: 'TRK-003', jenisKendaraan: 'Truk Tangki 24KL' },
-    { noPolisi: 'B 1121 IJ', barcode: 'TRK-004', jenisKendaraan: 'Truk Tangki 8KL' },
-    { noPolisi: 'B 3141 KL', barcode: 'TRK-005', jenisKendaraan: 'Truk Tangki 16KL' }
-  ];
+  // 1. Ambil seluruh data kendaraan dari database
+  const vehicles = await prisma.vehicle.findMany();
+  console.log(`Ditemukan ${vehicles.length} kendaraan di database:`);
+  vehicles.forEach(v => console.log(` - Plat: ${v.noPolisi}, Barcode: ${v.barcode}`));
 
-  console.log(`Ditemukan ${vehicles.length} kendaraan. Membuat QR codes...`);
+  // Kumpulan nama file yang valid (format: <barcode>.png)
+  const validFiles = new Set(vehicles.map(v => `${v.barcode}.png`));
 
+  // 2. Buat QR code .png untuk setiap kendaraan yang ada di database
   for (const vehicle of vehicles) {
-    const qrData = vehicle.barcode; 
+    const qrData = vehicle.barcode;
     const filePath = path.join(barcodesDir, `${qrData}.png`);
     
     try {
       await QRCode.toFile(filePath, qrData, {
-        color: { dark: '#000000', light: '#FFFFFF' },
+        errorCorrectionLevel: 'H',
         width: 1024,
-        margin: 4
+        margin: 4,
+        color: { dark: '#000000', light: '#FFFFFF' }
       });
-      console.log(`✅ Berhasil membuat QR code untuk: ${qrData} (Plat: ${vehicle.noPolisi})`);
+      console.log(`✅ Barcode siap: ${qrData}.png (Plat: ${vehicle.noPolisi})`);
     } catch (err) {
       console.error(`❌ Gagal membuat QR code untuk ${qrData}:`, err);
     }
   }
+
+  // 3. Hapus file-file lama di folder barcodes yang tidak terdaftar di database
+  const existingFiles = fs.readdirSync(barcodesDir);
+  let deletedCount = 0;
+
+  for (const file of existingFiles) {
+    if (!validFiles.has(file)) {
+      const filePath = path.join(barcodesDir, file);
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ Menghapus file lama/tidak relevan: ${file}`);
+      deletedCount++;
+    }
+  }
+
+  console.log(`\nSinkronisasi selesai. ${vehicles.length} barcode aktif, ${deletedCount} file lama dihapus.`);
 }
 
-main().catch(console.error);
+syncBarcodes()
+  .catch(console.error)
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

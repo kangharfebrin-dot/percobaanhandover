@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -71,49 +72,53 @@ export default function ChecklistManagerScreen({ navigation }) {
 
   const loadItems = async () => {
     try {
-      const stored = await AsyncStorage.getItem('HANDOVER_CHECKLIST_V2');
-      if (stored) {
-        setItems(JSON.parse(stored));
-      } else {
-        setItems(DEFAULT_ITEMS);
-        await AsyncStorage.setItem('HANDOVER_CHECKLIST_V2', JSON.stringify(DEFAULT_ITEMS));
-      }
+      const res = await axios.get('http://192.168.1.7:3000/api/checklists');
+      setItems(res.data);
     } catch (e) {
       console.error(e);
+      Alert.alert('Error', 'Gagal memuat data checklist dari server');
     }
   };
 
-  const saveItems = async (newItems) => {
-    try {
-      await AsyncStorage.setItem('HANDOVER_CHECKLIST_V2', JSON.stringify(newItems));
-      setItems(newItems);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!newName.trim()) {
       Alert.alert('Error', 'Nama pengecekan tidak boleh kosong.');
       return;
     }
 
-    let updatedList;
-    if (editingItem) {
-      updatedList = items.map(i => i.id === editingItem.id ? { ...i, name: newName, category: newCategory, severity: newSeverity } : i);
-    } else {
-      updatedList = [...items, { id: Date.now().toString(), name: newName, category: newCategory, severity: newSeverity }];
+    try {
+      if (editingItem) {
+        await axios.put(`http://192.168.1.7:3000/api/checklists/${editingItem.id}`, {
+          name: newName,
+          category: newCategory,
+          severity: newSeverity
+        });
+      } else {
+        await axios.post('http://192.168.1.7:3000/api/checklists', {
+          name: newName,
+          category: newCategory,
+          severity: newSeverity
+        });
+      }
+      loadItems();
+      setModalVisible(false);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Gagal menyimpan data ke server');
     }
-    
-    saveItems(updatedList);
-    setModalVisible(false);
   };
 
   const handleDelete = (id) => {
     Alert.alert('Hapus Item', 'Yakin ingin menghapus form pengecekan ini?', [
       { text: 'Batal', style: 'cancel' },
-      { text: 'Hapus', style: 'destructive', onPress: () => {
-        saveItems(items.filter(i => i.id !== id));
+      { text: 'Hapus', style: 'destructive', onPress: async () => {
+        try {
+          await axios.delete(`http://192.168.1.7:3000/api/checklists/${id}`);
+          loadItems();
+        } catch (e) {
+          console.error(e);
+          Alert.alert('Error', 'Gagal menghapus data dari server');
+        }
       }}
     ]);
   };

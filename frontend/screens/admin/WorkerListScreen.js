@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const API_URL = 'http://192.168.1.4:3000/api'; // Sesuaikan IP backend
+const API_URL = 'http://192.168.1.7:3000/api'; // Sesuaikan IP backend
 
 export default function WorkerListScreen({ navigation }) {
   const [workers, setWorkers] = useState([]);
@@ -21,12 +21,16 @@ export default function WorkerListScreen({ navigation }) {
   // Modal CRUD Worker
   const [manageModalVisible, setManageModalVisible] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
-  
+
   // Form States
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('AMT');
+  const [jabatan, setJabatan] = useState('');
+
+  const [filterJabatan, setFilterJabatan] = useState('Semua');
+  const [sortBy, setSortBy] = useState('Abjad');
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -72,8 +76,22 @@ export default function WorkerListScreen({ navigation }) {
 
   const filteredWorkers = workers.filter((item) => {
     const searchLower = searchQuery.toLowerCase();
-    return item.name.toLowerCase().includes(searchLower) || 
-           item.username.toLowerCase().includes(searchLower);
+    const matchesSearch = item.name.toLowerCase().includes(searchLower) ||
+                          item.username.toLowerCase().includes(searchLower);
+                          
+    let matchesJabatan = true;
+    if (filterJabatan !== 'Semua') {
+      matchesJabatan = item.jabatan === filterJabatan;
+    }
+
+    return matchesSearch && matchesJabatan;
+  }).sort((a, b) => {
+    if (sortBy === 'Abjad') {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === 'NIP') {
+      return a.username.localeCompare(b.username);
+    }
+    return 0;
   });
 
   const openAddModal = () => {
@@ -81,6 +99,7 @@ export default function WorkerListScreen({ navigation }) {
     setName('');
     setUsername('');
     setPassword('');
+    setJabatan('');
     setRole('AMT');
     setManageModalVisible(true);
   };
@@ -90,6 +109,7 @@ export default function WorkerListScreen({ navigation }) {
     setName(worker.name);
     setUsername(worker.username);
     setPassword(''); // biarkan kosong jika tidak diubah
+    setJabatan(worker.jabatan || '');
     setRole(worker.role);
     setManageModalVisible(true);
   };
@@ -114,7 +134,7 @@ export default function WorkerListScreen({ navigation }) {
     }
 
     try {
-      const data = { name, username, role };
+      const data = { name, username, role, jabatan };
       if (password) data.password = password;
 
       if (selectedWorker) {
@@ -138,8 +158,8 @@ export default function WorkerListScreen({ navigation }) {
 
     Alert.alert("Konfirmasi Hapus", `Apakah Anda yakin ingin menghapus ${selectedWorker.name}?`, [
       { text: "Batal", style: "cancel" },
-      { 
-        text: "Hapus", 
+      {
+        text: "Hapus",
         style: "destructive",
         onPress: async () => {
           try {
@@ -164,10 +184,10 @@ export default function WorkerListScreen({ navigation }) {
           </View>
           <View style={tw`flex-1`}>
             <Text style={tw`text-lg font-black text-gray-800`} numberOfLines={1}>{item.name}</Text>
-            <Text style={tw`text-sm font-bold text-gray-500`}>@{item.username} • {item.role}</Text>
+            <Text style={tw`text-sm font-bold text-gray-500`}>@{item.username} • {item.jabatan || item.role}</Text>
           </View>
         </View>
-        
+
         {(user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS' || user?.role === 'ADMIN') && (
           <TouchableOpacity onPress={() => openEditModal(item)} style={tw`p-2 bg-gray-50 rounded-full border border-gray-200`}>
             <Feather name="edit-2" size={18} color="#4B5563" />
@@ -190,8 +210,8 @@ export default function WorkerListScreen({ navigation }) {
       </Animated.View>
 
       <SafeAreaView style={tw`flex-1 relative`}>
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
-          
+        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+
           <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#0055A5" />
           </TouchableOpacity>
@@ -199,15 +219,15 @@ export default function WorkerListScreen({ navigation }) {
         </View>
 
         <View style={tw`flex-1 relative`}>
-          <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
-            <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100`}>
+          <View style={tw`px-6 pt-2`}>
+            <View style={tw`flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput 
-                style={tw`flex-1 ml-3 text-gray-800 font-medium`} 
-                placeholder="Cari Nama atau Username..." 
-                placeholderTextColor="#9CA3AF" 
-                value={searchQuery} 
-                onChangeText={setSearchQuery} 
+              <TextInput
+                style={tw`flex-1 ml-3 text-gray-800 font-medium`}
+                placeholder="Cari Nama atau Username..."
+                placeholderTextColor="#9CA3AF"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
               />
               {searchQuery !== '' && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -215,9 +235,28 @@ export default function WorkerListScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`flex-row`}>
+              <TouchableOpacity onPress={() => setSortBy('Abjad')} style={tw`px-4 py-2 rounded-full mr-2 border ${sortBy === 'Abjad' ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-white border-gray-200'}`}>
+                <Text style={tw`text-xs font-bold ${sortBy === 'Abjad' ? 'text-white' : 'text-gray-500'}`}>Urut Abjad</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSortBy('NIP')} style={tw`px-4 py-2 rounded-full mr-2 border ${sortBy === 'NIP' ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-white border-gray-200'}`}>
+                <Text style={tw`text-xs font-bold ${sortBy === 'NIP' ? 'text-white' : 'text-gray-500'}`}>Urut NIP</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => setFilterJabatan('Semua')} style={tw`px-4 py-2 rounded-full mr-2 border ${filterJabatan === 'Semua' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
+                <Text style={tw`text-xs font-bold ${filterJabatan === 'Semua' ? 'text-white' : 'text-gray-500'}`}>Semua AMT</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFilterJabatan('AMT I')} style={tw`px-4 py-2 rounded-full mr-2 border ${filterJabatan === 'AMT I' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
+                <Text style={tw`text-xs font-bold ${filterJabatan === 'AMT I' ? 'text-white' : 'text-gray-500'}`}>AMT I</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFilterJabatan('AMT II')} style={tw`px-4 py-2 rounded-full mr-4 border ${filterJabatan === 'AMT II' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
+                <Text style={tw`text-xs font-bold ${filterJabatan === 'AMT II' ? 'text-white' : 'text-gray-500'}`}>AMT II</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
-          <View style={tw`px-6 mt-4 mb-2`}>
+          <View style={tw`px-6 mt-2 mb-2`}>
             <Text style={tw`text-gray-500 font-bold uppercase tracking-widest text-xs`}>{filteredWorkers.length} Pekerja Terdaftar</Text>
           </View>
 
@@ -239,7 +278,7 @@ export default function WorkerListScreen({ navigation }) {
 
         {/* Floating Action Button (Only for Admin) */}
         {(user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS' || user?.role === 'ADMIN') && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50`}
             onPress={openAddModal}
           >
@@ -259,37 +298,56 @@ export default function WorkerListScreen({ navigation }) {
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={tw`mb-4`}>
               <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pekerja</Text>
-              <TextInput 
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} 
-                placeholder="Masukkan nama lengkap" 
-                value={name} 
-                onChangeText={setName} 
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                placeholder="Masukkan nama lengkap"
+                value={name}
+                onChangeText={setName}
               />
             </View>
-            
+
             <View style={tw`mb-4`}>
               <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Username</Text>
-              <TextInput 
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} 
-                placeholder="Masukkan username" 
-                value={username} 
-                onChangeText={setUsername} 
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                placeholder="Masukkan username"
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
               />
             </View>
-            
+
+            <View style={tw`mb-4`}>
+              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan (Cth: AMT I / AMT II)</Text>
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                placeholder="Masukkan jabatan (opsional)"
+                value={jabatan}
+                onChangeText={setJabatan}
+              />
+            </View>
+
             <View style={tw`mb-6`}>
+              {selectedWorker && (
+                <View style={tw`mb-4 p-4 bg-gray-100 rounded-xl border border-gray-200 flex-row justify-between items-center`}>
+                  <View>
+                    <Text style={tw`text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1`}>Password Saat Ini</Text>
+                    <Text style={tw`text-sm font-bold text-gray-700`}>{selectedWorker.password}</Text>
+                  </View>
+                  <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+                </View>
+              )}
               <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
-                Password {selectedWorker && '(Kosongkan jika tidak diubah)'}
+                Password {selectedWorker ? '(Kosongkan jika tidak diubah)' : ''}
               </Text>
-              <TextInput 
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} 
-                placeholder="Masukkan password" 
-                value={password} 
-                onChangeText={setPassword} 
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                placeholder={selectedWorker ? "Masukkan password baru" : "Masukkan password"}
+                value={password}
+                onChangeText={setPassword}
                 secureTextEntry
               />
             </View>
@@ -306,7 +364,7 @@ export default function WorkerListScreen({ navigation }) {
                 </>
               ) : (
                 <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveWorker}>
-                  <Text style={tw`text-white font-black tracking-wide`}>SIMPAN PEKERJA</Text>
+                  <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PEKERJA</Text>
                 </TouchableOpacity>
               )}
             </View>

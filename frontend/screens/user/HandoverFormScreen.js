@@ -79,8 +79,11 @@ export default function HandoverFormScreen({ route, navigation }) {
   useEffect(() => {
     const loadChecklist = async () => {
       try {
-        const stored = await AsyncStorage.getItem('HANDOVER_CHECKLIST_V2');
-        const sourceItems = stored ? JSON.parse(stored) : DEFAULT_ITEMS;
+        const res = await axios.get('http://192.168.1.7:3000/api/checklists');
+        let sourceItems = res.data;
+        if (!sourceItems || sourceItems.length === 0) {
+          sourceItems = DEFAULT_ITEMS;
+        }
         setItems(sourceItems.map(item => ({
           category: item.category,
           name: item.name,
@@ -89,20 +92,38 @@ export default function HandoverFormScreen({ route, navigation }) {
           catatan: ''
         })));
       } catch (e) {
-        console.error(e);
+        console.error("Gagal mengambil checklist dari API, menggunakan default:", e);
+        setItems(DEFAULT_ITEMS.map(item => ({
+          category: item.category,
+          name: item.name,
+          status: null,
+          severity: item.severity || 'Minor',
+          catatan: ''
+        })));
       }
     };
     loadChecklist();
 
     (async () => {
       try {
+        // Ambil User Role agar goToDashboard berfungsi benar
+        const userStr = await AsyncStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUserRole(user.role || 'USER');
+        }
+
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          let loc = await Location.getCurrentPositionAsync({});
+          // OPTIMASI LOKASI: Gunakan akurasi Balanced dan timeout agar tidak hang
+          let loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 5000
+          });
           setLocation(loc.coords);
         }
       } catch (err) {
-        console.log("Location fetch silently failed on mount:", err);
+        console.log("Location or user fetch silently failed on mount:", err);
       }
     })();
   }, []);
@@ -152,12 +173,16 @@ export default function HandoverFormScreen({ route, navigation }) {
         return;
       }
 
-      let loc = await Location.getCurrentPositionAsync({});
+      // OPTIMASI LOKASI: Gunakan akurasi Balanced agar tidak loading lama mencari GPS presisi tinggi
+      let loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced, 
+        timeout: 5000 // Timeout maksimal 5 detik
+      });
       setLocation(loc.coords);
     } catch (err) {
       setLoading(false);
-      Alert.alert("Gagal Mendapatkan Lokasi", "Gagal mendapatkan lokasi GPS. Pastikan GPS Anda sudah menyala.");
-      return;
+      // Fallback jika GPS tidak ditemukan dalam 5 detik
+      Alert.alert("GPS Lemah", "Lokasi tidak akurat atau tidak ditemukan. Tetap bisa lanjut foto.");
     }
     setLoading(false);
 
@@ -203,10 +228,12 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   // SUBMIT LOGIC
 
-  const goToDashboard = () => {
-    if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+  // Menerima role sebagai parameter agar tidak bergantung pada state yang mungkin masih stale
+  const goToDashboard = (role) => {
+    const r = role || userRole;
+    if (r === 'SUPER_ADMIN' || r === 'ADMIN') {
       navigation.navigate('AdminDashboard');
-    } else if (userRole === 'PENGAWAS') {
+    } else if (r === 'PENGAWAS') {
       navigation.navigate('PengawasDashboard');
     } else {
       navigation.navigate('UserDashboard');
@@ -248,7 +275,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     try {
       const userStr = await AsyncStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : { id: 1, role: 'USER' }; // Fallback for dev
-      setUserRole(user.role || 'USER');
+      const currentRole = user.role || 'USER'; // Simpan di variabel lokal, jangan andalkan state
 
       const formData = new FormData();
       formData.append('userId', user.id);
@@ -278,7 +305,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
-      await axios.post('http://192.168.1.4:3000/api/handovers', formData, {
+      await axios.post('http://192.168.1.7:3000/api/handovers', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -287,10 +314,11 @@ export default function HandoverFormScreen({ route, navigation }) {
       // Tampilkan Modal Sukses Cantik
       setShowSuccessModal(true);
 
-      // Otomatis kembali ke dashboard setelah 2 detik
+      // Otomatis kembali ke dashboard setelah 2.5 detik
+      // Gunakan currentRole (variabel lokal) agar tidak bergantung state yang async
       setTimeout(() => {
         setShowSuccessModal(false);
-        goToDashboard();
+        goToDashboard(currentRole);
       }, 2500);
 
     } catch (error) {

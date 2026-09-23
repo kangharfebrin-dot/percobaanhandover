@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Dimensions, Platform, Modal, Animated, Image, Easing } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Dimensions, Platform, Modal, Animated, Image, Easing, ScrollView, Linking, Alert } from 'react-native';
 import tw from 'twrnc';
 import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,23 +15,34 @@ export default function HistoryScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  // Filter states
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Filter states (applied)
   const [searchQuery, setSearchQuery] = useState(route?.params?.noPolisi || '');
-  const [selectedStatus, setSelectedStatus] = useState('Semua'); 
+  const [selectedStatus, setSelectedStatus] = useState('Semua');
   const [selectedShift, setSelectedShift] = useState('Semua');
   const [selectedMonth, setSelectedMonth] = useState('Semua');
+  const [selectedYear, setSelectedYear] = useState('Semua');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
+
+  // Temp filter states (inside modal, only applied on TERAPKAN)
+  const [tempStatus, setTempStatus] = useState('Semua');
+  const [tempShift, setTempShift] = useState('Semua');
+  const [tempMonth, setTempMonth] = useState('Semua');
+  const [tempYear, setTempYear] = useState('Semua');
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
-  
+
   const [activeMenu, setActiveMenu] = useState('History');
   const [previousMenu, setPreviousMenu] = useState('History');
-  
+
   const fadeAnim = React.useRef(new Animated.Value(0.3)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
   const floatAnim1 = React.useRef(new Animated.Value(0)).current;
   const floatAnim2 = React.useRef(new Animated.Value(0)).current;
   const floatAnim3 = React.useRef(new Animated.Value(0)).current;
-  
+
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const isLargeScreen = screenWidth > 768;
 
@@ -96,19 +107,48 @@ export default function HistoryScreen({ route, navigation }) {
     loadUserAndHistory();
   }, []);
 
-  const fetchHistory = async (userData) => {
+  const fetchHistory = async (userData, pageNum = 1) => {
     try {
-      const res = await axios.get('http://192.168.1.4:3000/api/handovers');
-      let data = res.data;
+      if (pageNum === 1) setLoading(true);
+      const res = await axios.get(`http://192.168.1.7:3000/api/handovers?page=${pageNum}&limit=20`);
+      let data = res.data.data || res.data; // fallback jika API lama
+
       if (userData && (userData.role === 'AMT' || userData.role === 'USER')) {
-        // Asumsi data res.data berisi relasi user, atau memiliki userId
-        data = res.data.filter(h => h.userId === userData.id || (h.user && h.user.id === userData.id));
+        data = data.filter(h => h.userId === userData.id || (h.user && h.user.id === userData.id));
       }
-      setHandovers(data);
+
+      if (pageNum === 1) {
+        setHandovers(data);
+      } else {
+        setHandovers(prev => [...prev, ...data]);
+      }
+
+      if (res.data.meta) {
+        setHasMore(pageNum < res.data.meta.totalPages);
+      } else {
+        setHasMore(false); // If backend doesn't support meta yet
+      }
+      setPage(pageNum);
     } catch (error) {
-      console.log('Gagal fetch history (mungkin server/DB offline):', error.message);
+      console.log('Gagal fetch history:', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (hasMore && !loading) {
+      fetchHistory(user, page + 1);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const url = 'http://192.168.1.7:3000/api/handovers/export';
+      await Linking.openURL(url);
+    } catch (err) {
+      console.log('Gagal export excel:', err);
+      Alert.alert('Gagal Mengunduh', 'Tidak dapat membuka browser untuk mengunduh Excel: ' + err.message);
     }
   };
 
@@ -136,58 +176,107 @@ export default function HistoryScreen({ route, navigation }) {
     return 'UserDashboard';
   };
 
+  // Compute dynamic filter options from handovers data
+  const BULAN_LIST = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  const uniqueYears = [...new Set(handovers.map(h => new Date(h.timestamp).getFullYear()))].sort((a, b) => b - a);
+  const uniqueMonths = [...new Set(handovers.map(h => {
+    const d = new Date(h.timestamp);
+    return BULAN_LIST[d.getMonth()];
+  }))].sort((a, b) => BULAN_LIST.indexOf(a) - BULAN_LIST.indexOf(b));
+
+  const activeFilterCount = [selectedStatus, selectedShift, selectedMonth, selectedYear].filter(v => v !== 'Semua').length;
+
+  const openFilterModal = () => {
+    // Sync temp states from current applied states
+    setTempStatus(selectedStatus);
+    setTempShift(selectedShift);
+    setTempMonth(selectedMonth);
+    setTempYear(selectedYear);
+    setIsFilterVisible(true);
+  };
+
+  const applyFilters = () => {
+    setSelectedStatus(tempStatus);
+    setSelectedShift(tempShift);
+    setSelectedMonth(tempMonth);
+    setSelectedYear(tempYear);
+    setIsFilterVisible(false);
+  };
+
+  const resetTempFilters = () => {
+    setTempStatus('Semua');
+    setTempShift('Semua');
+    setTempMonth('Semua');
+    setTempYear('Semua');
+  };
+
+  const resetAllFilters = () => {
+    setSelectedStatus('Semua');
+    setSelectedShift('Semua');
+    setSelectedMonth('Semua');
+    setSelectedYear('Semua');
+    setSearchQuery('');
+  };
+
   const filteredHandovers = handovers.filter((item) => {
-    let matchesSearch = false;
-    const dateStr = new Date(item.timestamp).toLocaleString('id-ID'); // e.g. "22/9/2026, 09:27:00"
-    const monthStr = new Date(item.timestamp).toLocaleString('id-ID', { month: 'long' }).toLowerCase();
-    
-    if (user && (user.role === 'AMT' || user.role === 'USER')) {
-      matchesSearch = item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                      dateStr.includes(searchQuery) ||
-                      monthStr.includes(searchQuery.toLowerCase());
-    } else {
-      matchesSearch = 
-        item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (item.user && item.user.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        dateStr.includes(searchQuery) ||
-        monthStr.includes(searchQuery.toLowerCase());
+    // Search bar (untuk cari Nopol, Nama AMT, Tanggal)
+    let matchesSearch = true;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const dateStr = new Date(item.timestamp).toLocaleString('id-ID');
+      matchesSearch =
+        item.noPolisi.toLowerCase().includes(q) ||
+        (item.user && item.user.name.toLowerCase().includes(q)) ||
+        dateStr.toLowerCase().includes(q);
     }
-      
+
     const isNormal = item.status === 'Siap Operasi (Normal)';
-    
+
     let matchesStatus = true;
     if (selectedStatus === 'Normal') matchesStatus = isNormal;
     if (selectedStatus === 'Isu') matchesStatus = !isNormal;
-    
+
     let matchesShift = true;
     if (selectedShift !== 'Semua') matchesShift = item.shift === selectedShift;
 
     let matchesMonth = true;
     if (selectedMonth !== 'Semua') {
-      const itemMonth = new Date(item.timestamp).toLocaleString('id-ID', { month: 'long' });
-      if (itemMonth.toLowerCase() !== selectedMonth.toLowerCase()) matchesMonth = false;
+      const itemMonth = BULAN_LIST[new Date(item.timestamp).getMonth()];
+      matchesMonth = itemMonth === selectedMonth;
     }
-    
-    return matchesSearch && matchesStatus && matchesShift && matchesMonth;
+
+    let matchesYear = true;
+    if (selectedYear !== 'Semua') {
+      matchesYear = new Date(item.timestamp).getFullYear() === parseInt(selectedYear);
+    }
+
+    return matchesSearch && matchesStatus && matchesShift && matchesMonth && matchesYear;
   });
 
   const renderItem = ({ item }) => {
     const isNormal = item.status === 'Siap Operasi (Normal)';
+    const isResolved = item.issue && item.issue.status === 'RESOLVED';
+
     return (
-      <View style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? 'border-green-100' : 'border-red-200'}`}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('HandoverDetail', { handover: item })}
+        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? 'border-green-100' : (isResolved ? 'border-blue-200' : 'border-red-200')}`}
+      >
         <View style={tw`flex-row justify-between items-start mb-3`}>
           <View style={tw`flex-row items-center`}>
-            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isNormal ? 'bg-green-100' : 'bg-red-100'}`}>
-              <Ionicons name={isNormal ? "checkmark-circle" : "warning"} size={28} color={isNormal ? "#00A651" : "#ED1C24"} />
+            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`}>
+              <Ionicons name={isNormal ? "checkmark-circle" : (isResolved ? "checkmark-done-circle" : "warning")} size={28} color={isNormal ? "#00A651" : (isResolved ? "#0055A5" : "#ED1C24")} />
             </View>
             <View>
               <Text style={tw`text-xl font-bold text-gray-800`}>{item.noPolisi}</Text>
-              <Text style={tw`text-sm text-gray-500`}>{item.shift} • {item.user.name}</Text>
+              <Text style={tw`text-sm text-gray-500`}>{item.shift} • {item.user.name} {item.user.jabatan ? `(${item.user.jabatan})` : ''}</Text>
             </View>
           </View>
-          <View style={tw`px-3 py-1 rounded-full ${isNormal ? 'bg-green-100' : 'bg-red-500'}`}>
-            <Text style={tw`text-xs font-bold ${isNormal ? 'text-green-700' : 'text-white'}`}>
-              {isNormal ? 'NORMAL' : 'ISU'}
+          <View style={tw`px-3 py-1 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`}>
+            <Text style={tw`text-xs font-bold ${isNormal ? 'text-green-700' : (isResolved ? 'text-blue-700' : 'text-white')}`}>
+              {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
             </Text>
           </View>
         </View>
@@ -202,7 +291,13 @@ export default function HistoryScreen({ route, navigation }) {
             ))}
           </View>
         )}
-      </View>
+
+        {/* Tap indicator */}
+        <View style={tw`flex-row items-center justify-end mt-3 pt-3 border-t border-gray-100`}>
+          <Text style={tw`text-xs text-[#0055A5] font-bold mr-1`}>Lihat Detail</Text>
+          <Ionicons name="chevron-forward" size={14} color="#0055A5" />
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -220,12 +315,12 @@ export default function HistoryScreen({ route, navigation }) {
       </Animated.View>
 
       <SafeAreaView style={tw`flex-1 relative`}>
-        
+
         {/* STICKY NAVBAR (Floating Modern Style) */}
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
+        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
           {/* Faint Logo Watermark with Clip */}
-          
-          
+
+
           <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#0055A5" />
           </TouchableOpacity>
@@ -237,7 +332,7 @@ export default function HistoryScreen({ route, navigation }) {
           <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
             <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mr-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput 
+              <TextInput
                 style={tw`flex-1 ml-3 text-gray-800 font-medium`}
                 placeholder={user && (user.role === 'AMT' || user.role === 'USER') ? "Cari berdasarkan Nopol..." : "Cari Nopol atau Nama AMT..."}
                 placeholderTextColor="#9CA3AF"
@@ -250,13 +345,56 @@ export default function HistoryScreen({ route, navigation }) {
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity 
-              style={tw`bg-[#0055A5] p-3 rounded-2xl shadow-md shadow-blue-500/30`}
-              onPress={() => setIsFilterVisible(true)}
+            <TouchableOpacity
+              style={tw`bg-[#0055A5] p-3 rounded-2xl shadow-md shadow-blue-500/30 relative`}
+              onPress={openFilterModal}
             >
               <Feather name="filter" size={22} color="white" />
+              {activeFilterCount > 0 && (
+                <View style={tw`absolute -top-2 -right-2 w-5 h-5 bg-[#ED1C24] rounded-full items-center justify-center`}>
+                  <Text style={tw`text-white text-[10px] font-black`}>{activeFilterCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
+
+          {/* Active Filter Chips */}
+          {activeFilterCount > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`px-6 pt-3`} contentContainerStyle={tw`flex-row items-center gap-2`}>
+              {selectedStatus !== 'Semua' && (
+                <TouchableOpacity onPress={() => setSelectedStatus('Semua')} style={tw`flex-row items-center ${selectedStatus === 'Isu' ? 'bg-[#ED1C24]' : 'bg-[#00A651]'} px-3 py-2 rounded-full`}>
+                  <Ionicons name="shield-checkmark" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedStatus}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              {selectedShift !== 'Semua' && (
+                <TouchableOpacity onPress={() => setSelectedShift('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
+                  <Ionicons name="time" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedShift}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              {selectedYear !== 'Semua' && (
+                <TouchableOpacity onPress={() => setSelectedYear('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
+                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedYear}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              {selectedMonth !== 'Semua' && (
+                <TouchableOpacity onPress={() => setSelectedMonth('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
+                  <Ionicons name="calendar-outline" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedMonth}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={resetAllFilters} style={tw`flex-row items-center bg-gray-200 px-3 py-2 rounded-full`}>
+                <Text style={tw`text-gray-600 text-xs font-bold mr-1`}>Hapus Semua</Text>
+                <Ionicons name="trash-outline" size={12} color="#6B7280" />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
 
           {/* Filter Modal */}
           <Modal
@@ -266,62 +404,100 @@ export default function HistoryScreen({ route, navigation }) {
             onRequestClose={() => setIsFilterVisible(false)}
           >
             <View style={tw`flex-1 justify-end bg-black/40`}>
-              <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
-                <View style={tw`flex-row justify-between items-center mb-6`}>
-                  <Text style={tw`text-2xl font-black text-gray-800`}>Filter Riwayat</Text>
-                  <TouchableOpacity onPress={() => setIsFilterVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
-                    <Ionicons name="close" size={24} color="#6B7280" />
+              <View style={tw`bg-white rounded-t-[30px] shadow-2xl max-h-[85%]`}>
+                {/* Header */}
+                <View style={tw`flex-row justify-between items-center p-6 pb-4 border-b border-gray-100`}>
+                  <View>
+                    <Text style={tw`text-2xl font-black text-gray-800`}>Filter Riwayat</Text>
+                    <Text style={tw`text-xs text-gray-400 font-medium mt-1`}>{activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tidak ada filter aktif'}</Text>
+                  </View>
+                  <View style={tw`flex-row items-center gap-2`}>
+                    {activeFilterCount > 0 && (
+                      <TouchableOpacity onPress={resetTempFilters} style={tw`px-4 py-2 bg-red-50 rounded-full border border-red-200`}>
+                        <Text style={tw`text-xs font-bold text-red-500`}>Reset</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => setIsFilterVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
+                      <Ionicons name="close" size={24} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <ScrollView style={tw`px-6`} showsVerticalScrollIndicator={false}>
+                  {/* Status Filter */}
+                  <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
+                    <Ionicons name="shield-checkmark" size={14} color="#9CA3AF" />  Status
+                  </Text>
+                  <View style={tw`flex-row flex-wrap mb-5`}>
+                    {['Semua', 'Normal', 'Isu'].map(status => (
+                      <TouchableOpacity
+                        key={status}
+                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempStatus === status ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
+                        onPress={() => setTempStatus(status)}
+                      >
+                        <Text style={tw`text-sm font-bold ${tempStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Shift Filter */}
+                  <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
+                    <Ionicons name="time" size={14} color="#9CA3AF" />  Shift
+                  </Text>
+                  <View style={tw`flex-row flex-wrap mb-5`}>
+                    {['Semua', 'Shift 1', 'Shift 2'].map(shift => (
+                      <TouchableOpacity
+                        key={shift}
+                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempShift === shift ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
+                        onPress={() => setTempShift(shift)}
+                      >
+                        <Text style={tw`text-sm font-bold ${tempShift === shift ? 'text-white' : 'text-gray-600'}`}>{shift}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Year Filter */}
+                  <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
+                    <Ionicons name="calendar" size={14} color="#9CA3AF" />  Tahun
+                  </Text>
+                  <View style={tw`flex-row flex-wrap mb-5`}>
+                    {['Semua', ...uniqueYears.map(String)].map(year => (
+                      <TouchableOpacity
+                        key={year}
+                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempYear === year ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
+                        onPress={() => setTempYear(year)}
+                      >
+                        <Text style={tw`text-sm font-bold ${tempYear === year ? 'text-white' : 'text-gray-600'}`}>{year}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Month Filter */}
+                  <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
+                    <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />  Bulan
+                  </Text>
+                  <View style={tw`flex-row flex-wrap mb-8`}>
+                    {['Semua', ...uniqueMonths].map(month => (
+                      <TouchableOpacity
+                        key={month}
+                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempMonth === month ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
+                        onPress={() => setTempMonth(month)}
+                      >
+                        <Text style={tw`text-sm font-bold ${tempMonth === month ? 'text-white' : 'text-gray-600'}`}>{month}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                {/* Apply Button */}
+                <View style={tw`p-6 pt-4 border-t border-gray-100`}>
+                  <TouchableOpacity
+                    style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`}
+                    onPress={applyFilters}
+                  >
+                    <Text style={tw`text-white font-black text-lg tracking-wide`}>TERAPKAN FILTER</Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Status Filter */}
-                <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Berdasarkan Status</Text>
-                <View style={tw`flex-row flex-wrap mb-6`}>
-                  {['Semua', 'Normal', 'Isu'].map(status => (
-                    <TouchableOpacity 
-                      key={status} 
-                      style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedStatus === status ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
-                      onPress={() => setSelectedStatus(status)}
-                    >
-                      <Text style={tw`text-sm font-bold ${selectedStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Shift Filter */}
-                <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Berdasarkan Shift</Text>
-                <View style={tw`flex-row flex-wrap mb-6`}>
-                  {['Semua', 'Shift 1', 'Shift 2'].map(shift => (
-                    <TouchableOpacity 
-                      key={shift} 
-                      style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedShift === shift ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
-                      onPress={() => setSelectedShift(shift)}
-                    >
-                      <Text style={tw`text-sm font-bold ${selectedShift === shift ? 'text-white' : 'text-gray-600'}`}>{shift}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Month Filter */}
-                <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Bulan Inspeksi</Text>
-                <View style={tw`flex-row flex-wrap mb-10`}>
-                  {['Semua', 'Juli', 'Agustus', 'September'].map(month => (
-                    <TouchableOpacity 
-                      key={month} 
-                      style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedMonth === month ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
-                      onPress={() => setSelectedMonth(month)}
-                    >
-                      <Text style={tw`text-sm font-bold ${selectedMonth === month ? 'text-white' : 'text-gray-600'}`}>{month}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TouchableOpacity 
-                  style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`}
-                  onPress={() => setIsFilterVisible(false)}
-                >
-                  <Text style={tw`text-white font-black text-lg tracking-wide`}>TERAPKAN FILTER</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -340,6 +516,19 @@ export default function HistoryScreen({ route, navigation }) {
               data={filteredHandovers}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                hasMore ? (
+                  <View style={tw`py-4 items-center`}>
+                    <ActivityIndicator size="small" color="#0055A5" />
+                  </View>
+                ) : (
+                  <View style={tw`py-4 items-center`}>
+                    <Text style={tw`text-gray-400 text-xs font-medium`}>Semua riwayat telah dimuat</Text>
+                  </View>
+                )
+              }
               ListEmptyComponent={
                 <View style={tw`items-center mt-20`}>
                   <Ionicons name="document-text-outline" size={60} color="#CBD5E1" />
@@ -347,6 +536,16 @@ export default function HistoryScreen({ route, navigation }) {
                 </View>
               }
             />
+          )}
+
+          {/* Export to Excel FAB (Only for Admin/Pengawas) */}
+          {user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
+            <TouchableOpacity
+              style={tw`absolute bottom-28 right-6 bg-[#00A651] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-green-500/40 z-40`}
+              onPress={handleExportExcel}
+            >
+              <Ionicons name="document-text" size={24} color="white" />
+            </TouchableOpacity>
           )}
 
           {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
@@ -366,12 +565,12 @@ export default function HistoryScreen({ route, navigation }) {
                 <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
                   <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                     <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                     </Animated.View>
                   </View>
                   <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
                     <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                     </Animated.View>
                   </View>
                   <Feather name="file-text" size={26} color="#1F2937" />
@@ -408,13 +607,13 @@ export default function HistoryScreen({ route, navigation }) {
                   Apakah Anda yakin ingin keluar dari akun ini?
                 </Text>
                 <View style={tw`flex-row w-full`}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={tw`flex-1 bg-gray-100 p-4 rounded-xl mr-2 items-center`}
                     onPress={handleCancelLogout}
                   >
                     <Text style={tw`font-bold text-gray-600`}>Batal</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={tw`flex-1 bg-[#ED1C24] p-4 rounded-xl ml-2 items-center shadow-lg shadow-red-500/30`}
                     onPress={confirmLogout}
                   >

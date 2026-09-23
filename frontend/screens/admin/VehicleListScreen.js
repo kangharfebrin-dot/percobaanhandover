@@ -9,7 +9,7 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-const API_URL = 'http://192.168.1.4:3000/api';
+const API_URL = 'http://192.168.1.7:3000/api';
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 export default function VehicleListScreen({ navigation }) {
@@ -56,23 +56,17 @@ export default function VehicleListScreen({ navigation }) {
   const fetchVehicles = async () => {
     setLoading(true);
     try {
-      const [vehicleRes, handoverRes] = await Promise.all([
+      const [vehicleRes, issueRes] = await Promise.all([
         axios.get(`${API_URL}/vehicles`),
-        axios.get(`${API_URL}/handovers`)
+        axios.get(`${API_URL}/issues/ongoing`)
       ]);
       
       const vehiclesData = vehicleRes.data;
-      const handoversData = handoverRes.data;
+      const activeIssues = issueRes.data;
       
       const updatedVehicles = vehiclesData.map(vehicle => {
-        const vehicleHandovers = handoversData.filter(h => h.noPolisi === vehicle.noPolisi);
-        if (vehicleHandovers.length > 0) {
-          // data dari API diurutkan berdasarkan timestamp descending, jadi index 0 adalah yang terbaru
-          const latestHandover = vehicleHandovers[0];
-          vehicle.dynamicStatus = latestHandover.status !== 'Siap Operasi (Normal)' ? 'Buruk' : 'Baik';
-        } else {
-          vehicle.dynamicStatus = 'Baik';
-        }
+        const hasIssue = activeIssues.some(issue => issue.handover.noPolisi === vehicle.noPolisi);
+        vehicle.dynamicStatus = hasIssue ? 'Buruk' : 'Baik';
         return vehicle;
       });
       
@@ -96,7 +90,7 @@ export default function VehicleListScreen({ navigation }) {
   const handleDownloadBarcode = async () => {
     if (!selectedVehicle) return;
     
-    const imageUrl = `${API_URL.replace('/api', '')}/barcodes/${selectedVehicle.barcode}.jpg`;
+    const imageUrl = `${API_URL.replace('/api', '')}/barcodes/${selectedVehicle.barcode}.png`;
 
     if (Platform.OS === 'web') {
       window.open(imageUrl, '_blank');
@@ -112,7 +106,7 @@ export default function VehicleListScreen({ navigation }) {
         return;
       }
 
-      const fileUri = FileSystem.documentDirectory + `${selectedVehicle.barcode}.jpg`;
+      const fileUri = FileSystem.documentDirectory + `${selectedVehicle.barcode}.png`;
       const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri);
       
       await Sharing.shareAsync(uri, {
@@ -212,30 +206,18 @@ export default function VehicleListScreen({ navigation }) {
   };
 
   const handleSaveVehicle = async () => {
-    if (!newNoPolisi || !newBarcode) {
-      Alert.alert("Data Tidak Lengkap", "Nomor Polisi dan Barcode wajib diisi.");
+    if (!newNoPolisi) {
+      Alert.alert("Data Tidak Lengkap", "Nomor Polisi wajib diisi.");
       return;
     }
 
-    const isBarcodeValid = /^[a-zA-Z0-9-]+$/.test(newBarcode);
-    if (!isBarcodeValid) {
-      Alert.alert("Format Tidak Valid", "Barcode hanya boleh berisi huruf, angka, dan tanda strip (-), tanpa spasi atau simbol lain.");
-      return;
-    }
+    const generatedBarcode = newNoPolisi.replace(/\s+/g, '').toUpperCase();
 
     // Cek duplikasi
-    const isDuplicateBarcode = vehicles.some(v => v.barcode.toLowerCase() === newBarcode.toLowerCase() && (!isEditMode || v.id !== selectedVehicle?.id));
+    const isDuplicateBarcode = vehicles.some(v => v.barcode.toLowerCase() === generatedBarcode.toLowerCase() && (!isEditMode || v.id !== selectedVehicle?.id));
     const isDuplicateNoPolisi = vehicles.some(v => v.noPolisi.toLowerCase() === newNoPolisi.toLowerCase() && (!isEditMode || v.id !== selectedVehicle?.id));
 
-    if (isDuplicateBarcode) {
-      showWarningModal(
-        "Barcode Terpakai!", 
-        `Kode barcode "${newBarcode}" sudah dipakai oleh kendaraan lain. Mohon gunakan kode yang unik.`
-      );
-      return;
-    }
-
-    if (isDuplicateNoPolisi) {
+    if (isDuplicateBarcode || isDuplicateNoPolisi) {
       showWarningModal(
         "Plat Terdaftar!", 
         `Plat nomor "${newNoPolisi}" sudah ada di database. Silakan periksa kembali.`
@@ -249,7 +231,7 @@ export default function VehicleListScreen({ navigation }) {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
-          barcode: newBarcode
+          barcode: generatedBarcode
         });
         showSuccessModal('Kendaraan berhasil diperbarui!');
       } else {
@@ -257,7 +239,7 @@ export default function VehicleListScreen({ navigation }) {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
-          barcode: newBarcode
+          barcode: generatedBarcode
         });
         showSuccessModal('Kendaraan baru berhasil ditambahkan!');
       }
@@ -407,7 +389,7 @@ export default function VehicleListScreen({ navigation }) {
                   <Text style={tw`text-white text-2xl font-black mb-10`}>{selectedVehicle.noPolisi}</Text>
                   <View style={tw`w-80 h-80 bg-white rounded-3xl p-4`}>
                     <Image 
-                      source={{ uri: `http://192.168.1.4:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
+                      source={{ uri: `http://192.168.1.7:3000/barcodes/${selectedVehicle.barcode}.png` }} 
                       style={tw`w-full h-full`} 
                       resizeMode="contain" 
                     />
@@ -461,7 +443,7 @@ export default function VehicleListScreen({ navigation }) {
                       onPress={() => setFullScreenBarcode(true)}
                     >
                       <Image 
-                        source={{ uri: `http://192.168.1.4:3000/barcodes/${selectedVehicle.barcode}.jpg` }} 
+                        source={{ uri: `http://192.168.1.7:3000/barcodes/${selectedVehicle.barcode}.png` }} 
                         style={tw`w-full h-full`} 
                         resizeMode="contain" 
                       />
@@ -520,9 +502,8 @@ export default function VehicleListScreen({ navigation }) {
                   </View>
 
                   <View style={tw`mb-8`}>
-                    <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Data Barcode</Text>
-                    <TextInput style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`} placeholder="Misal: TRK-006" value={newBarcode} onChangeText={setNewBarcode} />
-                    <Text style={tw`text-[10px] text-gray-400 mt-1`}>*Barcode akan otomatis digenerate sebagai gambar QR Code di backend.</Text>
+                    {/* Barcode input removed as it is auto-generated from NoPolisi */}
+                    <Text style={tw`text-[10px] text-gray-400 mt-1`}>*Barcode akan otomatis digenerate dari Nomor Polisi saat disimpan.</Text>
                   </View>
 
                   <TouchableOpacity style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40 mb-4`} onPress={handleSaveVehicle}>
