@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, ActivityIndicator, Image, Modal } from 'react-native';
 import { API_URL } from '../../config';
@@ -34,7 +35,11 @@ export default function FixVerificationScreen({ route, navigation }) {
   const getLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Izin Lokasi Ditolak', 'Harap berikan izin GPS untuk mengambil foto bukti perbaikan.');
+      Toast.show({
+        type: 'info',
+        text1: `Izin Lokasi Ditolak`,
+        text2: `Harap berikan izin GPS untuk mengambil foto bukti perbaikan.`
+      });
       return;
     }
     try {
@@ -45,7 +50,11 @@ export default function FixVerificationScreen({ route, navigation }) {
       setLocation(loc.coords);
     } catch (e) {
       console.log('Location error:', e);
-      Alert.alert('Error', 'Gagal mendapatkan lokasi. Pastikan GPS aktif.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal mendapatkan lokasi. Pastikan GPS aktif.`
+      });
     }
   };
 
@@ -66,12 +75,20 @@ export default function FixVerificationScreen({ route, navigation }) {
         }));
         setBrokenItems(items);
       } else {
-        Alert.alert('Info', 'Tidak ada isu aktif untuk kendaraan ini.');
+        Toast.show({
+        type: 'info',
+        text1: `Info`,
+        text2: `Tidak ada isu aktif untuk kendaraan ini.`
+      });
         navigation.goBack();
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal memuat data isu.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal memuat data isu.`
+      });
     } finally {
       setLoading(false);
     }
@@ -95,7 +112,11 @@ export default function FixVerificationScreen({ route, navigation }) {
       return;
     }
     if (!location) {
-      Alert.alert('Tunggu', 'Sedang mencari lokasi. Pastikan GPS aktif.');
+      Toast.show({
+        type: 'info',
+        text1: `Tunggu`,
+        text2: `Sedang mencari lokasi. Pastikan GPS aktif.`
+      });
       getLocation();
       return;
     }
@@ -121,18 +142,30 @@ export default function FixVerificationScreen({ route, navigation }) {
     // Validate
     const itemsToRepair = brokenItems.filter(i => i.repairStatus === 'BAIK');
     if (itemsToRepair.length === 0) {
-      Alert.alert('Peringatan', 'Tidak ada item yang diverifikasi sebagai BAIK.');
+      Toast.show({
+        type: 'info',
+        text1: `Peringatan`,
+        text2: `Tidak ada item yang diverifikasi sebagai BAIK.`
+      });
       return;
     }
 
     // Check if notes and photos are provided for BAIK items
     for (const item of itemsToRepair) {
       if (!item.repairNote.trim()) {
-        Alert.alert('Peringatan', `Catatan perbaikan untuk ${item.name} wajib diisi.`);
+        Toast.show({
+        type: 'info',
+        text1: `Peringatan`,
+        text2: `Catatan perbaikan untuk ${item.name} wajib diisi.`
+      });
         return;
       }
       if (!item.photo) {
-        Alert.alert('Peringatan', `Bukti foto untuk perbaikan ${item.name} wajib dilampirkan.`);
+        Toast.show({
+        type: 'info',
+        text1: `Peringatan`,
+        text2: `Bukti foto untuk perbaikan ${item.name} wajib dilampirkan.`
+      });
         return;
       }
     }
@@ -163,7 +196,11 @@ export default function FixVerificationScreen({ route, navigation }) {
       setShowSuccessModal(true);
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal mengirim verifikasi perbaikan.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal mengirim verifikasi perbaikan.`
+      });
     } finally {
       setSubmitting(false);
     }

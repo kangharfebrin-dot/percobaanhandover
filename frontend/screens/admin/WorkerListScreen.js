@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
@@ -128,7 +129,11 @@ export default function WorkerListScreen({ navigation }) {
 
   const handleSaveWorker = async () => {
     if (!name || !username || (!selectedWorker && !password)) {
-      Alert.alert("Data Tidak Lengkap", "Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.");
+      Toast.show({
+        type: 'info',
+        text1: `Data Tidak Lengkap`,
+        text2: `Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.`
+      });
       return;
     }
 
@@ -136,12 +141,20 @@ export default function WorkerListScreen({ navigation }) {
     const isPasswordValid = selectedWorker && !password ? true : /^[0-9]+$/.test(password);
 
     if (!isUsernameValid) {
-      Alert.alert("Format Tidak Valid", "Username hanya boleh berisi huruf (alfabet) tanpa spasi atau angka.");
+      Toast.show({
+        type: 'info',
+        text1: `Format Tidak Valid`,
+        text2: `Username hanya boleh berisi huruf (alfabet) tanpa spasi atau angka.`
+      });
       return;
     }
 
     if (!isPasswordValid) {
-      Alert.alert("Format Tidak Valid", "Password hanya boleh berisi angka.");
+      Toast.show({
+        type: 'info',
+        text1: `Format Tidak Valid`,
+        text2: `Password hanya boleh berisi angka.`
+      });
       return;
     }
 
@@ -152,16 +165,24 @@ export default function WorkerListScreen({ navigation }) {
       if (selectedWorker) {
         // Update
         await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data);
-        Alert.alert("Berhasil", "Data pekerja berhasil diperbarui!");
+        Toast.show({
+        type: 'success',
+        text1: `Berhasil`,
+        text2: `Data pekerja berhasil diperbarui!`
+      });
       } else {
         // Create
         await axios.post(`${API_BASE}/workers`, data);
-        Alert.alert("Berhasil", "Pekerja baru berhasil ditambahkan!");
+        Toast.show({
+        type: 'success',
+        text1: `Berhasil`,
+        text2: `Pekerja baru berhasil ditambahkan!`
+      });
       }
       setManageModalVisible(false);
       fetchWorkers();
     } catch (error) {
-      Alert.alert("Gagal", error.response?.data?.error || error.message);
+      Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
     }
   };
 
@@ -176,11 +197,15 @@ export default function WorkerListScreen({ navigation }) {
         onPress: async () => {
           try {
             await axios.delete(`${API_BASE}/workers/${selectedWorker.id}`);
-            Alert.alert("Berhasil", "Pekerja berhasil dihapus!");
+            Toast.show({
+        type: 'success',
+        text1: `Berhasil`,
+        text2: `Pekerja berhasil dihapus!`
+      });
             setManageModalVisible(false);
             fetchWorkers();
           } catch (error) {
-            Alert.alert("Gagal", error.response?.data?.error || error.message);
+            Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
           }
         }
       }

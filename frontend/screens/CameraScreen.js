@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -23,7 +24,11 @@ export default function CameraScreen({ route, navigation }) {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Izin Lokasi Ditolak', 'Harap berikan izin GPS untuk melanjutkan.');
+        Toast.show({
+        type: 'info',
+        text1: `Izin Lokasi Ditolak`,
+        text2: `Harap berikan izin GPS untuk melanjutkan.`
+      });
         return;
       }
       let loc = await Location.getCurrentPositionAsync({});
@@ -106,13 +111,15 @@ export default function CameraScreen({ route, navigation }) {
       });
 
       setLoading(false);
-      Alert.alert('Sukses', 'Handover berhasil disimpan!', [
-        { text: 'OK', onPress: () => goToDashboard() }
-      ]);
+      Toast.show({ type: 'success', text1: 'Sukses', text2: 'Handover berhasil disimpan!' }); setTimeout(() => goToDashboard(), 1000);
     } catch (error) {
       setLoading(false);
       console.error(error);
-      Alert.alert('Error', 'Gagal mengirim data handover.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal mengirim data handover.`
+      });
     }
   };
 

@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import tw from 'twrnc';
@@ -43,7 +44,11 @@ export default function IssueDetailScreen({ route, navigation }) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal memuat detail isu.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal memuat detail isu.`
+      });
     } finally {
       setLoading(false);
     }
@@ -67,14 +72,22 @@ export default function IssueDetailScreen({ route, navigation }) {
     const hasUnevaluated = brokenItems.some(i => evaluations[i.id].approved === null);
     
     if (hasUnevaluated) {
-      Alert.alert('Belum Selesai', 'Mohon evaluasi semua kerusakan (Terima/Tolak) sebelum mengirim.');
+      Toast.show({
+        type: 'info',
+        text1: `Belum Selesai`,
+        text2: `Mohon evaluasi semua kerusakan (Terima/Tolak) sebelum mengirim.`
+      });
       return;
     }
 
     const hasRejectedWithoutReason = brokenItems.some(i => evaluations[i.id].approved === false && evaluations[i.id].reason.trim() === '');
     
     if (hasRejectedWithoutReason) {
-      Alert.alert('Alasan Diperlukan', 'Untuk perbaikan yang ditolak, alasan penolakan wajib diisi.');
+      Toast.show({
+        type: 'info',
+        text1: `Alasan Diperlukan`,
+        text2: `Untuk perbaikan yang ditolak, alasan penolakan wajib diisi.`
+      });
       return;
     }
 
@@ -95,12 +108,14 @@ export default function IssueDetailScreen({ route, navigation }) {
               }));
 
               await axios.post(`${API_URL}/api/issues/${issueId}/evaluate-repair`, { evaluations: evalArray });
-              Alert.alert('Sukses', 'Evaluasi perbaikan berhasil dikirim.', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-              ]);
+              Toast.show({ type: 'success', text1: 'Sukses', text2: 'Evaluasi perbaikan berhasil dikirim.' }); setTimeout(() => navigation.goBack(), 1000);
             } catch (error) {
               console.error(error);
-              Alert.alert('Gagal', 'Terjadi kesalahan saat mengirim evaluasi.');
+              Toast.show({
+        type: 'error',
+        text1: `Gagal`,
+        text2: `Terjadi kesalahan saat mengirim evaluasi.`
+      });
             } finally {
               setIsSubmitting(false);
             }

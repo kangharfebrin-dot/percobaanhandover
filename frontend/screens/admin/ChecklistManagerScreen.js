@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, Easing, Dimensions } from 'react-native';
@@ -77,13 +78,21 @@ export default function ChecklistManagerScreen({ navigation }) {
       setItems(res.data);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Gagal memuat data checklist dari server');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal memuat data checklist dari server`
+      });
     }
   };
 
   const handleSave = async () => {
     if (!newName.trim()) {
-      Alert.alert('Error', 'Nama pengecekan tidak boleh kosong.');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Nama pengecekan tidak boleh kosong.`
+      });
       return;
     }
 
@@ -105,7 +114,11 @@ export default function ChecklistManagerScreen({ navigation }) {
       setModalVisible(false);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Gagal menyimpan data ke server');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal menyimpan data ke server`
+      });
     }
   };
 
@@ -118,7 +131,11 @@ export default function ChecklistManagerScreen({ navigation }) {
           loadItems();
         } catch (e) {
           console.error(e);
-          Alert.alert('Error', 'Gagal menghapus data dari server');
+          Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal menghapus data dari server`
+      });
         }
       }}
     ]);

@@ -10,6 +10,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import Toast from 'react-native-toast-message';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -165,18 +166,18 @@ export default function HistoryScreen({ route, navigation }) {
                 UTI: 'com.microsoft.excel.xls'
               });
             } catch (shareErr) {
-              Alert.alert("Gagal Membagikan", "Tidak dapat membuka file: " + shareErr.message);
+              Toast.show({ type: 'error', text1: 'Gagal Membagikan', text2: 'Tidak dapat membuka file: ' + shareErr.message });
             }
           } else {
-            Alert.alert("Sukses", "File berhasil diunduh ke perangkat Anda.\nLokasi: " + fileUri);
+            Toast.show({ type: 'success', text1: 'Sukses', text2: 'File berhasil diunduh ke perangkat Anda.' });
           }
         } else {
-          Alert.alert("Gagal", "Gagal mengunduh file Excel dari server. Status: " + downloadRes.status);
+          Toast.show({ type: 'error', text1: 'Gagal', text2: 'Gagal mengunduh file Excel dari server. Status: ' + downloadRes.status });
         }
       }
     } catch (err) {
       console.log('Gagal export excel:', err);
-      Alert.alert('Gagal Mengunduh', 'Tidak dapat mengunduh Excel: ' + err.message);
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh Excel: ' + err.message });
     }
   };
 
@@ -199,18 +200,18 @@ export default function HistoryScreen({ route, navigation }) {
                 UTI: 'com.adobe.pdf'
               });
             } catch (shareErr) {
-              Alert.alert("Gagal Membagikan", "Tidak dapat membuka file: " + shareErr.message);
+              Toast.show({ type: 'error', text1: 'Gagal Membagikan', text2: 'Tidak dapat membuka file: ' + shareErr.message });
             }
           } else {
-            Alert.alert("Sukses", "File PDF berhasil diunduh ke perangkat Anda.\nLokasi: " + fileUri);
+            Toast.show({ type: 'success', text1: 'Sukses', text2: 'File PDF berhasil diunduh ke perangkat Anda.' });
           }
         } else {
-          Alert.alert("Gagal", "Gagal mengunduh file PDF dari server. Status: " + downloadRes.status);
+          Toast.show({ type: 'error', text1: 'Gagal', text2: 'Gagal mengunduh file PDF dari server. Status: ' + downloadRes.status });
         }
       }
     } catch (err) {
       console.log('Gagal export PDF:', err);
-      Alert.alert('Gagal Mengunduh', 'Tidak dapat mengunduh PDF: ' + err.message);
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh PDF: ' + err.message });
     }
   };
 
@@ -337,8 +338,8 @@ export default function HistoryScreen({ route, navigation }) {
               <Text style={tw`text-sm text-gray-500`}>{item.shift} • {item.user.name} {item.user.jabatan ? `(${item.user.jabatan})` : ''}</Text>
             </View>
           </View>
-          <View style={tw`px-3 py-1 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`}>
-            <Text style={tw`text-xs font-bold ${isNormal ? 'text-green-700' : (isResolved ? 'text-blue-700' : 'text-white')}`}>
+          <View style={tw`px-4 py-1.5 rounded-full border ${isNormal ? 'bg-[#E8F8F0] border-[#00A651]' : (isResolved ? 'bg-[#EBF3FA] border-[#0055A5]' : 'bg-[#FDE8E9] border-[#ED1C24]')}`}>
+            <Text style={tw`text-xs font-bold ${isNormal ? 'text-[#00A651]' : (isResolved ? 'text-[#0055A5]' : 'text-[#ED1C24]')}`}>
               {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
             </Text>
           </View>

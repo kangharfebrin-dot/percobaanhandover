@@ -6,6 +6,35 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import axios from 'axios';
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
+
+const toastConfig = {
+  success: (props) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#00A651', backgroundColor: '#fff', borderRadius: 12, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}
+      text2Style={{ fontSize: 14, color: '#666' }}
+    />
+  ),
+  error: (props) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: '#ED1C24', backgroundColor: '#fff', borderRadius: 12, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}
+      text2Style={{ fontSize: 14, color: '#666' }}
+    />
+  ),
+  info: (props) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#0055A5', backgroundColor: '#fff', borderRadius: 12, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}
+      text2Style={{ fontSize: 14, color: '#666' }}
+    />
+  )
+};
 
 // Screens
 import LoginScreen from './screens/shared/LoginScreen';
@@ -127,6 +156,7 @@ export default function App() {
         <Stack.Screen name="WorkerList" component={WorkerListScreen} />
         <Stack.Screen name="PengawasList" component={PengawasListScreen} />
       </Stack.Navigator>
+      <Toast config={toastConfig} position="top" topOffset={50} />
     </NavigationContainer>
   );
 }

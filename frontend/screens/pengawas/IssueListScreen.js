@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator } from 'react-native';
@@ -109,7 +110,11 @@ export default function IssueListScreen({ navigation }) {
       }, 2500);
     } catch (error) {
       console.error(error);
-      Alert.alert("Gagal", "Terjadi kesalahan server saat menyelesaikan isu.");
+      Toast.show({
+        type: 'error',
+        text1: `Gagal`,
+        text2: `Terjadi kesalahan server saat menyelesaikan isu.`
+      });
     } finally {
       setIsResolving(false);
     }

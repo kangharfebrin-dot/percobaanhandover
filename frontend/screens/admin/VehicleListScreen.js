@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
@@ -85,7 +86,11 @@ export default function VehicleListScreen({ navigation }) {
       setVehicles(updatedVehicles);
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal memuat data kendaraan');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal memuat data kendaraan`
+      });
     } finally {
       setLoading(false);
     }
@@ -114,7 +119,11 @@ export default function VehicleListScreen({ navigation }) {
     try {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert('Gagal', 'Fitur berbagi tidak tersedia di perangkat ini.');
+        Toast.show({
+        type: 'error',
+        text1: `Gagal`,
+        text2: `Fitur berbagi tidak tersedia di perangkat ini.`
+      });
         return;
       }
 
@@ -130,7 +139,7 @@ export default function VehicleListScreen({ navigation }) {
       setFullScreenBarcode(false);
     } catch (error) {
       console.error(error);
-      Alert.alert('Gagal', error.message || 'Terjadi kesalahan saat memproses barcode.');
+      Toast.show({ type: 'error', text1: 'Gagal', text2: error.message || 'Terjadi kesalahan saat memproses barcode.' });
     }
   };
 
@@ -209,7 +218,11 @@ export default function VehicleListScreen({ navigation }) {
               showSuccessModal('Kendaraan berhasil dihapus!');
             } catch (error) {
               console.error(error);
-              Alert.alert('Error', 'Gagal menghapus kendaraan');
+              Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal menghapus kendaraan`
+      });
             }
           }
         }
@@ -219,7 +232,11 @@ export default function VehicleListScreen({ navigation }) {
 
   const handleSaveVehicle = async () => {
     if (!newNoPolisi) {
-      Alert.alert("Data Tidak Lengkap", "Nomor Polisi wajib diisi.");
+      Toast.show({
+        type: 'info',
+        text1: `Data Tidak Lengkap`,
+        text2: `Nomor Polisi wajib diisi.`
+      });
       return;
     }
 
@@ -260,7 +277,11 @@ export default function VehicleListScreen({ navigation }) {
       fetchVehicles();
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal menyimpan kendaraan');
+      Toast.show({
+        type: 'error',
+        text1: `Error`,
+        text2: `Gagal menyimpan kendaraan`
+      });
     }
   };
 
