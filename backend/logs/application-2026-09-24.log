@@ -1,0 +1,18 @@
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:30:16"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:34:50 +0000] \"GET /api/vehicles HTTP/1.1\" 500 421 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:34:50"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:34:50 +0000] \"GET /api/vehicles HTTP/1.1\" 500 421 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:34:50"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:35:04 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:35:04"}
+{"level":"info","message":"192.168.1.3 - - [24/Sep/2026:11:35:09 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:35:09"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:36:54"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:37:02 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:37:02"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:39:25"}
+{"level":"info","message":"192.168.1.3 - - [24/Sep/2026:11:39:48 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:39:48"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:40:08"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:40:35 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:40:35"}
+{"level":"info","message":"192.168.1.3 - - [24/Sep/2026:11:40:38 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:40:38"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:42:46"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:43:24 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:43:24"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:46:50"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:47:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:11:48:19 +0000] \"POST /api/auth/login HTTP/1.1\" 500 1496 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 18:48:19"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 18:57:25"}

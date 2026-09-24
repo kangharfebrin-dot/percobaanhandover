@@ -105,7 +105,7 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   const takePicture = async () => {
     if (cameraRef.current && activeItemId) {
-      const photo = await cameraRef.current.takePictureAsync();
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       const index = brokenItems.findIndex(i => i.id === activeItemId);
       if (index !== -1) {
         const newItems = [...brokenItems];

@@ -256,7 +256,7 @@ export default function HandoverFormScreen({ route, navigation }) {
       // Beri jeda sedikit agar UI (Loading Indicator) ter-render mulus sebelum membebani Native Camera
       setTimeout(async () => {
         try {
-          const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
+          const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
 
           const now = new Date();
           const timestampStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;

@@ -10,6 +10,13 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const xlsx = require('xlsx');
+const { sendPushNotification } = require('./src/config/firebase');
+const { exportExcel, exportPdf } = require('./src/controllers/reportController');
+const { getAnalytics } = require('./src/controllers/analyticsController');
+const morgan = require('morgan');
+const logger = require('./src/config/logger');
+const promClient = require('prom-client');
+const CacheService = require('./src/utils/CacheService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_negara_pertamina_123';
 
@@ -22,24 +29,53 @@ if (!fs.existsSync(barcodesDir)) {
 const app = express();
 const prisma = new PrismaClient();
 
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const errorHandler = require('./src/middleware/errorHandler');
+const { loginSchema } = require('./src/validators/schemas');
+
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_rahasia_negara_pertamina_123';
+
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
+
+// --- LOGGING & MONITORING (PHASE 3) ---
+app.use(morgan('combined', { stream: logger.stream }));
+
+const collectDefaultMetrics = promClient.collectDefaultMetrics;
+collectDefaultMetrics({ register: promClient.register });
+
+app.get('/metrics', async (req, res) => {
+  res.setHeader('Content-Type', promClient.register.contentType);
+  res.send(await promClient.register.metrics());
+});
+
+app.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'UP', message: 'Service is healthy' });
+  } catch (error) {
+    logger.error(`Health check failed: ${error.message}`);
+    res.status(503).json({ status: 'DOWN', message: 'Database connection failed' });
+  }
+});
+// --------------------------------------
+
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  message: { error: 'Terlalu banyak request, coba lagi nanti.' }
+});
+app.use('/api', limiter);
 app.use(express.json());
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Content-Type', 'image/jpeg');
   next();
 }, express.static('uploads'));
 app.use('/barcodes', express.static('barcodes'));
-// Setup Multer for photo uploads (in memory for now, or save to disk)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/')
-  },
-  filename: function (req, file, cb) {
-    const ext = require('path').extname(file.originalname) || '.jpg';
-    cb(null, file.fieldname + '-' + Date.now() + ext)
-  }
-});
-const upload = multer({ storage: storage });
+const optimizeImages = require('./src/middleware/imageOptimizer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Middleware Autentikasi
 function authenticateToken(req, res, next) {
@@ -102,6 +138,25 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
       ]
     });
 
+    // Send FCM Push Notifications
+    const targetUsers = await prisma.user.findMany({
+      where: {
+        role: { in: ['ADMIN', 'PENGAWAS'] },
+        fcmToken: { not: null }
+      }
+    });
+    
+    for (const u of targetUsers) {
+      if (u.fcmToken) {
+        await sendPushNotification(
+          u.fcmToken,
+          notificationTitle,
+          textBody,
+          { handoverId, noPolisi, type }
+        );
+      }
+    }
+
     let info = await transporter.sendMail({
       from: user,
       to: process.env.ADMIN_EMAIL || "admin@amt.local",
@@ -143,9 +198,12 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
 });
 
 // 1. Auth Login
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
+app.post('/api/auth/login', async (req, res, next) => {
   try {
+    const { error, value } = loginSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+    const { username, password } = value;
+
     const user = await prisma.user.findUnique({ where: { username } });
     
     if (!user) {
@@ -154,11 +212,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     let validPassword = false;
     
-    // Cek apakah password sudah di-hash (bcrypt hash biasanya dimulai dengan $2b$ atau $2a$)
     if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
       validPassword = await bcrypt.compare(password, user.password);
     } else {
-      // Fallback untuk pekerja lama yang password-nya belum di-hash di database
       validPassword = (password === user.password);
     }
 
@@ -167,14 +223,74 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const payload = { id: user.id, username: user.username, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken }
+    });
 
     res.json({ 
       token,
+      refreshToken,
       user: { id: user.id, username: user.username, name: user.name, role: user.role, jabatan: user.jabatan } 
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
+  }
+});
+
+// 1a. Auth Refresh Token
+app.post('/api/auth/refresh', async (req, res, next) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(401).json({ error: 'Refresh token diperlukan' });
+
+  try {
+    jwt.verify(refreshToken, REFRESH_SECRET, async (err, payload) => {
+      if (err) return res.status(403).json({ error: 'Refresh token tidak valid' });
+
+      const user = await prisma.user.findUnique({ where: { id: payload.id } });
+      if (!user || user.refreshToken !== refreshToken) {
+        return res.status(403).json({ error: 'Refresh token tidak cocok atau expired' });
+      }
+
+      const newPayload = { id: user.id, username: user.username, role: user.role };
+      const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '15m' });
+      
+      res.json({ token: newToken });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 1a. Auth Logout
+app.post('/api/auth/logout', authenticateToken, async (req, res, next) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { refreshToken: null }
+    });
+    res.json({ success: true, message: 'Berhasil logout' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 1c. Register FCM Token
+app.post('/api/auth/fcm-token', authenticateToken, async (req, res, next) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) return res.status(400).json({ error: 'FCM Token diperlukan' });
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { fcmToken }
+    });
+    res.json({ success: true, message: 'FCM Token berhasil disimpan' });
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -196,14 +312,14 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-// Protect all /api routes except /api/auth/login, forgot-password and /api/handovers/export
+// Protect all /api routes except public endpoints
 app.use('/api', (req, res, next) => {
-  if (req.path === '/auth/login' || req.path === '/auth/forgot-password' || req.path === '/handovers/export') return next();
+  if (req.path === '/auth/login' || req.path === '/auth/forgot-password' || req.path.startsWith('/reports/')) return next();
   authenticateToken(req, res, next);
 });
 
 // 2. Submit Handover (Termasuk foto dan checklist)
-app.post('/api/handovers', upload.any(), async (req, res) => {
+app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
   try {
     const { userId, noPolisi, shift, type, locationLat, locationLng, items, amt1, amt2 } = req.body;
     const parsedItems = JSON.parse(items); // items dikirim sebagai string JSON jika form-data
@@ -237,7 +353,11 @@ app.post('/api/handovers', upload.any(), async (req, res) => {
         if (decodedName.startsWith('Kerusakan_')) {
           // Jika tidak ada item bermasalah sama sekali, abaikan dan hapus file sampah
           if (issueItems.length === 0) {
-            try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) {}
+            try {
+              if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+              if (file.thumbnailUrl && fs.existsSync(file.thumbnailUrl)) fs.unlinkSync(file.thumbnailUrl);
+              if (file.previewUrl && fs.existsSync(file.previewUrl)) fs.unlinkSync(file.previewUrl);
+            } catch (e) {}
             return false;
           }
 
@@ -249,7 +369,11 @@ app.post('/api/handovers', upload.any(), async (req, res) => {
           });
 
           if (!isItemDamaged) {
-            try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) {}
+            try {
+              if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+              if (file.thumbnailUrl && fs.existsSync(file.thumbnailUrl)) fs.unlinkSync(file.thumbnailUrl);
+              if (file.previewUrl && fs.existsSync(file.previewUrl)) fs.unlinkSync(file.previewUrl);
+            } catch (e) {}
             return false;
           }
         }
@@ -292,7 +416,10 @@ app.post('/api/handovers', upload.any(), async (req, res) => {
             }
             return {
               type: photoType,
-              url: file.path.replace(/\\/g, '/')
+              url: file.path.replace(/\\/g, '/'),
+              thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
+              previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
+              originalSize: file.originalSize || 0
             };
           })
         },
@@ -314,6 +441,9 @@ app.post('/api/handovers', upload.any(), async (req, res) => {
       });
     }
 
+    // Invalidate cached handovers
+    await CacheService.delPattern('handovers:page:*');
+
     res.status(201).json({ success: true, handover });
   } catch (error) {
     console.error(error);
@@ -321,12 +451,19 @@ app.post('/api/handovers', upload.any(), async (req, res) => {
   }
 });
 
-// 3. Get Handovers (Untuk Admin / History) - Dengan Paginasi
+// 3. Get Handovers (Untuk Admin / History) - Dengan Paginasi & Caching
 app.get('/api/handovers', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+
+    const cacheKey = `handovers:page:${page}:limit:${limit}`;
+    const cachedData = await CacheService.get(cacheKey);
+    
+    if (cachedData) {
+      return res.json(cachedData);
+    }
 
     const handovers = await prisma.handover.findMany({
       skip,
@@ -340,10 +477,9 @@ app.get('/api/handovers', async (req, res) => {
       }
     });
 
-    // Mengambil total count untuk frontend jika butuh tahu apakah masih ada data
     const total = await prisma.handover.count();
     
-    res.json({
+    const responseData = {
       data: handovers,
       meta: {
         total,
@@ -351,51 +487,25 @@ app.get('/api/handovers', async (req, res) => {
         limit,
         totalPages: Math.ceil(total / limit)
       }
-    });
+    };
+
+    // Cache the response for 1 hour (3600 seconds)
+    await CacheService.set(cacheKey, responseData, 3600);
+
+    res.json(responseData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 3a. Export Handovers to Excel
-app.get('/api/handovers/export', async (req, res) => {
-  try {
-    const handovers = await prisma.handover.findMany({
-      orderBy: { timestamp: 'desc' },
-      include: {
-        user: { select: { name: true, jabatan: true } },
-        items: true
-      }
-    });
+// 3a. Export Handovers to Excel & PDF
+app.get('/api/reports/excel', authenticateToken, exportExcel);
+app.get('/api/reports/pdf', authenticateToken, exportPdf);
 
-    const exportData = handovers.map(h => {
-      const issueItems = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
-      return {
-        'Waktu': h.timestamp.toISOString().replace('T', ' ').substring(0, 19),
-        'Nama Pekerja': h.user.name,
-        'Jabatan': h.user.jabatan || '-',
-        'No Polisi': h.noPolisi,
-        'Shift': h.shift,
-        'Status': h.status,
-        'Detail Isu': issueItems || '-'
-      };
-    });
+// 4. Dashboard Analytics
+app.get('/api/dashboard/analytics', authenticateToken, getAnalytics);
 
-    const ws = xlsx.utils.json_to_sheet(exportData);
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'Riwayat_Handover');
-    
-    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    
-    res.setHeader('Content-Disposition', 'attachment; filename="Laporan_Handover.xlsx"');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 3b. PUT Handover (Selesaikan Isu)
+// 5. PUT Handover (Selesaikan Isu)
 app.put('/api/handovers/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -746,7 +856,7 @@ app.put('/api/issues/:id/resolve', async (req, res) => {
 });
 
 // POST Verify Repair
-app.post('/api/issues/:id/verify-repair', upload.any(), async (req, res) => {
+app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (req, res) => {
   try {
     const issueId = req.params.id;
     const { itemsData } = req.body; 
@@ -895,6 +1005,9 @@ app.put('/api/notifications/:id/read', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Error Handler Middleware
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {

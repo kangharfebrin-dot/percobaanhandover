@@ -228,7 +228,7 @@ export default function IssueDetailScreen({ route, navigation }) {
                 )}
               </View>
             );
-          })}
+          })
           )}
         </ScrollView>
 
