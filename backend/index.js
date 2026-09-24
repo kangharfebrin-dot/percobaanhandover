@@ -24,10 +24,22 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Content-Type', 'image/jpeg');
+  next();
+}, express.static('uploads'));
 app.use('/barcodes', express.static('barcodes'));
 // Setup Multer for photo uploads (in memory for now, or save to disk)
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    const ext = require('path').extname(file.originalname) || '.jpg';
+    cb(null, file.fieldname + '-' + Date.now() + ext)
+  }
+});
+const upload = multer({ storage: storage });
 
 // Middleware Autentikasi
 function authenticateToken(req, res, next) {
@@ -44,11 +56,9 @@ function authenticateToken(req, res, next) {
 }
 
 // --- MOCK NOTIFICATION SYSTEM ---
-async function sendNotification(handoverId, noPolisi, issueItems) {
+async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = false, type = 'NEW_ISSUE') {
   console.log('--- ADMIN NOTIFICATION ---');
-  console.log(`Peringatan: Kendaraan ${noPolisi} memiliki isu saat handover!`);
-  console.log(`Handover ID: ${handoverId}`);
-  console.log('Isu ditemukan pada item:', issueItems.map(i => i.name).join(', '));
+  console.log(`Notifikasi: Kendaraan ${noPolisi}, Tipe: ${type}, Blocked: ${isBlocked}`);
   console.log('--------------------------');
 
   try {
@@ -75,11 +85,28 @@ async function sendNotification(handoverId, noPolisi, issueItems) {
       },
     });
 
+    const isResolved = type === 'RESOLVED';
+    let subject = isResolved ? `[SELESAI] Perbaikan Kendaraan ${noPolisi}` : `[PERINGATAN] Isu Handover Kendaraan ${noPolisi}`;
+    if (isBlocked) subject = `[BLOKIR - MAJOR] Isu Kendaraan ${noPolisi}`;
+
+    let textBody = isResolved 
+      ? `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan dapat beroperasi kembali.` 
+      : `Kendaraan ${noPolisi} dilaporkan memiliki beberapa isu:\n${issueItems.map(i => '- ' + i.name).join('\n')}\n\nStatus: ${isBlocked ? 'DIBLOKIR (Major)' : 'PERLU PERBAIKAN'}`;
+
+    // Create DB Notification for Admin and Pengawas
+    const notificationTitle = isResolved ? `Isu Selesai: ${noPolisi}` : (isBlocked ? `Kendaraan Diblokir: ${noPolisi}` : `Isu Baru: ${noPolisi}`);
+    await prisma.notification.createMany({
+      data: [
+        { title: notificationTitle, message: textBody, type: isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING'), targetRole: 'ADMIN' },
+        { title: notificationTitle, message: textBody, type: isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING'), targetRole: 'PENGAWAS' }
+      ]
+    });
+
     let info = await transporter.sendMail({
       from: user,
       to: process.env.ADMIN_EMAIL || "admin@amt.local",
-      subject: `[PERINGATAN] Isu Handover Kendaraan ${noPolisi}`,
-      text: `Kendaraan ${noPolisi} dilaporkan memiliki beberapa isu:\n${issueItems.map(i => '- ' + i.name).join('\n')}`,
+      subject: subject,
+      text: textBody,
     });
 
     console.log("Email terkirim: %s", info.messageId);
@@ -98,7 +125,18 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
   try {
     const vehicle = await prisma.vehicle.findUnique({ where: { barcode: req.params.barcode } });
     if (!vehicle) return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
-    res.json({ success: true, vehicle });
+
+    // Cari riwayat terakhir
+    const lastHandover = await prisma.handover.findFirst({
+      where: { noPolisi: vehicle.noPolisi },
+      orderBy: { timestamp: 'desc' },
+      include: {
+        items: true,
+        issue: true
+      }
+    });
+
+    res.json({ success: true, vehicle, lastHandover });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -140,20 +178,39 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Protect all /api routes except /api/auth/login and /api/handovers/export
+// 1b. Auth Forgot Password
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { username } = req.body;
+  try {
+    await prisma.notification.create({
+      data: {
+        title: 'Permintaan Reset Password',
+        message: `User '${username}' meminta reset password.`,
+        type: 'WARNING',
+        targetRole: 'ADMIN'
+      }
+    });
+    res.json({ success: true, message: 'Notifikasi berhasil dikirim ke Admin' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Protect all /api routes except /api/auth/login, forgot-password and /api/handovers/export
 app.use('/api', (req, res, next) => {
-  if (req.path === '/auth/login' || req.path === '/handovers/export') return next();
+  if (req.path === '/auth/login' || req.path === '/auth/forgot-password' || req.path === '/handovers/export') return next();
   authenticateToken(req, res, next);
 });
 
 // 2. Submit Handover (Termasuk foto dan checklist)
-app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
+app.post('/api/handovers', upload.any(), async (req, res) => {
   try {
-    const { userId, noPolisi, shift, locationLat, locationLng, items, amt1, amt2 } = req.body;
+    const { userId, noPolisi, shift, type, locationLat, locationLng, items, amt1, amt2 } = req.body;
     const parsedItems = JSON.parse(items); // items dikirim sebagai string JSON jika form-data
 
     // Cek jika ada item yang "Tidak Baik / Tidak Ada" (isGood == false)
     const issueItems = parsedItems.filter(item => !item.isGood);
+    const hasMajorIssue = issueItems.some(item => item.name.includes('[MAJOR]'));
     const status = issueItems.length > 0 ? 'Ada Masalah' : 'Siap Operasi (Normal)';
 
     // Pastikan user exists untuk menghindari Foreign Key Constraint error (terutama untuk akun dummy frontend)
@@ -172,12 +229,41 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
       }
     }
 
+    // Filter file foto: pastikan foto 'Kerusakan_' hanya disimpan jika memang ada item terkait yang rusak
+    const validFiles = (req.files || []).filter(file => {
+      if (file.originalname) {
+        let decodedName = file.originalname;
+        try { decodedName = decodeURIComponent(file.originalname); } catch (e) {}
+        if (decodedName.startsWith('Kerusakan_')) {
+          // Jika tidak ada item bermasalah sama sekali, abaikan dan hapus file sampah
+          if (issueItems.length === 0) {
+            try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) {}
+            return false;
+          }
+
+          // Cek apakah ada item rusak yang namanya cocok
+          const rawPhotoItemName = decodedName.replace('Kerusakan_', '').split('.')[0].replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+          const isItemDamaged = issueItems.some(it => {
+            const cleanItemName = it.name.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+            return cleanItemName.includes(rawPhotoItemName) || rawPhotoItemName.includes(cleanItemName);
+          });
+
+          if (!isItemDamaged) {
+            try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) {}
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+
     // Simpan ke DB
     const handover = await prisma.handover.create({
       data: {
         userId,
         noPolisi,
         shift,
+        type: type || 'mulai',
         status,
         locationLat: locationLat ? parseFloat(locationLat) : null,
         locationLng: locationLng ? parseFloat(locationLng) : null,
@@ -190,10 +276,25 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
         },
         // Jika ada file terupload, simpan referensinya
         photos: {
-          create: req.files ? req.files.map(file => ({
-            type: 'TERLAMPIR', // Untuk detail, bisa dipisah berdasarkan nama field
-            url: file.path.replace(/\\/g, '/')
-          })) : []
+          create: validFiles.map(file => {
+            let photoType = 'TERLAMPIR';
+            if (file.originalname) {
+              let decodedOrig = file.originalname;
+              try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) {}
+              const nameWithoutExt = decodedOrig.split('.')[0];
+              if (nameWithoutExt.startsWith('photo_')) {
+                photoType = nameWithoutExt.replace('photo_', '');
+              } else if (nameWithoutExt.startsWith('Kerusakan_')) {
+                photoType = nameWithoutExt.replace('Kerusakan_', 'Kerusakan: ');
+              } else {
+                photoType = nameWithoutExt;
+              }
+            }
+            return {
+              type: photoType,
+              url: file.path.replace(/\\/g, '/')
+            };
+          })
         },
         issue: status === 'Ada Masalah' ? {
           create: { status: 'ONGOING' }
@@ -203,7 +304,14 @@ app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
 
     // Jika ada masalah, kirim notifikasi/email ke admin
     if (issueItems.length > 0) {
-      await sendNotification(handover.id, noPolisi, issueItems);
+      await sendNotification(handover.id, noPolisi, issueItems, hasMajorIssue, 'NEW_ISSUE');
+    }
+
+    if (hasMajorIssue) {
+      await prisma.vehicle.update({
+        where: { noPolisi: noPolisi },
+        data: { status: 'Maintenance' }
+      });
     }
 
     res.status(201).json({ success: true, handover });
@@ -295,8 +403,14 @@ app.put('/api/handovers/:id', async (req, res) => {
     
     const updatedHandover = await prisma.handover.update({
       where: { id },
-      data: { status }
+      data: { status },
+      include: { issue: true }
     });
+
+    if (status === 'Siap Operasi (Normal)') {
+      await sendNotification(updatedHandover.id, updatedHandover.noPolisi, [], false, 'RESOLVED');
+      await prisma.vehicle.update({ where: { noPolisi: updatedHandover.noPolisi }, data: { status: 'Active' } });
+    }
     
     res.json({ success: true, handover: updatedHandover });
   } catch (error) {
@@ -671,6 +785,113 @@ app.post('/api/issues/:id/verify-repair', upload.any(), async (req, res) => {
     res.json({ success: true, issue: updatedIssue });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST Evaluate Repair (Admin/Pengawas)
+app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
+  try {
+    const issueId = req.params.id;
+    const { evaluations } = req.body; // Array of { itemId, approved, reason }
+
+    let allApproved = true;
+
+    for (const evalItem of evaluations) {
+      if (evalItem.approved) {
+        // Item is approved, keep isRepaired true
+        await prisma.handoverItem.update({
+          where: { id: evalItem.itemId },
+          data: {
+            isRepaired: true,
+            adminRejectionNote: null // Clear any previous rejection note
+          }
+        });
+      } else {
+        // Item is rejected
+        allApproved = false;
+        await prisma.handoverItem.update({
+          where: { id: evalItem.itemId },
+          data: {
+            isRepaired: false,
+            adminRejectionNote: evalItem.reason || 'Ditolak oleh Admin'
+          }
+        });
+      }
+    }
+
+    const issue = await prisma.issue.findUnique({
+      where: { id: issueId },
+      include: { handover: true }
+    });
+
+    if (allApproved) {
+      // Resolve the issue
+      const updatedIssue = await prisma.issue.update({
+        where: { id: issueId },
+        data: {
+          status: 'RESOLVED',
+          resolvedAt: new Date()
+        }
+      });
+      // Optionally create notification for AMT
+      await prisma.notification.create({
+        data: {
+          title: 'Perbaikan Disetujui',
+          message: `Perbaikan untuk truk ${issue.handover.noPolisi} telah disetujui. Kendaraan siap jalan.`,
+          targetRole: 'USER',
+          isRead: false
+        }
+      });
+      res.json({ success: true, issue: updatedIssue, status: 'RESOLVED' });
+    } else {
+      // Reject the issue, back to ONGOING
+      const updatedIssue = await prisma.issue.update({
+        where: { id: issueId },
+        data: {
+          status: 'ONGOING'
+        }
+      });
+      // Create notification for AMT
+      await prisma.notification.create({
+        data: {
+          title: 'Perbaikan Ditolak',
+          message: `Beberapa perbaikan untuk truk ${issue.handover.noPolisi} ditolak. Silakan periksa catatan Admin dan perbaiki kembali.`,
+          targetRole: 'USER',
+          isRead: false
+        }
+      });
+      res.json({ success: true, issue: updatedIssue, status: 'ONGOING' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- NOTIFICATIONS ---
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const role = req.user.role;
+    const notifications = await prisma.notification.findMany({
+      where: { targetRole: role },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, notifications });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await prisma.notification.update({
+      where: { id },
+      data: { isRead: true }
+    });
+    res.json({ success: true, notification: updated });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

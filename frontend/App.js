@@ -18,6 +18,7 @@ import VehicleListScreen from './screens/admin/VehicleListScreen';
 import ChecklistManagerScreen from './screens/admin/ChecklistManagerScreen';
 import PengawasDashboardScreen from './screens/pengawas/PengawasDashboardScreen';
 import IssueListScreen from './screens/pengawas/IssueListScreen';
+import IssueDetailScreen from './screens/pengawas/IssueDetailScreen';
 import MessageCenterScreen from './screens/pengawas/MessageCenterScreen';
 import UserDashboardScreen from './screens/user/UserDashboardScreen';
 import ScannerScreen from './screens/user/ScannerScreen';
@@ -120,6 +121,7 @@ export default function App() {
         <Stack.Screen name="HandoverDetail" component={HandoverDetailScreen} />
         <Stack.Screen name="VehicleList" component={VehicleListScreen} />
         <Stack.Screen name="IssueList" component={IssueListScreen} />
+        <Stack.Screen name="IssueDetail" component={IssueDetailScreen} />
         <Stack.Screen name="MessageCenter" component={MessageCenterScreen} />
         <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
         <Stack.Screen name="WorkerList" component={WorkerListScreen} />

@@ -129,24 +129,23 @@ export default function CameraScreen({ route, navigation }) {
 
   return (
     <View style={tw`flex-1 bg-black`}>
-      <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef}>
-        <View style={tw`absolute top-12 left-0 right-0 items-center px-4`}>
-          <Text style={tw`bg-black/70 text-white p-3 rounded-full font-bold text-lg text-center`}>
-            Ambil Foto: Tampak {stepName} ({currentStep + 1}/4)
+      <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef} />
+      <View style={tw`absolute top-12 left-0 right-0 items-center px-4`} pointerEvents="none">
+        <Text style={tw`bg-black/70 text-white p-3 rounded-full font-bold text-lg text-center`}>
+          Ambil Foto: Tampak {stepName} ({currentStep + 1}/4)
+        </Text>
+        {location && (
+          <Text style={tw`text-white bg-black/50 text-xs px-2 py-1 mt-2 rounded`}>
+            GPS Aktif: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
           </Text>
-          {location && (
-            <Text style={tw`text-white bg-black/50 text-xs px-2 py-1 mt-2 rounded`}>
-              GPS Aktif: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-            </Text>
-          )}
-        </View>
-        <View style={tw`absolute bottom-12 w-full flex-row justify-center`}>
-          <TouchableOpacity 
-            style={tw`w-20 h-20 bg-white rounded-full border-4 border-gray-300 shadow-lg`} 
-            onPress={takePicture}
-          />
-        </View>
-      </CameraView>
+        )}
+      </View>
+      <View style={tw`absolute bottom-12 w-full flex-row justify-center`}>
+        <TouchableOpacity 
+          style={tw`w-20 h-20 bg-white rounded-full border-4 border-gray-300 shadow-lg`} 
+          onPress={takePicture}
+        />
+      </View>
     </View>
   );
 }

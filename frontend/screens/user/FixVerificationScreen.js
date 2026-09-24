@@ -16,11 +16,13 @@ export default function FixVerificationScreen({ route, navigation }) {
   const [brokenItems, setBrokenItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Camera & Location State
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [activeItemId, setActiveItemId] = useState(null);
   const cameraRef = useRef(null);
 
@@ -158,9 +160,7 @@ export default function FixVerificationScreen({ route, navigation }) {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      Alert.alert('Sukses', 'Verifikasi perbaikan berhasil dikirim dan menunggu persetujuan admin.', [
-        { text: 'OK', onPress: () => navigation.navigate('Scanner', { type: 'mulai' }) }
-      ]);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Gagal mengirim verifikasi perbaikan.');
@@ -193,9 +193,14 @@ export default function FixVerificationScreen({ route, navigation }) {
 
       <ScrollView style={tw`flex-1 px-4 py-6`} showsVerticalScrollIndicator={false}>
         {brokenItems.length === 0 ? (
-          <View style={tw`items-center mt-10`}>
-            <Ionicons name="checkmark-circle-outline" size={60} color="#00A651" />
-            <Text style={tw`text-gray-500 text-center mt-4 font-medium`}>Semua isu telah diverifikasi atau tidak ada kerusakan tercatat.</Text>
+          <View style={tw`items-center mt-20`}>
+            <View style={tw`w-24 h-24 bg-blue-50 rounded-full items-center justify-center mb-4`}>
+              <Ionicons name="time-outline" size={60} color="#0055A5" />
+            </View>
+            <Text style={tw`text-xl font-bold text-gray-800 mb-2`}>Sedang Ditinjau</Text>
+            <Text style={tw`text-gray-500 text-center font-medium px-4 leading-6`}>
+              Bukti perbaikan Anda telah dikirim dan saat ini sedang ditinjau oleh Admin.
+            </Text>
           </View>
         ) : (
           brokenItems.map((item, index) => (
@@ -204,6 +209,12 @@ export default function FixVerificationScreen({ route, navigation }) {
                 <View style={tw`flex-1 mr-4`}>
                   <Text style={tw`font-bold text-gray-800 text-base mb-1`}>{item.name}</Text>
                   <Text style={tw`text-xs text-red-500 font-bold bg-red-50 self-start px-2 py-1 rounded`}>STATUS SEBELUMNYA: RUSAK</Text>
+                  {item.adminRejectionNote ? (
+                    <View style={tw`bg-red-100 p-3 rounded-lg mt-3 border border-red-200`}>
+                      <Text style={tw`text-xs font-bold text-red-800 mb-1`}>DITOLAK ADMIN:</Text>
+                      <Text style={tw`text-sm text-red-700`}>{item.adminRejectionNote}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -282,11 +293,25 @@ export default function FixVerificationScreen({ route, navigation }) {
       </ScrollView>
 
       {/* CAMERA MODAL */}
-      <Modal visible={isCameraOpen} animationType="slide" transparent={false}>
-        <View style={tw`flex-1 bg-black`}>
+      <Modal 
+        visible={isCameraOpen} 
+        animationType="slide" 
+        transparent={false}
+        onShow={() => setIsCameraReady(true)}
+      >
+        <View style={tw`flex-1 bg-black relative`}>
           {isCameraOpen && (
-            <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef}>
-              <View style={tw`absolute top-12 left-0 right-0 items-center px-4`}>
+            <>
+              {isCameraReady ? (
+                <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} />
+              ) : (
+                <View style={tw`flex-1 items-center justify-center`}>
+                  <ActivityIndicator color="white" size="large" />
+                  <Text style={tw`text-white mt-4 font-bold`}>Menyiapkan Kamera...</Text>
+                </View>
+              )}
+              
+              <View style={tw`absolute top-12 left-0 right-0 items-center px-4`} pointerEvents="none">
                 <Text style={tw`bg-black/70 text-white p-3 rounded-full font-bold text-lg text-center`}>
                   Ambil Foto Bukti Perbaikan
                 </Text>
@@ -299,7 +324,7 @@ export default function FixVerificationScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`absolute top-12 left-4 bg-black/50 p-2 rounded-full`}
-                onPress={() => { setIsCameraOpen(false); setActiveItemId(null); }}
+                onPress={() => { setIsCameraOpen(false); setIsCameraReady(false); setActiveItemId(null); }}
               >
                 <Ionicons name="close" size={28} color="white" />
               </TouchableOpacity>
@@ -310,10 +335,35 @@ export default function FixVerificationScreen({ route, navigation }) {
                   onPress={takePicture}
                 />
               </View>
-            </CameraView>
+            </>
           )}
         </View>
       </Modal>
+
+      {/* MODAL SUKSES (BERHASIL KIRIM) */}
+      <Modal visible={showSuccessModal} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[40px] p-8 items-center shadow-2xl border border-white/20`}>
+            <View style={tw`w-28 h-28 bg-green-50 rounded-full items-center justify-center mb-6 border-8 border-green-100`}>
+              <Ionicons name="checkmark-done" size={60} color="#2ECC71" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-3 text-center tracking-tight`}>Verifikasi Terkirim!</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6`}>
+              Bukti perbaikan telah berhasil dikirim dan sedang menunggu persetujuan admin.
+            </Text>
+            <TouchableOpacity 
+              style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg`}
+              onPress={() => {
+                setShowSuccessModal(false);
+                navigation.popToTop();
+              }}
+            >
+              <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Menu Utama</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }

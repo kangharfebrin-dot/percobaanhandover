@@ -192,6 +192,13 @@ export default function HandoverFormScreen({ route, navigation }) {
     if (statusValue === 'BAIK') {
       newItems[index].severity = null;
       newItems[index].catatan = '';
+      // Hapus foto kerusakan item ini jika user memilih atau membatalkan ke BAIK
+      setPhotos(prev => {
+        if (!prev[`item_${index}`]) return prev;
+        const nextPhotos = { ...prev };
+        delete nextPhotos[`item_${index}`];
+        return nextPhotos;
+      });
     } else {
       newItems[index].severity = 'Minor'; // Default saat diset rusak
     }
@@ -221,32 +228,25 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
-    setLoading(true);
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLoading(false);
-        Alert.alert("Izin Lokasi Ditolak", "Tolong izinkan akses lokasi Anda dari pengaturan aplikasi.");
-        return;
-      }
-
-      // OPTIMASI LOKASI: Gunakan akurasi Balanced agar tidak loading lama mencari GPS presisi tinggi
-      let loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced, 
-        timeout: 5000 // Timeout maksimal 5 detik
-      });
-      setLocation(loc.coords);
-    } catch (err) {
-      setLoading(false);
-      // Fallback jika GPS tidak ditemukan dalam 5 detik
-      Alert.alert("GPS Lemah", "Lokasi tidak akurat atau tidak ditemukan. Tetap bisa lanjut foto.");
-    }
-    setLoading(false);
-
+    // Buka kamera langsung tanpa menunggu (instan)
     setActivePhotoType(type);
     setPreviewPhoto(null);
     setIsCameraReady(false);
     setIsCameraOpen(true);
+
+    // Ambil lokasi secara asinkron di latar belakang agar tidak memblokir UI
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status === 'granted') {
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, 
+          timeout: 5000
+        }).then(loc => {
+          setLocation(loc.coords);
+        }).catch(() => {
+          // Fallback tanpa alert agar tidak mengganggu jika gagal
+        });
+      }
+    });
   };
 
   const takePicture = () => {
@@ -323,7 +323,14 @@ export default function HandoverFormScreen({ route, navigation }) {
     // 5. Validasi Foto Lengkap
     const missingPhotos = REQUIRED_PHOTOS.filter(p => !photos[p]);
     if (missingPhotos.length > 0) {
-      showValidationError("Foto Belum Lengkap", `Harap ambil foto untuk sisi: ${missingPhotos.join(', ')}`);
+      showValidationError("Foto Belum Lengkap", `Harap ambil foto wajib untuk sisi: ${missingPhotos.join(', ')}`);
+      return;
+    }
+
+    // 6. Validasi Wajib Foto Kerusakan
+    const missingIssuePhotos = items.filter((item, idx) => item.status === 'RUSAK' && !photos[`item_${idx}`]);
+    if (missingIssuePhotos.length > 0) {
+      showValidationError("Foto Kerusakan Belum Lengkap", `Harap ambil foto untuk kerusakan pada item:\n"${missingIssuePhotos[0].name}"`);
       return;
     }
 
@@ -338,6 +345,7 @@ export default function HandoverFormScreen({ route, navigation }) {
       formData.append('userId', user.id);
       formData.append('noPolisi', noPolisi);
       formData.append('shift', shift);
+      formData.append('type', type || 'mulai');
 
       const finalItems = items.map(i => ({
         ...i,
@@ -352,13 +360,26 @@ export default function HandoverFormScreen({ route, navigation }) {
         formData.append('locationLng', location.longitude);
       }
 
-      REQUIRED_PHOTOS.forEach(step => {
-        const p = photos[step];
+      Object.keys(photos).forEach(key => {
+        const p = photos[key];
         if (p) {
+          // Determine the friendly name for the backend
+          let photoName = `photo_${key}.jpg`;
+          if (key.startsWith('item_')) {
+            const idx = parseInt(key.split('_')[1]);
+            // JANGAN KIRIM foto kerusakan jika item tersebut statusnya BUKAN RUSAK!
+            if (!items[idx] || items[idx].status !== 'RUSAK') {
+              return;
+            }
+            const itemName = items[idx]?.name.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+            photoName = `Kerusakan_${itemName}.jpg`;
+          }
+
           const filename = p.uri.split('/').pop();
           const match = /\.(\w+)$/.exec(filename);
           const type = match ? `image/${match[1]}` : `image/jpeg`;
-          formData.append('photos', { uri: p.uri, name: filename || `photo_${step}.jpg`, type });
+
+          formData.append('photos', { uri: p.uri, name: photoName, type });
         }
       });
 
@@ -456,6 +477,46 @@ export default function HandoverFormScreen({ route, navigation }) {
                 </Text>
               </View>
             )}
+
+            {/* Wajib Foto Kerusakan */}
+            <View style={tw`mt-4 items-start`}>
+              <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider mb-2`}>* Foto Kerusakan (Wajib)</Text>
+              <View style={tw`relative`}>
+                <TouchableOpacity
+                  style={tw`w-32 h-32 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
+                  onPress={() => openCameraFor(`item_${originalIdx}`)}
+                >
+                  {photos[`item_${originalIdx}`] ? (
+                    <>
+                      <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
+                      <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
+                        <Ionicons name="checkmark-circle" size={32} color="white" />
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={32} color="#DC2626" />
+                      <Text style={tw`text-xs text-red-600 mt-2 font-bold`}>Ambil Foto</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {photos[`item_${originalIdx}`] && (
+                  <TouchableOpacity
+                    style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
+                    onPress={() => {
+                      setPhotos(prev => {
+                        const nextPhotos = { ...prev };
+                        delete nextPhotos[`item_${originalIdx}`];
+                        return nextPhotos;
+                      });
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="white" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
         )}
       </View>
@@ -753,6 +814,18 @@ export default function HandoverFormScreen({ route, navigation }) {
               <Text style={tw`text-white font-bold text-xs mb-2`}><Ionicons name="location" size={14} color="#2ECC71" /> {previewPhoto.locStr}</Text>
               <Text style={tw`text-white font-bold text-xs`}><Ionicons name="time" size={14} color="#2ECC71" /> {previewPhoto.timestampStr}</Text>
             </View>
+
+            {/* TOMBOL BATAL / TUTUP PREVIEW */}
+            <TouchableOpacity
+              style={tw`absolute top-14 left-6 bg-black/50 p-3 rounded-full border border-white/20 z-10`}
+              onPress={() => {
+                setPreviewPhoto(null);
+                setIsCameraOpen(false);
+                setActivePhotoType(null);
+              }}
+            >
+              <Ionicons name="close" size={24} color="white" />
+            </TouchableOpacity>
 
             <View style={tw`absolute top-14 left-0 right-0 items-center px-4`}>
               <LinearGradient colors={PERTAMINA_GREEN} style={tw`px-6 py-3 rounded-full shadow-2xl border border-white/20`}>

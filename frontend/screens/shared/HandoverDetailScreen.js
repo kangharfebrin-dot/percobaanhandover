@@ -82,9 +82,22 @@ export default function HandoverDetailScreen({ route, navigation }) {
     return { name: name.trim(), severity, catatan };
   };
 
+  const photos = handover.photos || [];
+
   const renderChecklistItem = (item, index) => {
     const parsed = parseItemName(item.name);
     const isBaik = item.isGood;
+
+    const cleanParsedName = parsed.name.replace(/[^a-zA-Z0-9 ]/g, "").trim().toLowerCase();
+    const damagePhoto = photos.find(p => {
+      if (!p.type || !p.type.toLowerCase().startsWith('kerusakan:')) return false;
+      try {
+        const decodedType = decodeURIComponent(p.type).toLowerCase();
+        return decodedType.includes(cleanParsedName) || decodedType.replace(/[^a-zA-Z0-9 ]/g, "").includes(cleanParsedName.replace(/ /g, ""));
+      } catch (e) {
+        return p.type.toLowerCase().includes(cleanParsedName);
+      }
+    });
 
     return (
       <View key={item.id || index} style={tw`border-b border-gray-100 py-4 px-5`}>
@@ -133,6 +146,19 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </View>
             ) : null}
 
+            {/* Foto Kerusakan */}
+            {!isBaik && damagePhoto && (
+              <View style={tw`mt-3 bg-red-50 p-3 rounded-xl border border-red-100`}>
+                <View style={tw`flex-row items-center mb-2`}>
+                  <Ionicons name="camera" size={16} color="#ED1C24" style={tw`mr-2`} />
+                  <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedPhoto(damagePhoto)}>
+                  <Image source={{ uri: `${API_URL}/${damagePhoto.url}` }} style={tw`w-full h-32 rounded-lg mt-1`} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Repair Info */}
             {item.isRepaired && (
               <View style={tw`mt-3 bg-green-50 p-3 rounded-xl border border-green-200`}>
@@ -144,7 +170,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Text style={tw`text-sm text-green-700 leading-5 mb-2`}>{item.repairNote}</Text>
                 ) : null}
                 {item.repairPhotoUrl ? (
-                  <TouchableOpacity onPress={() => setSelectedPhoto(`${API_URL}/${item.repairPhotoUrl}`)}>
+                  <TouchableOpacity onPress={() => setSelectedPhoto({ type: 'Perbaikan', url: item.repairPhotoUrl })}>
                     <Image source={{ uri: `${API_URL}/${item.repairPhotoUrl}` }} style={tw`w-full h-32 rounded-lg mt-2`} />
                   </TouchableOpacity>
                 ) : null}
@@ -156,7 +182,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
     );
   };
 
-  const photos = handover.photos || [];
+  const generalPhotos = photos.filter(p => !p.type?.toLowerCase().startsWith('kerusakan:'));
 
   return (
     <View style={tw`flex-1 bg-[#F4F7FA]`}>
@@ -293,7 +319,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
           )}
 
           {/* Foto Kendaraan */}
-          {photos.length > 0 && (
+          {generalPhotos.length > 0 && (
             <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
               <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
                 <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
@@ -302,7 +328,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                 <Text style={tw`font-extrabold text-lg text-gray-800`}>Foto Kendaraan</Text>
               </LinearGradient>
               <View style={tw`flex-row flex-wrap p-4 gap-3`}>
-                {photos.map((photo, idx) => (
+                {generalPhotos.map((photo, idx) => (
                   <TouchableOpacity 
                     key={photo.id || idx} 
                     style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm`}

@@ -5,15 +5,18 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
 
 export default function ScannerScreen({ route, navigation }) {
   const { type } = route?.params || { type: 'mulai' };
   const [permission, requestPermission] = useCameraPermissions();
   const [scanResult, setScanResult] = useState(null); // 'recap' | 'success' | 'error' | null
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastHandover, setLastHandover] = useState(null);
   const [scannedNoPolisi, setScannedNoPolisi] = useState('');
+  const isFocused = useIsFocused();
 
   if (!permission) return <View />;
 
@@ -65,15 +68,41 @@ export default function ScannerScreen({ route, navigation }) {
         }
         // Jika lolos (Active), gunakan Nomor Polisi aslinya!
         setScannedNoPolisi(res.data.vehicle.noPolisi);
+        
+        if (res.data.lastHandover) {
+          const lastType = res.data.lastHandover.type;
+          
+          if (type === 'mulai' && lastType === 'mulai') {
+            setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
+            setLoading(false);
+            setScanResult('error');
+            return;
+          } else if (type === 'akhiri' && lastType !== 'mulai') {
+            setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
+            setLoading(false);
+            setScanResult('error');
+            return;
+          }
+
+          setLastHandover(res.data.lastHandover);
+          setScanResult('recap');
+        } else {
+          if (type === 'akhiri') {
+            setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
+            setLoading(false);
+            setScanResult('error');
+            return;
+          }
+          setScanResult('success');
+        }
         setLoading(false);
-        setScanResult('success');
       } else {
         throw new Error('Barcode tidak valid atau data kendaraan tidak ditemukan');
       }
 
     } catch (error) {
       console.error(error);
-      Alert.alert("Scan Gagal", "Kendaraan tidak terdaftar di database atau masalah jaringan.");
+      setErrorMessage("Kendaraan tidak terdaftar di database atau masalah jaringan.");
       setLoading(false);
       setScanResult('error');
     }
@@ -174,12 +203,14 @@ export default function ScannerScreen({ route, navigation }) {
 
   return (
     <View style={tw`flex-1 bg-black`}>
-      <CameraView
-        style={tw`absolute inset-0`}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
-      />
+      {isFocused && !scanResult && (
+        <CameraView
+          style={tw`absolute inset-0`}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
+        />
+      )}
 
       {/* Overlay UI diletakkan di luar CameraView */}
       <View style={tw`absolute inset-0 justify-center items-center`} pointerEvents="none">
@@ -256,7 +287,7 @@ export default function ScannerScreen({ route, navigation }) {
               <Ionicons name="close-circle" size={48} color="#ED1C24" />
             </View>
             <Text style={tw`text-2xl font-extrabold text-gray-800 mb-2`}>Scan Gagal</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-medium`}>Kode QR tidak valid atau jaringan bermasalah.</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-medium`}>{errorMessage || 'Kode QR tidak valid atau jaringan bermasalah.'}</Text>
             <TouchableOpacity
               style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
               onPress={() => setScanResult(null)}

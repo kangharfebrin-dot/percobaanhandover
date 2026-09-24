@@ -5,7 +5,22 @@
 // Jika menggunakan device fisik, gunakan IP lokal komputer Anda (misal: 192.168.1.4)
 // Jika dideploy ke production, gunakan URL server production (misal: https://api.namadomain.com)
 
-export const API_URL = 'http://192.168.1.4:3000';
+// Mendapatkan IP laptop secara otomatis dari koneksi Expo
+import Constants from 'expo-constants';
+
+let HOST_IP = '192.168.1.7'; // Default fallback
+
+// Cek dari mana Expo berjalan
+if (Constants.expoConfig?.hostUri) {
+  HOST_IP = Constants.expoConfig.hostUri.split(':')[0];
+} else if (Constants.manifest?.debuggerHost) {
+  HOST_IP = Constants.manifest.debuggerHost.split(':')[0];
+} else if (Constants.manifest2?.extra?.expoGo?.debuggerHost) {
+  HOST_IP = Constants.manifest2.extra.expoGo.debuggerHost.split(':')[0];
+}
+
+// Gunakan IP dinamis tersebut
+export const API_URL = `http://${HOST_IP}:3000`;
 
 export default {
   API_URL,

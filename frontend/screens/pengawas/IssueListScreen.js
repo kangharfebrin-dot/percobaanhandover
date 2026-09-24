@@ -70,7 +70,8 @@ export default function IssueListScreen({ navigation }) {
       const activeIssues = issueRes.data
         .map(issue => ({
           ...issue.handover,
-          issueId: issue.id
+          issueId: issue.id,
+          issueStatus: issue.status
         }))
         .filter(h => activePolisi.includes(h.noPolisi));
         
@@ -118,7 +119,7 @@ export default function IssueListScreen({ navigation }) {
     return (
       <TouchableOpacity 
         style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
-        onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS') openManageModal(item); }}
+        onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS') navigation.navigate('IssueDetail', { issueId: item.issueId }); }}
         activeOpacity={0.7}
       >
         <View style={tw`flex-row justify-between items-start mb-3`}>
@@ -131,8 +132,10 @@ export default function IssueListScreen({ navigation }) {
               <Text style={tw`text-sm font-bold text-gray-500`}>Pelapor: {item.user?.name}</Text>
             </View>
           </View>
-          <View style={tw`px-3 py-1 rounded-full bg-red-600`}>
-            <Text style={tw`text-xs font-bold text-white`}>ADA ISU</Text>
+          <View style={tw`px-3 py-1 rounded-full ${item.issueStatus === 'PENDING_APPROVAL' ? 'bg-orange-500' : 'bg-red-600'}`}>
+            <Text style={tw`text-xs font-bold text-white`}>
+              {item.issueStatus === 'PENDING_APPROVAL' ? 'BUTUH PERSETUJUAN' : 'SEDANG DIPERBAIKI'}
+            </Text>
           </View>
         </View>
 

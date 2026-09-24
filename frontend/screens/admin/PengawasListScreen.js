@@ -77,7 +77,7 @@ export default function PengawasListScreen({ navigation }) {
   const fetchPengawass = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/pengawass`);
+      const res = await axios.get(`${API_BASE}/pengawas`);
       setPengawass(res.data);
     } catch (error) {
       console.log('Error fetching pengawass:', error.message);
@@ -151,11 +151,11 @@ export default function PengawasListScreen({ navigation }) {
 
       if (selectedPengawas) {
         // Update
-        await axios.put(`${API_BASE}/pengawass/${selectedPengawas.id}`, data);
+        await axios.put(`${API_BASE}/pengawas/${selectedPengawas.id}`, data);
         Alert.alert("Berhasil", "Data pekerja berhasil diperbarui!");
       } else {
         // Create
-        await axios.post(`${API_BASE}/pengawass`, data);
+        await axios.post(`${API_BASE}/pengawas`, data);
         Alert.alert("Berhasil", "Pekerja baru berhasil ditambahkan!");
       }
       setManageModalVisible(false);
@@ -175,7 +175,7 @@ export default function PengawasListScreen({ navigation }) {
         style: "destructive",
         onPress: async () => {
           try {
-            await axios.delete(`${API_BASE}/pengawass/${selectedPengawas.id}`);
+            await axios.delete(`${API_BASE}/pengawas/${selectedPengawas.id}`);
             Alert.alert("Berhasil", "Pengawas berhasil dihapus!");
             setManageModalVisible(false);
             fetchPengawass();

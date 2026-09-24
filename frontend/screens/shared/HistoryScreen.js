@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -147,10 +149,25 @@ export default function HistoryScreen({ route, navigation }) {
   const handleExportExcel = async () => {
     try {
       const url = `${API_URL}/api/handovers/export`;
-      await Linking.openURL(url);
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.xlsx`;
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        
+        if (downloadRes.status === 200) {
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadRes.uri);
+          } else {
+            Alert.alert("Sukses", "File berhasil diunduh ke perangkat Anda.");
+          }
+        } else {
+          Alert.alert("Gagal", "Gagal mengunduh file Excel dari server.");
+        }
+      }
     } catch (err) {
       console.log('Gagal export excel:', err);
-      Alert.alert('Gagal Mengunduh', 'Tidak dapat membuka browser untuk mengunduh Excel: ' + err.message);
+      Alert.alert('Gagal Mengunduh', 'Tidak dapat mengunduh Excel: ' + err.message);
     }
   };
 

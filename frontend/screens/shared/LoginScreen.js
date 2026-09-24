@@ -79,6 +79,23 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!username.trim()) {
+      alert("Mohon isi username Anda pada form login sebelum meminta reset password.");
+      setShowForgotPasswordModal(false);
+      return;
+    }
+    
+    try {
+      await axios.post(`${API_URL}/api/auth/forgot-password`, { username });
+      alert(`Permintaan reset password untuk '${username}' telah dikirim ke Admin.`);
+    } catch (error) {
+      alert("Gagal mengirim notifikasi ke Admin.");
+    } finally {
+      setShowForgotPasswordModal(false);
+    }
+  };
+
   return (
     <View style={[tw`flex-1`, Platform.OS === 'web' && { minHeight: '100vh', minWidth: '100vw' }]}>
       <Image
@@ -103,7 +120,7 @@ export default function LoginScreen({ navigation }) {
               </View>
               <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Lupa Password?</Text>
               <Text style={tw`text-gray-500 text-center text-base mb-6 leading-relaxed`}>
-                Apakah Anda yakin lupa kata sandi? Jika ya, silakan hubungi Administrator atau Supervisor Anda untuk mereset akun.
+                Kirimkan notifikasi ke Admin untuk mereset akun Anda? (Pastikan Anda telah mengisi Username Anda di layar login)
               </Text>
 
               <View style={tw`w-full flex-row justify-between`}>
@@ -111,16 +128,13 @@ export default function LoginScreen({ navigation }) {
                   style={tw`flex-1 bg-gray-100 py-4 rounded-2xl mr-2 items-center`}
                   onPress={() => setShowForgotPasswordModal(false)}
                 >
-                  <Text style={tw`text-gray-600 font-bold`}>Tidak</Text>
+                  <Text style={tw`text-gray-600 font-bold`}>Batal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={tw`flex-1 bg-[#ED1C24] py-4 rounded-2xl ml-2 items-center shadow-md`}
-                  onPress={() => {
-                    setShowForgotPasswordModal(false);
-                    Linking.openURL('https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20lupa%20password%20akun%20DIGI%20Handover%20saya.%20Mohon%20bantuannya%20untuk%20reset%20password.');
-                  }}
+                  onPress={handleForgotPassword}
                 >
-                  <Text style={tw`text-white font-bold`}>Ya, Hubungi</Text>
+                  <Text style={tw`text-white font-bold`}>Kirim Notif</Text>
                 </TouchableOpacity>
               </View>
             </View>
