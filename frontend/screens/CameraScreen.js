@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_URL } from '../config';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -100,7 +101,7 @@ export default function CameraScreen({ route, navigation }) {
       });
 
       // API call (adjust IP address if testing on real device)
-      const res = await axios.post('http://192.168.1.7:3000/api/handovers', formData, {
+      const res = await axios.post(`${API_URL}/api/handovers`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

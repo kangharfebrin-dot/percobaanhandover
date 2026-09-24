@@ -14,8 +14,8 @@ const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {}
 const API_BASE = `${API_URL}/api`; // Sesuaikan IP backend
 
 const { Dimensions } = require('react-native');
-export default function WorkerListScreen({ navigation }) {
-  const [workers, setWorkers] = useState([]);
+export default function PengawasListScreen({ navigation }) {
+  const [pengawass, setPengawass] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,9 +30,9 @@ export default function WorkerListScreen({ navigation }) {
   const isLargeScreen = Platform.OS === 'web' && screenWidth > 768;
   const numCols = isLargeScreen ? 3 : 1;
 
-  // Modal CRUD Worker
+  // Modal CRUD Pengawas
   const [manageModalVisible, setManageModalVisible] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [selectedPengawas, setSelectedPengawas] = useState(null);
 
   // Form States
   const [name, setName] = useState('');
@@ -69,24 +69,24 @@ export default function WorkerListScreen({ navigation }) {
       if (userStr) {
         setUser(JSON.parse(userStr));
       }
-      fetchWorkers();
+      fetchPengawass();
     };
     loadUserAndFetch();
   }, []);
 
-  const fetchWorkers = async () => {
+  const fetchPengawass = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/workers`);
-      setWorkers(res.data);
+      const res = await axios.get(`${API_BASE}/pengawass`);
+      setPengawass(res.data);
     } catch (error) {
-      console.log('Error fetching workers:', error.message);
+      console.log('Error fetching pengawass:', error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredWorkers = workers.filter((item) => {
+  const filteredPengawass = pengawass.filter((item) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = item.name.toLowerCase().includes(searchLower) ||
                           item.username.toLowerCase().includes(searchLower);
@@ -107,33 +107,33 @@ export default function WorkerListScreen({ navigation }) {
   });
 
   const openAddModal = () => {
-    setSelectedWorker(null);
+    setSelectedPengawas(null);
     setName('');
     setUsername('');
     setPassword('');
     setJabatan('');
-    setRole('AMT');
+    setRole('PENGAWAS');
     setManageModalVisible(true);
   };
 
-  const openEditModal = (worker) => {
-    setSelectedWorker(worker);
-    setName(worker.name);
-    setUsername(worker.username);
+  const openEditModal = (pengawas) => {
+    setSelectedPengawas(pengawas);
+    setName(pengawas.name);
+    setUsername(pengawas.username);
     setPassword(''); // biarkan kosong jika tidak diubah
-    setJabatan(worker.jabatan || '');
-    setRole(worker.role);
+    setJabatan(pengawas.jabatan || '');
+    setRole(pengawas.role);
     setManageModalVisible(true);
   };
 
-  const handleSaveWorker = async () => {
-    if (!name || !username || (!selectedWorker && !password)) {
+  const handleSavePengawas = async () => {
+    if (!name || !username || (!selectedPengawas && !password)) {
       Alert.alert("Data Tidak Lengkap", "Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.");
       return;
     }
 
     const isUsernameValid = /^[a-zA-Z]+$/.test(username);
-    const isPasswordValid = selectedWorker && !password ? true : /^[0-9]+$/.test(password);
+    const isPasswordValid = selectedPengawas && !password ? true : /^[0-9]+$/.test(password);
 
     if (!isUsernameValid) {
       Alert.alert("Format Tidak Valid", "Username hanya boleh berisi huruf (alfabet) tanpa spasi atau angka.");
@@ -149,36 +149,36 @@ export default function WorkerListScreen({ navigation }) {
       const data = { name, username, role, jabatan };
       if (password) data.password = password;
 
-      if (selectedWorker) {
+      if (selectedPengawas) {
         // Update
-        await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data);
+        await axios.put(`${API_BASE}/pengawass/${selectedPengawas.id}`, data);
         Alert.alert("Berhasil", "Data pekerja berhasil diperbarui!");
       } else {
         // Create
-        await axios.post(`${API_BASE}/workers`, data);
+        await axios.post(`${API_BASE}/pengawass`, data);
         Alert.alert("Berhasil", "Pekerja baru berhasil ditambahkan!");
       }
       setManageModalVisible(false);
-      fetchWorkers();
+      fetchPengawass();
     } catch (error) {
       Alert.alert("Gagal", error.response?.data?.error || error.message);
     }
   };
 
-  const handleDeleteWorker = () => {
-    if (!selectedWorker) return;
+  const handleDeletePengawas = () => {
+    if (!selectedPengawas) return;
 
-    Alert.alert("Konfirmasi Hapus", `Apakah Anda yakin ingin menghapus ${selectedWorker.name}?`, [
+    Alert.alert("Konfirmasi Hapus", `Apakah Anda yakin ingin menghapus ${selectedPengawas.name}?`, [
       { text: "Batal", style: "cancel" },
       {
         text: "Hapus",
         style: "destructive",
         onPress: async () => {
           try {
-            await axios.delete(`${API_BASE}/workers/${selectedWorker.id}`);
-            Alert.alert("Berhasil", "Pekerja berhasil dihapus!");
+            await axios.delete(`${API_BASE}/pengawass/${selectedPengawas.id}`);
+            Alert.alert("Berhasil", "Pengawas berhasil dihapus!");
             setManageModalVisible(false);
-            fetchWorkers();
+            fetchPengawass();
           } catch (error) {
             Alert.alert("Gagal", error.response?.data?.error || error.message);
           }
@@ -227,7 +227,7 @@ export default function WorkerListScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#0055A5" />
           </TouchableOpacity>
-          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pekerja</Text>
+          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pengawas</Text>
         </View>
 
         <View style={tw`flex-1 relative`}>
@@ -248,33 +248,16 @@ export default function WorkerListScreen({ navigation }) {
               )}
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`flex-row`}>
-              <TouchableOpacity onPress={() => setSortBy('Abjad')} style={tw`px-4 py-2 rounded-full mr-2 border ${sortBy === 'Abjad' ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-white border-gray-200'}`}>
-                <Text style={tw`text-xs font-bold ${sortBy === 'Abjad' ? 'text-white' : 'text-gray-500'}`}>Urut Abjad</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSortBy('NIP')} style={tw`px-4 py-2 rounded-full mr-2 border ${sortBy === 'NIP' ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-white border-gray-200'}`}>
-                <Text style={tw`text-xs font-bold ${sortBy === 'NIP' ? 'text-white' : 'text-gray-500'}`}>Urut NIP</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={() => setFilterJabatan('Semua')} style={tw`px-4 py-2 rounded-full mr-2 border ${filterJabatan === 'Semua' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
-                <Text style={tw`text-xs font-bold ${filterJabatan === 'Semua' ? 'text-white' : 'text-gray-500'}`}>Semua AMT</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setFilterJabatan('AMT I')} style={tw`px-4 py-2 rounded-full mr-2 border ${filterJabatan === 'AMT I' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
-                <Text style={tw`text-xs font-bold ${filterJabatan === 'AMT I' ? 'text-white' : 'text-gray-500'}`}>AMT I</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setFilterJabatan('AMT II')} style={tw`px-4 py-2 rounded-full mr-4 border ${filterJabatan === 'AMT II' ? 'bg-[#00A651] border-[#00A651]' : 'bg-white border-gray-200'}`}>
-                <Text style={tw`text-xs font-bold ${filterJabatan === 'AMT II' ? 'text-white' : 'text-gray-500'}`}>AMT II</Text>
-              </TouchableOpacity>
-            </ScrollView>
+            
           </View>
 
           <View style={tw`px-6 mt-2 mb-2`}>
-            <Text style={tw`text-gray-500 font-bold uppercase tracking-widest text-xs`}>{filteredWorkers.length} Pekerja Terdaftar</Text>
+            <Text style={tw`text-gray-500 font-bold uppercase tracking-widest text-xs`}>{filteredPengawass.length} Pengawas Terdaftar</Text>
           </View>
 
           <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
             contentContainerStyle={tw`p-6 pb-30 w-full max-w-7xl mx-auto`}
-            data={filteredWorkers}
+            data={filteredPengawass}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             ListEmptyComponent={
@@ -300,12 +283,12 @@ export default function WorkerListScreen({ navigation }) {
 
       </SafeAreaView>
 
-      {/* MANAGE WORKER MODAL */}
+      {/* MANAGE PENGAWAS MODAL */}
       <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
         <View style={tw`flex-1 justify-end bg-black/60`}>
           <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
             <View style={tw`flex-row justify-between items-center mb-6`}>
-              <Text style={tw`text-2xl font-black text-gray-800`}>{selectedWorker ? 'Edit Pekerja' : 'Tambah Pekerja'}</Text>
+              <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Edit Pengawas' : 'Tambah Pengawas'}</Text>
               <TouchableOpacity onPress={() => setManageModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -343,21 +326,21 @@ export default function WorkerListScreen({ navigation }) {
             </View>
 
             <View style={tw`mb-6`}>
-              {selectedWorker && (
+              {selectedPengawas && (
                 <View style={tw`mb-4 p-4 bg-gray-100 rounded-xl border border-gray-200 flex-row justify-between items-center`}>
                   <View>
                     <Text style={tw`text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1`}>Password Saat Ini</Text>
-                    <Text style={tw`text-sm font-bold text-gray-700`}>{selectedWorker.password}</Text>
+                    <Text style={tw`text-sm font-bold text-gray-700`}>{selectedPengawas.password}</Text>
                   </View>
                   <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
                 </View>
               )}
               <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
-                Password {selectedWorker ? '(Kosongkan jika tidak diubah)' : ''}
+                Password {selectedPengawas ? '(Kosongkan jika tidak diubah)' : ''}
               </Text>
               <TextInput
                 style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder={selectedWorker ? "Masukkan password baru" : "Masukkan password"}
+                placeholder={selectedPengawas ? "Masukkan password baru" : "Masukkan password"}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -365,17 +348,17 @@ export default function WorkerListScreen({ navigation }) {
             </View>
 
             <View style={tw`flex-row justify-between w-full mb-6`}>
-              {selectedWorker ? (
+              {selectedPengawas ? (
                 <>
-                  <TouchableOpacity style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`} onPress={handleDeleteWorker}>
+                  <TouchableOpacity style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`} onPress={handleDeletePengawas}>
                     <Text style={tw`text-red-700 font-bold`}>Hapus Data</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveWorker}>
+                  <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`} onPress={handleSavePengawas}>
                     <Text style={tw`text-white font-bold`}>Simpan</Text>
                   </TouchableOpacity>
                 </>
               ) : (
-                <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveWorker}>
+                <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSavePengawas}>
                   <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PEKERJA</Text>
                 </TouchableOpacity>
               )}

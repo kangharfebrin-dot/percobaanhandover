@@ -149,7 +149,7 @@ app.use('/api', (req, res, next) => {
 // 2. Submit Handover (Termasuk foto dan checklist)
 app.post('/api/handovers', upload.array('photos', 4), async (req, res) => {
   try {
-    const { userId, noPolisi, shift, locationLat, locationLng, items } = req.body;
+    const { userId, noPolisi, shift, locationLat, locationLng, items, amt1, amt2 } = req.body;
     const parsedItems = JSON.parse(items); // items dikirim sebagai string JSON jika form-data
 
     // Cek jika ada item yang "Tidak Baik / Tidak Ada" (isGood == false)
@@ -489,6 +489,47 @@ app.delete('/api/workers/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+
+// --- PENGAWAS ROUTES ---
+app.get('/api/pengawas', async (req, res) => {
+  try {
+    const pengawas = await prisma.user.findMany({
+      where: { role: { in: ['PENGAWAS', 'ADMIN'] } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(pengawas);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/pengawas', async (req, res) => {
+  try {
+    const { name, username, password, role, jabatan } = req.body;
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) return res.status(400).json({ error: 'Username sudah digunakan' });
+    const newPengawas = await prisma.user.create({
+      data: { name, username, password: password ? password : username, role: role || 'PENGAWAS', jabatan: jabatan || null }
+    });
+    res.status(201).json({ success: true, pengawas: newPengawas });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.put('/api/pengawas/:id', async (req, res) => {
+  try {
+    const { name, username, role, password, jabatan } = req.body;
+    const updateData = { name, username, role, jabatan };
+    if (password && password.trim() !== '') updateData.password = password;
+    const updatedPengawas = await prisma.user.update({ where: { id: req.params.id }, data: updateData });
+    res.json({ success: true, pengawas: updatedPengawas });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/pengawas/:id', async (req, res) => {
+  try {
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'Pengawas berhasil dihapus' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // --- CHECKLIST ROUTES ---

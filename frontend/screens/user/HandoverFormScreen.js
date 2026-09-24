@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_URL } from '../../config';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
 import TextLogo from '../../components/TextLogo';
@@ -43,13 +44,25 @@ const PERTAMINA_RED = ['#FF4B4B', '#ED1C24'];
 const PERTAMINA_GREEN = ['#2ECC71', '#00A651'];
 
 export default function HandoverFormScreen({ route, navigation }) {
-  const { noPolisi: initialNoPolisi } = route?.params || {};
+  const { noPolisi: initialNoPolisi, type } = route?.params || {};
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
-  const [shift, setShift] = useState('08:00');
+  const now = new Date();
+  const currentHour = String(now.getHours()).padStart(2, '0');
+  const currentMinute = String(now.getMinutes()).padStart(2, '0');
+  const [shift, setShift] = useState(`${currentHour}:${currentMinute}`);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedHour, setSelectedHour] = useState('08');
-  const [selectedMinute, setSelectedMinute] = useState('00');
+  const [selectedHour, setSelectedHour] = useState(currentHour);
+  const [selectedMinute, setSelectedMinute] = useState(currentMinute);
   const [odoMeter, setOdoMeter] = useState('');
+  const [amt1, setAmt1] = useState('');
+  const [amt2, setAmt2] = useState('');
+  const [isAmt1Locked, setIsAmt1Locked] = useState(false);
+  const [isAmt2Locked, setIsAmt2Locked] = useState(false);
+  const [workers, setWorkers] = useState([]);
+  const [filteredWorkers1, setFilteredWorkers1] = useState([]);
+  const [filteredWorkers2, setFilteredWorkers2] = useState([]);
+  const [showWorkers1, setShowWorkers1] = useState(false);
+  const [showWorkers2, setShowWorkers2] = useState(false);
 
   // Checklist State (Mulai dari null/kosong)
   const [items, setItems] = useState([]);
@@ -77,9 +90,20 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   useEffect(() => {
+    
+    const loadWorkers = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/workers`);
+        setWorkers(res.data);
+      } catch (e) {
+        console.error("Gagal load workers:", e);
+      }
+    };
+    loadWorkers();
+
     const loadChecklist = async () => {
       try {
-        const res = await axios.get('http://192.168.1.7:3000/api/checklists');
+        const res = await axios.get(`${API_URL}/api/checklists`);
         let sourceItems = res.data;
         if (!sourceItems || sourceItems.length === 0) {
           sourceItems = DEFAULT_ITEMS;
@@ -111,6 +135,17 @@ export default function HandoverFormScreen({ route, navigation }) {
         if (userStr) {
           const user = JSON.parse(userStr);
           setUserRole(user.role || 'USER');
+          
+          if (user.role === 'AMT' || user.role === 'USER') {
+            const jbt = (user.jabatan || '').toUpperCase();
+            if (jbt.includes('2')) {
+              setAmt2(user.name);
+              setIsAmt2Locked(true);
+            } else {
+              setAmt1(user.name);
+              setIsAmt1Locked(true);
+            }
+          }
         }
 
         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -127,6 +162,28 @@ export default function HandoverFormScreen({ route, navigation }) {
       }
     })();
   }, []);
+
+  // AUTOCOMPLETE LOGIC
+  const handleSearchAmt1 = (text) => {
+    setAmt1(text);
+    if(text.length > 0) {
+      setFilteredWorkers1(workers.filter(w => w.name.toLowerCase().includes(text.toLowerCase())));
+      setShowWorkers1(true);
+    } else {
+      setShowWorkers1(false);
+    }
+  };
+  const handleSearchAmt2 = (text) => {
+    setAmt2(text);
+    if(text.length > 0) {
+      setFilteredWorkers2(workers.filter(w => w.name.toLowerCase().includes(text.toLowerCase())));
+      setShowWorkers2(true);
+    } else {
+      setShowWorkers2(false);
+    }
+  };
+  const selectAmt1 = (name) => { setAmt1(name); setShowWorkers1(false); };
+  const selectAmt2 = (name) => { setAmt2(name); setShowWorkers2(false); };
 
   // UPDATE ITEMS LOGIC
   const setItemStatus = (index, statusValue) => {
@@ -232,11 +289,11 @@ export default function HandoverFormScreen({ route, navigation }) {
   const goToDashboard = (role) => {
     const r = role || userRole;
     if (r === 'SUPER_ADMIN' || r === 'ADMIN') {
-      navigation.navigate('AdminDashboard');
+      navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
     } else if (r === 'PENGAWAS') {
-      navigation.navigate('PengawasDashboard');
+      navigation.reset({ index: 0, routes: [{ name: 'PengawasDashboard' }] });
     } else {
-      navigation.navigate('UserDashboard');
+      navigation.reset({ index: 0, routes: [{ name: 'UserDashboard' }] });
     }
   };
 
@@ -305,7 +362,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
-      await axios.post('http://192.168.1.7:3000/api/handovers', formData, {
+      await axios.post(`${API_URL}/api/handovers`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -460,7 +517,39 @@ export default function HandoverFormScreen({ route, navigation }) {
             </View>
           </TouchableOpacity>
 
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>Odo Meter (KM)</Text>
+          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
+          <View style={tw`relative z-20`}>
+            <TextInput style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt1Locked ? "text-gray-400 bg-gray-100" : ""}`} placeholder="Nama AMT 1" value={amt1} editable={!isAmt1Locked} onChangeText={handleSearchAmt1} onFocus={() => amt1.length > 0 && setShowWorkers1(true)} />
+            {showWorkers1 && filteredWorkers1.length > 0 && (
+              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-40`}>
+                <ScrollView nestedScrollEnabled={true}>
+                  {filteredWorkers1.map(w => (
+                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100`} onPress={() => selectAmt1(w.name)}>
+                      <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
+          <View style={tw`relative z-10`}>
+            <TextInput style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt2Locked ? "text-gray-400 bg-gray-100" : ""}`} placeholder="Nama AMT 2" value={amt2} editable={!isAmt2Locked} onChangeText={handleSearchAmt2} onFocus={() => amt2.length > 0 && setShowWorkers2(true)} />
+            {showWorkers2 && filteredWorkers2.length > 0 && (
+              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-40`}>
+                <ScrollView nestedScrollEnabled={true}>
+                  {filteredWorkers2.map(w => (
+                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100`} onPress={() => selectAmt2(w.name)}>
+                      <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>{type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'}</Text>
           <TextInput
             style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm`}
             placeholder="Misal: 150000"
@@ -556,7 +645,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                 <Ionicons name="paper-plane" size={24} color="white" style={tw`mr-3`} />
               )}
               <Text style={tw`text-white font-extrabold text-xl tracking-wide`}>
-                {loading ? "MENGIRIM LAPORAN..." : "KIRIM LAPORAN"}
+                {loading ? "MEMPROSES..." : (type === 'akhiri' ? 'AKHIRI PERJALANAN' : 'MULAI PERJALANAN')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>

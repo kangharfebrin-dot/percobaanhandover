@@ -13,6 +13,7 @@ import HistoryScreen from './screens/shared/HistoryScreen';
 import HandoverDetailScreen from './screens/shared/HandoverDetailScreen';
 import AdminDashboardScreen from './screens/admin/AdminDashboardScreen';
 import WorkerListScreen from './screens/admin/WorkerListScreen';
+import PengawasListScreen from './screens/admin/PengawasListScreen';
 import VehicleListScreen from './screens/admin/VehicleListScreen';
 import ChecklistManagerScreen from './screens/admin/ChecklistManagerScreen';
 import PengawasDashboardScreen from './screens/pengawas/PengawasDashboardScreen';
@@ -120,6 +121,7 @@ export default function App() {
         <Stack.Screen name="MessageCenter" component={MessageCenterScreen} />
         <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
         <Stack.Screen name="WorkerList" component={WorkerListScreen} />
+        <Stack.Screen name="PengawasList" component={PengawasListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

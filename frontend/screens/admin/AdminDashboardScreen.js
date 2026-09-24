@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, ScrollView, Animated, Easing, Platform, Alert, Image, Modal } from 'react-native';
 import tw from 'twrnc';
@@ -104,16 +105,16 @@ export default function AdminDashboardScreen({ navigation }) {
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const vehicleRes = await axios.get('http://192.168.1.7:3000/api/vehicles');
+      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`);
       const activeVehicles = vehicleRes.data;
       setVehiclesCount(activeVehicles.length);
       const activePolisi = activeVehicles.map(v => v.noPolisi);
 
-      const res = await axios.get('http://192.168.1.7:3000/api/handovers');
+      const res = await axios.get(`${API_URL}/api/handovers`);
       const dataHandovers = res.data.data || res.data;
       setAllHandovers(dataHandovers);
       
-      const issueRes = await axios.get('http://192.168.1.7:3000/api/issues/ongoing');
+      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`);
       const activeIssues = issueRes.data.filter(issue => activePolisi.includes(issue.handover.noPolisi));
       
       setActiveIssuesCount(activeIssues.length);
@@ -323,7 +324,7 @@ export default function AdminDashboardScreen({ navigation }) {
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6' : 'p-6 pt-6 pb-32'}`}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
 
             {/* Title Section */}
             <View style={tw`mb-8`}>
@@ -384,6 +385,26 @@ export default function AdminDashboardScreen({ navigation }) {
                 </TouchableOpacity>
               </>
             )}
+
+            
+                {/* Daftar Pengawas Full Width Card */}
+                <TouchableOpacity
+                  style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                  onPress={() => navigation.navigate('PengawasList')}
+                >
+                  <View style={tw`flex-row items-center flex-1`}>
+                    <View style={tw`w-14 h-14 bg-orange-100 rounded-full items-center justify-center mr-4`}>
+                      <Feather name="shield" size={26} color="#F59E0B" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pengawas</Text>
+                      <Text style={tw`text-xs text-orange-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                    </View>
+                  </View>
+                  <View style={tw`w-10 h-10 bg-orange-50 rounded-full items-center justify-center`}>
+                    <Feather name="chevron-right" size={20} color="#F59E0B" />
+                  </View>
+                </TouchableOpacity>
 
             {/* Action Card */}
             {canSeeActions && (
@@ -448,7 +469,13 @@ export default function AdminDashboardScreen({ navigation }) {
                 {loadingAlerts ? (
                   <ActivityIndicator size="large" color="#ED1C24" style={tw`my-10`} />
                 ) : alerts.length > 0 ? (
-                  alerts.map(item => <React.Fragment key={item.id}>{renderAlertItem({ item })}</React.Fragment>)
+                  <View style={tw`${isLargeScreen ? 'flex-row flex-wrap justify-between' : ''}`}>
+                    {alerts.map(item => (
+                      <View key={item.id} style={tw`${isLargeScreen ? 'w-[48%] mb-4' : 'w-full'}`}>
+                        {renderAlertItem({ item })}
+                      </View>
+                    ))}
+                  </View>
                 ) : (
                   <View style={[tw`items-center justify-center py-16 px-6 rounded-[35px] border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }]}>
                     <View style={tw`w-24 h-24 bg-gray-100 rounded-full items-center justify-center mb-6`}>
@@ -545,7 +572,7 @@ export default function AdminDashboardScreen({ navigation }) {
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
-                  <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
+                  {alerts.length > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
                 </View>
               </TouchableOpacity>
             )}

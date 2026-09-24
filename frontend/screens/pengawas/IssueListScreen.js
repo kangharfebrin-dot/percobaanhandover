@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,11 +9,22 @@ import axios from 'axios';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const API_URL = 'http://192.168.1.7:3000/api';
+const API_BASE = `${API_URL}/api`;
 
+const { Dimensions } = require('react-native');
 export default function IssueListScreen({ navigation }) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const subscription = Dimensions.addEventListener('change', onChange);
+    return () => subscription?.remove();
+  }, []);
+
+  const isLargeScreen = Platform.OS === 'web' && screenWidth > 768;
+  const numCols = isLargeScreen ? 3 : 1;
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [manageModalVisible, setManageModalVisible] = useState(false);
   
@@ -49,8 +61,8 @@ export default function IssueListScreen({ navigation }) {
     setLoading(true);
     try {
       const [vehicleRes, issueRes] = await Promise.all([
-        axios.get(`${API_URL}/vehicles`),
-        axios.get(`${API_URL}/issues/ongoing`)
+        axios.get(`${API_BASE}/vehicles`),
+        axios.get(`${API_BASE}/issues/ongoing`)
       ]);
       
       const activePolisi = vehicleRes.data.map(v => v.noPolisi);
@@ -84,7 +96,7 @@ export default function IssueListScreen({ navigation }) {
   const executeResolveIssue = async () => {
     setIsResolving(true);
     try {
-      await axios.put(`${API_URL}/issues/${selectedVehicle.issueId}/resolve`);
+      await axios.put(`${API_BASE}/issues/${selectedVehicle.issueId}/resolve`);
       setManageModalVisible(false);
       setConfirmModalVisible(false);
       fetchIssues();
@@ -105,7 +117,7 @@ export default function IssueListScreen({ navigation }) {
   const renderItem = ({ item }) => {
     return (
       <TouchableOpacity 
-        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
+        style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
         onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS') openManageModal(item); }}
         activeOpacity={0.7}
       >
@@ -153,8 +165,8 @@ export default function IssueListScreen({ navigation }) {
           <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Isu Ditemukan</Text>
         </View>
 
-        <FlatList
-          contentContainerStyle={tw`p-6 pb-20 w-full max-w-4xl mx-auto`}
+        <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+          contentContainerStyle={tw`p-6 pb-20 w-full max-w-7xl mx-auto`}
           data={issues}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

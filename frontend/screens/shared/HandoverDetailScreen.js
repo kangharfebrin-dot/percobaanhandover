@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from '../../config';
 import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Animated, Easing, Modal } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function HandoverDetailScreen({ route, navigation }) {
   const { handover } = route.params;
 
@@ -289,7 +291,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                     onPress={() => setSelectedPhoto(photo)}
                   >
                     <Image
-                      source={{ uri: `http://192.168.1.7:3000/${photo.url}` }}
+                      source={{ uri: `${API_URL}/${photo.url}` }}
                       style={tw`w-full h-full`}
                       resizeMode="cover"
                     />
@@ -360,7 +362,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
             <View style={tw`w-full h-full justify-center items-center p-4 pt-20`}>
               <View style={tw`w-full h-[80%] bg-black/50 rounded-[40px] overflow-hidden border border-white/20 shadow-2xl relative`}>
                 <Image 
-                  source={{ uri: `http://192.168.1.7:3000/${selectedPhoto.url}` }} 
+                  source={{ uri: `${API_URL}/${selectedPhoto.url}` }} 
                   style={tw`w-full h-full`} 
                   resizeMode="contain" 
                 />

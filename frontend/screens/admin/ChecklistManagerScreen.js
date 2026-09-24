@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, Easing, Dimensions } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -72,7 +73,7 @@ export default function ChecklistManagerScreen({ navigation }) {
 
   const loadItems = async () => {
     try {
-      const res = await axios.get('http://192.168.1.7:3000/api/checklists');
+      const res = await axios.get(`${API_URL}/api/checklists`);
       setItems(res.data);
     } catch (e) {
       console.error(e);
@@ -88,13 +89,13 @@ export default function ChecklistManagerScreen({ navigation }) {
 
     try {
       if (editingItem) {
-        await axios.put(`http://192.168.1.7:3000/api/checklists/${editingItem.id}`, {
+        await axios.put(`${API_URL}/api/checklists/${editingItem.id}`, {
           name: newName,
           category: newCategory,
           severity: newSeverity
         });
       } else {
-        await axios.post('http://192.168.1.7:3000/api/checklists', {
+        await axios.post(`${API_URL}/api/checklists`, {
           name: newName,
           category: newCategory,
           severity: newSeverity
@@ -113,7 +114,7 @@ export default function ChecklistManagerScreen({ navigation }) {
       { text: 'Batal', style: 'cancel' },
       { text: 'Hapus', style: 'destructive', onPress: async () => {
         try {
-          await axios.delete(`http://192.168.1.7:3000/api/checklists/${id}`);
+          await axios.delete(`${API_URL}/api/checklists/${id}`);
           loadItems();
         } catch (e) {
           console.error(e);
@@ -152,14 +153,16 @@ export default function ChecklistManagerScreen({ navigation }) {
         </View>
         <Text style={tw`text-gray-800 font-bold text-base`}>{item.name}</Text>
       </View>
-      <View style={tw`flex-row`}>
-        <TouchableOpacity style={tw`p-2 bg-blue-50 rounded-lg mr-2`} onPress={() => openEditModal(item)}>
-          <Feather name="edit-2" size={18} color="#0055A5" />
-        </TouchableOpacity>
-        <TouchableOpacity style={tw`p-2 bg-red-50 rounded-lg`} onPress={() => handleDelete(item.id)}>
-          <Feather name="trash-2" size={18} color="#ED1C24" />
-        </TouchableOpacity>
-      </View>
+      {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+        <View style={tw`flex-row`}>
+          <TouchableOpacity style={tw`p-2 bg-blue-50 rounded-lg mr-2`} onPress={() => openEditModal(item)}>
+            <Feather name="edit-2" size={18} color="#0055A5" />
+          </TouchableOpacity>
+          <TouchableOpacity style={tw`p-2 bg-red-50 rounded-lg`} onPress={() => handleDelete(item.id)}>
+            <Feather name="trash-2" size={18} color="#ED1C24" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -177,9 +180,11 @@ export default function ChecklistManagerScreen({ navigation }) {
             </TouchableOpacity>
             <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
           </View>
-          <TouchableOpacity onPress={openAddModal}>
-             <Ionicons name="add-circle" size={28} color="#00A651" />
-          </TouchableOpacity>
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+            <TouchableOpacity onPress={openAddModal}>
+               <Ionicons name="add-circle" size={28} color="#00A651" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={tw`px-6 mb-2`}>
@@ -226,7 +231,7 @@ export default function ChecklistManagerScreen({ navigation }) {
           {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
               <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-              <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
+              {/* Titik merah disembunyikan karena tidak ada state alerts di sini */}
             </TouchableOpacity>
           )}
 

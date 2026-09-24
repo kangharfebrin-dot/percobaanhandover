@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Dimensions, Platform, Modal, Animated, Image, Easing, ScrollView, Linking, Alert } from 'react-native';
 import tw from 'twrnc';
@@ -45,6 +46,7 @@ export default function HistoryScreen({ route, navigation }) {
 
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const isLargeScreen = screenWidth > 768;
+  const numCols = isLargeScreen && Platform.OS === "web" ? 3 : 1;
 
   useEffect(() => {
     const onChange = ({ window }) => setScreenWidth(window.width);
@@ -110,7 +112,7 @@ export default function HistoryScreen({ route, navigation }) {
   const fetchHistory = async (userData, pageNum = 1) => {
     try {
       if (pageNum === 1) setLoading(true);
-      const res = await axios.get(`http://192.168.1.7:3000/api/handovers?page=${pageNum}&limit=20`);
+      const res = await axios.get(`${API_URL}/api/handovers?page=${pageNum}&limit=20`);
       let data = res.data.data || res.data; // fallback jika API lama
 
       if (userData && (userData.role === 'AMT' || userData.role === 'USER')) {
@@ -144,7 +146,7 @@ export default function HistoryScreen({ route, navigation }) {
 
   const handleExportExcel = async () => {
     try {
-      const url = 'http://192.168.1.7:3000/api/handovers/export';
+      const url = `${API_URL}/api/handovers/export`;
       await Linking.openURL(url);
     } catch (err) {
       console.log('Gagal export excel:', err);
@@ -262,7 +264,7 @@ export default function HistoryScreen({ route, navigation }) {
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => navigation.navigate('HandoverDetail', { handover: item })}
-        style={tw`bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? 'border-green-100' : (isResolved ? 'border-blue-200' : 'border-red-200')}`}
+        style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? "border-green-100" : (isResolved ? "border-blue-200" : "border-red-200")}`}
       >
         <View style={tw`flex-row justify-between items-start mb-3`}>
           <View style={tw`flex-row items-center`}>
@@ -511,8 +513,8 @@ export default function HistoryScreen({ route, navigation }) {
               </View>
             </View>
           ) : (
-            <FlatList
-              contentContainerStyle={tw`p-6 pb-32 w-full max-w-4xl mx-auto`}
+            <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+              contentContainerStyle={tw`p-6 pb-32 w-full max-w-7xl mx-auto`}
               data={filteredHandovers}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
