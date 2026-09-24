@@ -8,7 +8,7 @@ class TokenManager {
     return jwt.sign(
       { id: user.id, username: user.username, role: user.role },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
   }
 

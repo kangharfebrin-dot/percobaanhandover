@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, Animated, Easing, Dimensions, Image, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, Animated, Easing, Dimensions, Image, Modal, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../../config';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-const MOCK_MESSAGES = [];
-
 export default function MessageCenterScreen({ navigation }) {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [user, setUser] = useState(null);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
@@ -30,6 +31,7 @@ export default function MessageCenterScreen({ navigation }) {
       if (userStr) setUser(JSON.parse(userStr));
     };
     loadUser();
+    fetchMessages();
 
     Animated.loop(
       Animated.sequence([
@@ -55,6 +57,34 @@ export default function MessageCenterScreen({ navigation }) {
     return () => subscription?.remove();
   }, []);
 
+  const fetchMessages = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setMessages(res.data.notifications.map(n => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: n.type.toLowerCase(),
+          read: n.isRead,
+          time: new Date(n.createdAt).toLocaleString('id-ID')
+        })));
+      }
+    } catch (error) {
+      console.log("Error fetching notifications:", error.message);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await AsyncStorage.multiRemove(['user', 'token']);
+        navigation.replace('Login');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
   const handleLogout = () => setIsLogoutVisible(true);
@@ -65,12 +95,20 @@ export default function MessageCenterScreen({ navigation }) {
     navigation.replace('Login');
   };
 
-  const markAsRead = (id) => {
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+  const markAsRead = async (id) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+    } catch (error) {
+      console.log("Error updating notification:", error.message);
+    }
   };
 
   const markAllAsRead = () => {
-    setMessages(prev => prev.map(m => ({ ...m, read: true })));
+    messages.filter(m => !m.read).forEach(m => markAsRead(m.id));
   };
 
   const renderMessage = ({ item }) => {
@@ -119,10 +157,18 @@ export default function MessageCenterScreen({ navigation }) {
       </Animated.View>
 
       <SafeAreaView style={tw`flex-1 relative`}>
-        {/* STICKY NAVBAR */}
         <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-6 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#3B82F6', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
           <View style={tw`flex-row items-center`}>
-            <TouchableOpacity onPress={() => navigation.navigate('PengawasDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+            <TouchableOpacity onPress={() => {
+              if (!user) { navigation.goBack(); return; }
+              if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+                navigation.replace('AdminDashboard');
+              } else if (user.role === 'PENGAWAS') {
+                navigation.replace('PengawasDashboard');
+              } else {
+                navigation.replace('UserDashboard');
+              }
+            }} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
               <Ionicons name="arrow-back" size={24} color="#3B82F6" />
             </TouchableOpacity>
             <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Pesan & Notifikasi</Text>
@@ -133,24 +179,41 @@ export default function MessageCenterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          contentContainerStyle={tw`p-6 pb-30 w-full max-w-4xl mx-auto`}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          ListEmptyComponent={
-            <View style={tw`items-center mt-20`}>
-              <Ionicons name="chatbubble-outline" size={60} color="#CBD5E1" />
-              <Text style={tw`text-center text-gray-400 font-bold mt-4 text-lg`}>Tidak ada pesan baru.</Text>
-            </View>
-          }
-        />
+        {loading ? (
+          <View style={tw`flex-1 items-center justify-center mt-20`}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+          </View>
+        ) : (
+          <FlatList
+            contentContainerStyle={tw`p-6 pb-30 w-full max-w-4xl mx-auto`}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            ListEmptyComponent={
+              <View style={tw`items-center mt-20`}>
+                <Ionicons name="chatbubble-outline" size={60} color="#CBD5E1" />
+                <Text style={tw`text-center text-gray-400 font-bold mt-4 text-lg`}>Tidak ada pesan baru.</Text>
+              </View>
+            }
+          />
+        )}
       </SafeAreaView>
 
       {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
       {!isLargeScreen && user && (
         <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
-          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('PengawasDashboard')}>
+          <TouchableOpacity 
+            style={tw`items-center justify-center px-4 relative`} 
+            onPress={() => {
+              if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+                navigation.replace('AdminDashboard');
+              } else if (user.role === 'PENGAWAS') {
+                navigation.replace('PengawasDashboard');
+              } else {
+                navigation.replace('UserDashboard');
+              }
+            }}
+          >
             <Feather name="grid" size={26} color="#9CA3AF" />
           </TouchableOpacity>
 
@@ -166,27 +229,25 @@ export default function MessageCenterScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
-            <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
-              <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                </Animated.View>
-              </View>
-              <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                </Animated.View>
-              </View>
-              <View style={tw`relative`}>
-                <Ionicons name="chatbubble-ellipses-outline" size={26} color="#1F2937" />
-                {/* RED DOT BADGE MOCK */}
-                {messages.some(m => !m.read) && (
-                  <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
-                )}
-              </View>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
+            <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+              <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+              </Animated.View>
+            </View>
+            <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+              <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+              </Animated.View>
+            </View>
+            <View style={tw`relative`}>
+              <Ionicons name="chatbubble-ellipses-outline" size={26} color="#1F2937" />
+              {/* RED DOT BADGE MOCK */}
+              {messages.some(m => !m.read) && (
+                <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
+              )}
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
             <Feather name="log-out" size={26} color="#9CA3AF" />

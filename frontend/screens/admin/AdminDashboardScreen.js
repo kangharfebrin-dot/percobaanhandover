@@ -99,29 +99,38 @@ export default function AdminDashboardScreen({ navigation }) {
       }
     };
     loadData();
+  }, []);
 
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS' || user.role === 'ADMIN')) {
-        fetchAlerts();
-        fetchNotifications();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
+          fetchAlerts();
+          fetchNotifications();
+        }
       }
     });
     return unsubscribe;
-  }, [navigation, user?.role]);
+  }, [navigation]);
 
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`, { headers });
       const activeVehicles = vehicleRes.data;
       setVehiclesCount(activeVehicles.length);
       const activePolisi = activeVehicles.map(v => v.noPolisi);
 
-      const res = await axios.get(`${API_URL}/api/handovers`);
+      const res = await axios.get(`${API_URL}/api/handovers`, { headers });
       const dataHandovers = res.data.data || res.data;
       setAllHandovers(dataHandovers);
       
-      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`);
+      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`, { headers });
       const activeIssues = issueRes.data.filter(issue => activePolisi.includes(issue.handover.noPolisi));
       
       setActiveIssuesCount(activeIssues.length);
@@ -135,6 +144,10 @@ export default function AdminDashboardScreen({ navigation }) {
       setAlerts(todaysHandovers);
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await AsyncStorage.multiRemove(['user', 'token']);
+        navigation.replace('Login');
+      }
     } finally {
       setLoadingAlerts(false);
     }
@@ -142,7 +155,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
   const fetchNotifications = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      const token = await AsyncStorage.getItem('token');
       const res = await axios.get(`${API_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -152,12 +165,16 @@ export default function AdminDashboardScreen({ navigation }) {
       }
     } catch (error) {
       console.log("Gagal mengambil notifikasi:", error.message);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await AsyncStorage.multiRemove(['user', 'token']);
+        navigation.replace('Login');
+      }
     }
   };
 
   const handleReadNotification = async (id) => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      const token = await AsyncStorage.getItem('token');
       await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -180,7 +197,8 @@ export default function AdminDashboardScreen({ navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
     navigation.replace('Login');
   };
 
@@ -644,7 +662,7 @@ export default function AdminDashboardScreen({ navigation }) {
             )}
 
 
-            {(isSuperAdmin || isPengawas) && (
+            {(isSuperAdmin || isPengawas || user?.role === 'ADMIN') && (
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
                 {activeMenu === 'Messages' && (
                   <>

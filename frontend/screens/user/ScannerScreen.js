@@ -54,7 +54,7 @@ export default function ScannerScreen({ route, navigation }) {
       if (res && res.data && res.data.success && res.data.vehicle) {
         setScannedNoPolisi(res.data.vehicle.noPolisi);
         const isUnderRepair = ongoingIssues.some(issue => issue.handover && issue.handover.noPolisi === res.data.vehicle.noPolisi);
-        
+
         if (isUnderRepair) {
           setScanResult('repair');
           setLoading(false);
@@ -68,10 +68,10 @@ export default function ScannerScreen({ route, navigation }) {
         }
         // Jika lolos (Active), gunakan Nomor Polisi aslinya!
         setScannedNoPolisi(res.data.vehicle.noPolisi);
-        
+
         if (res.data.lastHandover) {
           const lastType = res.data.lastHandover.type;
-          
+
           if (type === 'mulai' && lastType === 'mulai') {
             setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
             setLoading(false);
@@ -235,7 +235,7 @@ export default function ScannerScreen({ route, navigation }) {
       {scanResult === 'recap' && renderRecapModal()}
       {scanResult === 'success' && renderSuccessModal()}
 
-      
+
       {scanResult === 'repair' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
           <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100`}>
@@ -244,14 +244,14 @@ export default function ScannerScreen({ route, navigation }) {
             </View>
             <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Truk Dalam{"\n"}Perbaikan!</Text>
             <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam masa perbaikan (Isu aktif belum diselesaikan admin). Tidak dapat melanjutkan perjalanan.</Text>
-            
+
             <TouchableOpacity
               style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
               onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi || data }); }}
             >
               <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
               onPress={() => { setScanResult(null); navigation.goBack(); }}

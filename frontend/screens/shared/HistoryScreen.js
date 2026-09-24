@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
@@ -148,7 +148,8 @@ export default function HistoryScreen({ route, navigation }) {
 
   const handleExportExcel = async () => {
     try {
-      const url = `${API_URL}/api/handovers/export`;
+      const token = await AsyncStorage.getItem('token');
+      const url = `${API_URL}/api/reports/excel?token=${token}`;
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
@@ -157,12 +158,20 @@ export default function HistoryScreen({ route, navigation }) {
         
         if (downloadRes.status === 200) {
           if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(downloadRes.uri);
+            try {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                dialogTitle: 'Bagikan Laporan Handover',
+                UTI: 'com.microsoft.excel.xls'
+              });
+            } catch (shareErr) {
+              Alert.alert("Gagal Membagikan", "Tidak dapat membuka file: " + shareErr.message);
+            }
           } else {
-            Alert.alert("Sukses", "File berhasil diunduh ke perangkat Anda.");
+            Alert.alert("Sukses", "File berhasil diunduh ke perangkat Anda.\nLokasi: " + fileUri);
           }
         } else {
-          Alert.alert("Gagal", "Gagal mengunduh file Excel dari server.");
+          Alert.alert("Gagal", "Gagal mengunduh file Excel dari server. Status: " + downloadRes.status);
         }
       }
     } catch (err) {
@@ -184,7 +193,8 @@ export default function HistoryScreen({ route, navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
     navigation.replace('Login');
   };
 
@@ -596,11 +606,14 @@ export default function HistoryScreen({ route, navigation }) {
                 </TouchableOpacity>
               )}
 
-              {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
-                <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
+              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
+                <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
+                  {/* RED DOT BADGE MOCK */}
+                  {/* Note: In History screen we might not have 'unreadNotificationsCount' readily available like in Dashboard, 
+                      so we omit the badge or rely on local state if needed. But making the icon visible is the priority. */}
+                </View>
+              </TouchableOpacity>
 
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
                 <Feather name="log-out" size={26} color="#9CA3AF" />

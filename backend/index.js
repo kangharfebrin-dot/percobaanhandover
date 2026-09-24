@@ -63,16 +63,13 @@ app.get('/health', async (req, res) => {
 
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100, 
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   message: { error: 'Terlalu banyak request, coba lagi nanti.' }
 });
 app.use('/api', limiter);
 app.use(express.json());
-app.use('/uploads', (req, res, next) => {
-  res.setHeader('Content-Type', 'image/jpeg');
-  next();
-}, express.static('uploads'));
+app.use('/uploads', express.static('uploads'));
 app.use('/barcodes', express.static('barcodes'));
 const optimizeImages = require('./src/middleware/imageOptimizer');
 const upload = multer({ storage: multer.memoryStorage() });
@@ -81,7 +78,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
-  
+
   if (token == null) return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -102,7 +99,7 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
     let user = process.env.SMTP_USER;
     let pass = process.env.SMTP_PASS;
     let port = process.env.SMTP_PORT || 587;
-    
+
     // Nodemailer test account (simulasi email) jika smtp user kosong di .env
     if (!user) {
       let testAccount = await nodemailer.createTestAccount();
@@ -125,8 +122,8 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
     let subject = isResolved ? `[SELESAI] Perbaikan Kendaraan ${noPolisi}` : `[PERINGATAN] Isu Handover Kendaraan ${noPolisi}`;
     if (isBlocked) subject = `[BLOKIR - MAJOR] Isu Kendaraan ${noPolisi}`;
 
-    let textBody = isResolved 
-      ? `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan dapat beroperasi kembali.` 
+    let textBody = isResolved
+      ? `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan dapat beroperasi kembali.`
       : `Kendaraan ${noPolisi} dilaporkan memiliki beberapa isu:\n${issueItems.map(i => '- ' + i.name).join('\n')}\n\nStatus: ${isBlocked ? 'DIBLOKIR (Major)' : 'PERLU PERBAIKAN'}`;
 
     // Create DB Notification for Admin and Pengawas
@@ -145,7 +142,7 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
         fcmToken: { not: null }
       }
     });
-    
+
     for (const u of targetUsers) {
       if (u.fcmToken) {
         await sendPushNotification(
@@ -205,13 +202,13 @@ app.post('/api/auth/login', async (req, res, next) => {
     const { username, password } = value;
 
     const user = await prisma.user.findUnique({ where: { username } });
-    
+
     if (!user) {
       return res.status(401).json({ error: 'Username atau password salah' });
     }
 
     let validPassword = false;
-    
+
     if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
       validPassword = await bcrypt.compare(password, user.password);
     } else {
@@ -223,7 +220,7 @@ app.post('/api/auth/login', async (req, res, next) => {
     }
 
     const payload = { id: user.id, username: user.username, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
     const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
 
     await prisma.user.update({
@@ -231,10 +228,10 @@ app.post('/api/auth/login', async (req, res, next) => {
       data: { refreshToken }
     });
 
-    res.json({ 
+    res.json({
       token,
       refreshToken,
-      user: { id: user.id, username: user.username, name: user.name, role: user.role, jabatan: user.jabatan } 
+      user: { id: user.id, username: user.username, name: user.name, role: user.role, jabatan: user.jabatan }
     });
   } catch (error) {
     next(error);
@@ -256,8 +253,8 @@ app.post('/api/auth/refresh', async (req, res, next) => {
       }
 
       const newPayload = { id: user.id, username: user.username, role: user.role };
-      const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '15m' });
-      
+      const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '7d' });
+
       res.json({ token: newToken });
     });
   } catch (error) {
@@ -318,6 +315,25 @@ app.use('/api', (req, res, next) => {
   authenticateToken(req, res, next);
 });
 
+// 1.5 GET My Latest Handover (Untuk Cek Status Scan Mulai / Akhiri)
+app.get('/api/handovers/my-active', async (req, res) => {
+  try {
+    const lastHandover = await prisma.handover.findFirst({
+      where: { userId: req.user.id },
+      orderBy: { timestamp: 'desc' },
+      include: { issue: true }
+    });
+
+    if (!lastHandover) {
+      return res.json({ success: true, activeHandover: null });
+    }
+
+    res.json({ success: true, activeHandover: lastHandover });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 2. Submit Handover (Termasuk foto dan checklist)
 app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
   try {
@@ -349,7 +365,7 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
     const validFiles = (req.files || []).filter(file => {
       if (file.originalname) {
         let decodedName = file.originalname;
-        try { decodedName = decodeURIComponent(file.originalname); } catch (e) {}
+        try { decodedName = decodeURIComponent(file.originalname); } catch (e) { }
         if (decodedName.startsWith('Kerusakan_')) {
           // Jika tidak ada item bermasalah sama sekali, abaikan dan hapus file sampah
           if (issueItems.length === 0) {
@@ -357,7 +373,7 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
               if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
               if (file.thumbnailUrl && fs.existsSync(file.thumbnailUrl)) fs.unlinkSync(file.thumbnailUrl);
               if (file.previewUrl && fs.existsSync(file.previewUrl)) fs.unlinkSync(file.previewUrl);
-            } catch (e) {}
+            } catch (e) { }
             return false;
           }
 
@@ -373,7 +389,7 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
               if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
               if (file.thumbnailUrl && fs.existsSync(file.thumbnailUrl)) fs.unlinkSync(file.thumbnailUrl);
               if (file.previewUrl && fs.existsSync(file.previewUrl)) fs.unlinkSync(file.previewUrl);
-            } catch (e) {}
+            } catch (e) { }
             return false;
           }
         }
@@ -404,7 +420,7 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
             let photoType = 'TERLAMPIR';
             if (file.originalname) {
               let decodedOrig = file.originalname;
-              try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) {}
+              try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) { }
               const nameWithoutExt = decodedOrig.split('.')[0];
               if (nameWithoutExt.startsWith('photo_')) {
                 photoType = nameWithoutExt.replace('photo_', '');
@@ -460,7 +476,7 @@ app.get('/api/handovers', async (req, res) => {
 
     const cacheKey = `handovers:page:${page}:limit:${limit}`;
     const cachedData = await CacheService.get(cacheKey);
-    
+
     if (cachedData) {
       return res.json(cachedData);
     }
@@ -478,7 +494,7 @@ app.get('/api/handovers', async (req, res) => {
     });
 
     const total = await prisma.handover.count();
-    
+
     const responseData = {
       data: handovers,
       meta: {
@@ -510,7 +526,7 @@ app.put('/api/handovers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    
+
     const updatedHandover = await prisma.handover.update({
       where: { id },
       data: { status },
@@ -521,7 +537,7 @@ app.put('/api/handovers/:id', async (req, res) => {
       await sendNotification(updatedHandover.id, updatedHandover.noPolisi, [], false, 'RESOLVED');
       await prisma.vehicle.update({ where: { noPolisi: updatedHandover.noPolisi }, data: { status: 'Active' } });
     }
-    
+
     res.json({ success: true, handover: updatedHandover });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -544,7 +560,7 @@ app.get('/api/vehicles', async (req, res) => {
 app.post('/api/vehicles', async (req, res) => {
   try {
     const { noPolisi, barcode, jenisKendaraan, brand, status } = req.body;
-    
+
     // Validasi input
     if (!noPolisi || !barcode) {
       return res.status(400).json({ error: 'No Polisi dan Barcode harus diisi' });
@@ -661,7 +677,7 @@ app.get('/api/workers', async (req, res) => {
 app.post('/api/workers', async (req, res) => {
   try {
     const { name, username, password, role, jabatan } = req.body;
-    
+
     // Cek apakah username sudah ada
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
@@ -687,7 +703,7 @@ app.post('/api/workers', async (req, res) => {
 app.put('/api/workers/:id', async (req, res) => {
   try {
     const { name, username, role, password, jabatan } = req.body;
-    
+
     const updateData = { name, username, role, jabatan };
     if (password && password.trim() !== '') {
       updateData.password = password;
@@ -859,9 +875,9 @@ app.put('/api/issues/:id/resolve', async (req, res) => {
 app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (req, res) => {
   try {
     const issueId = req.params.id;
-    const { itemsData } = req.body; 
+    const { itemsData } = req.body;
     const items = JSON.parse(itemsData || '[]');
-    
+
     // Update each item
     for (const item of items) {
       const file = req.files.find(f => f.fieldname === 'photo_' + item.id);
@@ -869,7 +885,7 @@ app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (r
       if (file) {
         photoUrl = file.path.replace(/\\/g, '/');
       }
-      
+
       await prisma.handoverItem.update({
         where: { id: item.id },
         data: {
@@ -944,6 +960,25 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
           resolvedAt: new Date()
         }
       });
+
+      // 3. Ubah status kendaraan menjadi READY_TO_START
+      await prisma.vehicle.update({
+        where: { noPolisi: issue.handover.noPolisi },
+        data: { status: 'READY_TO_START' }
+      });
+
+      // 4. Buat/siapkan sesi pekerjaan baru dengan status NOT_STARTED
+      // Kita buat type = 'akhiri' agar scan selanjutnya diwajibkan 'mulai'
+      await prisma.handover.create({
+        data: {
+          userId: issue.handover.userId,
+          noPolisi: issue.handover.noPolisi,
+          shift: issue.handover.shift,
+          type: 'akhiri', 
+          status: 'NOT_STARTED',
+        }
+      });
+
       // Optionally create notification for AMT
       await prisma.notification.create({
         data: {
@@ -980,11 +1015,20 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
 });
 
 // --- NOTIFICATIONS ---
-app.get('/api/notifications', async (req, res) => {
+app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
     const role = req.user.role;
+    
+    let targetRoles = [];
+    if (role === 'USER') {
+      targetRoles = ['USER', 'ALL'];
+    } else {
+      // ADMIN, SUPER_ADMIN, PENGAWAS
+      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'ALL'];
+    }
+
     const notifications = await prisma.notification.findMany({
-      where: { targetRole: role },
+      where: { targetRole: { in: targetRoles } },
       orderBy: { createdAt: 'desc' }
     });
     res.json({ success: true, notifications });
@@ -993,7 +1037,7 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
-app.put('/api/notifications/:id/read', async (req, res) => {
+app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updated = await prisma.notification.update({

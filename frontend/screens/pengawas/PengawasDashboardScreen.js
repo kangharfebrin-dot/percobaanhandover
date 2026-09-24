@@ -24,6 +24,9 @@ export default function PengawasDashboardScreen({ navigation }) {
   const [allHandovers, setAllHandovers] = useState([]);
   const [vehiclesCount, setVehiclesCount] = useState(0);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Home');
   const [previousMenu, setPreviousMenu] = useState('Home');
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
@@ -91,30 +94,43 @@ export default function PengawasDashboardScreen({ navigation }) {
         setUser(userData);
         if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
           fetchAlerts();
+          fetchNotifications();
         }
       }
     };
     loadData();
+  }, []);
 
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS' || user.role === 'ADMIN')) fetchAlerts();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
+          fetchAlerts();
+          fetchNotifications();
+        }
+      }
     });
     return unsubscribe;
-  }, [navigation, user?.role]);
+  }, [navigation]);
 
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`, { headers });
       const activeVehicles = vehicleRes.data;
       setVehiclesCount(activeVehicles.length);
       const activePolisi = activeVehicles.map(v => v.noPolisi);
 
-      const res = await axios.get(`${API_URL}/api/handovers`);
+      const res = await axios.get(`${API_URL}/api/handovers`, { headers });
       const dataHandovers = res.data.data || res.data;
       setAllHandovers(dataHandovers);
       
-      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`);
+      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`, { headers });
       const activeIssues = issueRes.data.filter(issue => activePolisi.includes(issue.handover.noPolisi));
       
       setActiveIssuesCount(activeIssues.length);
@@ -133,6 +149,33 @@ export default function PengawasDashboardScreen({ navigation }) {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setNotifications(res.data.notifications);
+        setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+      }
+    } catch (error) {
+      console.log("Gagal mengambil notifikasi:", error.message);
+    }
+  };
+
+  const handleReadNotification = async (id) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchNotifications();
+    } catch (error) {
+      console.log("Gagal update notifikasi:", error.message);
+    }
+  };
+
   const handleLogout = () => {
     setPreviousMenu(activeMenu);
     setActiveMenu('Logout');
@@ -146,7 +189,8 @@ export default function PengawasDashboardScreen({ navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
     navigation.replace('Login');
   };
 
@@ -322,6 +366,19 @@ export default function PengawasDashboardScreen({ navigation }) {
                 <Text style={tw`text-gray-800 text-lg font-black`}>{user.name}</Text>
               </View>
             </View>
+
+            {/* Bell Icon */}
+            <TouchableOpacity 
+              style={tw`w-[50px] h-[50px] rounded-full bg-white items-center justify-center shadow-sm border border-gray-100 relative`}
+              onPress={() => setShowNotificationsModal(true)}
+            >
+              <Feather name="bell" size={22} color="#0055A5" />
+              {unreadNotificationsCount > 0 && (
+                <View style={tw`absolute top-2 right-2 w-4 h-4 rounded-full bg-[#ED1C24] items-center justify-center border-2 border-white`}>
+                  <Text style={tw`text-white text-[8px] font-bold`}>{unreadNotificationsCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
@@ -578,6 +635,50 @@ export default function PengawasDashboardScreen({ navigation }) {
         )}
 
       </SafeAreaView>
+
+      {/* Notification Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showNotificationsModal}
+        onRequestClose={() => setShowNotificationsModal(false)}
+      >
+        <View style={tw`flex-1 justify-end bg-black/40`}>
+          <View style={[tw`bg-white w-full rounded-t-3xl shadow-2xl`, { height: '80%' }]}>
+            <View style={tw`flex-row justify-between items-center p-6 border-b border-gray-100`}>
+              <Text style={tw`text-xl font-black text-gray-800`}>Notifikasi</Text>
+              <TouchableOpacity onPress={() => setShowNotificationsModal(false)} style={tw`bg-gray-100 p-2 rounded-full`}>
+                <Feather name="x" size={20} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={tw`p-6`}>
+              {notifications.length === 0 ? (
+                <View style={tw`items-center justify-center py-10`}>
+                  <Feather name="bell-off" size={48} color="#D1D5DB" />
+                  <Text style={tw`text-gray-400 mt-4 font-bold`}>Belum ada notifikasi</Text>
+                </View>
+              ) : (
+                notifications.map((notif) => (
+                  <TouchableOpacity
+                    key={notif.id}
+                    style={tw`mb-4 p-4 rounded-2xl border ${notif.isRead ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50'}`}
+                    onPress={() => {
+                      if (!notif.isRead) handleReadNotification(notif.id);
+                    }}
+                  >
+                    <View style={tw`flex-row items-center justify-between mb-2`}>
+                      <Text style={tw`font-bold ${notif.isRead ? 'text-gray-700' : 'text-red-700'}`}>{notif.title}</Text>
+                      {!notif.isRead && <View style={tw`w-2 h-2 rounded-full bg-[#ED1C24]`} />}
+                    </View>
+                    <Text style={tw`text-gray-600 text-sm leading-5`}>{notif.message}</Text>
+                    <Text style={tw`text-gray-400 text-xs mt-3`}>{new Date(notif.createdAt).toLocaleString('id-ID')}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Logout Modal */}
       <Modal

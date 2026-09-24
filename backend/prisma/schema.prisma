@@ -20,9 +20,9 @@ model ChecklistItem {
 
 model Handover {
   id          String   @id @default(cuid())
-  noPolisi    String
+  noPolisi    String   @db.VarChar(50)
   shift       String
-  status      String
+  status      String   @db.VarChar(50)
   type        String   @default("mulai")
   locationLat Float?
   locationLng Float?

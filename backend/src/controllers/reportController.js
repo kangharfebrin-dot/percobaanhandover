@@ -51,7 +51,7 @@ const exportExcel = async (req, res) => {
     handovers.forEach(h => {
       detailSheet.addRow({
         waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 19),
-        nama: h.user.name,
+        nama: h.user ? h.user.name : 'Unknown User',
         nopol: h.noPolisi,
         shift: h.shift,
         status: h.status
@@ -75,7 +75,6 @@ const exportExcel = async (req, res) => {
       await prisma.auditLog.create({
         data: {
           action: 'EXPORT_EXCEL',
-          entity: 'Report',
           userId: req.user.id,
           details: 'User exported handover reports to Excel'
         }
@@ -123,7 +122,6 @@ const exportPdf = async (req, res) => {
       await prisma.auditLog.create({
         data: {
           action: 'EXPORT_PDF',
-          entity: 'Report',
           userId: req.user.id,
           details: 'User exported handover reports to PDF'
         }

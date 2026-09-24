@@ -154,7 +154,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
                 </View>
                 <TouchableOpacity onPress={() => setSelectedPhoto(damagePhoto)}>
-                  <Image source={{ uri: `${API_URL}/${damagePhoto.url}` }} style={tw`w-full h-32 rounded-lg mt-1`} />
+                  <Image source={{ uri: `${API_URL}/${damagePhoto.thumbnailUrl || damagePhoto.previewUrl || damagePhoto.url}` }} style={tw`w-full h-32 rounded-lg mt-1`} />
                 </TouchableOpacity>
               </View>
             )}
@@ -329,13 +329,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </LinearGradient>
               <View style={tw`flex-row flex-wrap p-4 gap-3`}>
                 {generalPhotos.map((photo, idx) => (
-                  <TouchableOpacity 
-                    key={photo.id || idx} 
+                  <TouchableOpacity
+                    key={photo.id || idx}
                     style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm`}
                     onPress={() => setSelectedPhoto(photo)}
                   >
                     <Image
-                      source={{ uri: `${API_URL}/${photo.url}` }}
+                      source={{ uri: `${API_URL}/${photo.thumbnailUrl || photo.previewUrl || photo.url}` }}
                       style={tw`w-full h-full`}
                       resizeMode="cover"
                     />
@@ -394,26 +394,26 @@ export default function HandoverDetailScreen({ route, navigation }) {
                 Sisi {selectedPhoto?.type || 'Kendaraan'}
               </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={tw`p-3 bg-white/20 rounded-full border border-white/30`}
               onPress={() => setSelectedPhoto(null)}
             >
               <Ionicons name="close" size={24} color="white" />
             </TouchableOpacity>
           </View>
-          
+
           {selectedPhoto && (
             <View style={tw`w-full h-full justify-center items-center p-4 pt-20`}>
               <View style={tw`w-full h-[80%] bg-black/50 rounded-[40px] overflow-hidden border border-white/20 shadow-2xl relative`}>
-                <Image 
-                  source={{ uri: `${API_URL}/${selectedPhoto.url}` }} 
-                  style={tw`w-full h-full`} 
-                  resizeMode="contain" 
+                <Image
+                  source={{ uri: `${API_URL}/${selectedPhoto.url}` }}
+                  style={tw`w-full h-full`}
+                  resizeMode="contain"
                 />
-                
+
                 {/* Overlay Gradient for Aesthetics */}
-                <LinearGradient 
-                  colors={['transparent', 'rgba(0,0,0,0.9)']} 
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.9)']}
                   style={tw`absolute bottom-0 w-full p-6 pt-20`}
                   pointerEvents="none"
                 >

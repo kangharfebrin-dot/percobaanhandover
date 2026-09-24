@@ -22,10 +22,14 @@ export default function UserDashboardScreen({ navigation }) {
   const [alerts, setAlerts] = useState([]);
   const [allHandovers, setAllHandovers] = useState([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Home');
   const [previousMenu, setPreviousMenu] = useState('Home');
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [myActiveHandover, setMyActiveHandover] = useState(null);
 
   // Animasi Background Orbs
   const floatAnim1 = React.useRef(new Animated.Value(0)).current;
@@ -90,28 +94,93 @@ export default function UserDashboardScreen({ navigation }) {
         if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
           fetchAlerts();
         }
+        fetchNotifications();
       }
     };
     loadData();
+  }, []);
 
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS' || user.role === 'ADMIN')) fetchAlerts();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
+          fetchAlerts();
+        }
+        fetchNotifications();
+        if (userData.role === 'AMT' || userData.role === 'USER') {
+          fetchMyActiveHandover();
+        }
+      }
     });
     return unsubscribe;
-  }, [navigation, user?.role]);
+  }, [navigation]);
 
   const fetchAlerts = async () => {
     setLoadingAlerts(true);
     try {
-      const handoverRes = await axios.get(`${API_URL}/api/handovers`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const handoverRes = await axios.get(`${API_URL}/api/handovers`, { headers });
       const dataHandovers = handoverRes.data.data || handoverRes.data;
       setAllHandovers(dataHandovers);
-      const issuesRes = await axios.get(`${API_URL}/api/issues/ongoing`);
+      const issuesRes = await axios.get(`${API_URL}/api/issues/ongoing`, { headers });
       setAlerts(issuesRes.data.map(i => i.handover));
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await AsyncStorage.multiRemove(['user', 'token']);
+        navigation.replace('Login');
+      }
     } finally {
       setLoadingAlerts(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setNotifications(res.data.notifications);
+        setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+      }
+    } catch (error) {
+      console.log("Gagal mengambil notifikasi:", error.message);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await AsyncStorage.multiRemove(['user', 'token']);
+        navigation.replace('Login');
+      }
+    }
+  };
+
+  const fetchMyActiveHandover = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/handovers/my-active`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setMyActiveHandover(res.data.activeHandover);
+      }
+    } catch (error) {
+      console.log("Gagal mengambil status handover aktif:", error.message);
+    }
+  };
+
+  const handleReadNotification = async (id) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchNotifications();
+    } catch (error) {
+      console.log("Gagal update notifikasi:", error.message);
     }
   };
 
@@ -128,7 +197,8 @@ export default function UserDashboardScreen({ navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
     navigation.replace('Login');
   };
 
@@ -295,6 +365,19 @@ export default function UserDashboardScreen({ navigation }) {
                 <Text style={tw`text-gray-800 text-lg font-black`}>{user.name}</Text>
               </View>
             </View>
+
+            {/* Bell Icon */}
+            <TouchableOpacity
+              style={tw`w-[50px] h-[50px] rounded-full bg-white items-center justify-center shadow-sm border border-gray-100 relative`}
+              onPress={() => setShowNotificationsModal(true)}
+            >
+              <Feather name="bell" size={22} color="#0055A5" />
+              {unreadNotificationsCount > 0 && (
+                <View style={tw`absolute top-2 right-2 w-4 h-4 rounded-full bg-[#ED1C24] items-center justify-center border-2 border-white`}>
+                  <Text style={tw`text-white text-[8px] font-bold`}>{unreadNotificationsCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-5xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
@@ -362,35 +445,39 @@ export default function UserDashboardScreen({ navigation }) {
             {/* Action Card */}
             {canSeeActions && (
               <View style={tw`flex-row justify-between mb-10`}>
-                <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
-                  <LinearGradient colors={PERTAMINA_GREEN} style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}>
-                    <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
-                      <Ionicons name="qr-code" size={180} color="white" />
-                    </View>
-                    <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
-                      <Feather name="log-in" size={24} color="white" />
-                    </View>
-                    <View style={tw`mt-6`}>
-                      <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
-                      <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
+                {(!myActiveHandover || myActiveHandover.type !== 'mulai' || myActiveHandover.status === 'NOT_STARTED' || myActiveHandover.status === 'FINISHED') && (
+                  <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
+                    <LinearGradient colors={PERTAMINA_GREEN} style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}>
+                      <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                        <Ionicons name="qr-code" size={180} color="white" />
+                      </View>
+                      <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                        <Feather name="log-in" size={24} color="white" />
+                      </View>
+                      <View style={tw`mt-6`}>
+                        <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                        <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
 
-                <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
-                  <LinearGradient colors={['#dc2626', '#7f1d1d']} style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}>
-                    <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
-                      <Ionicons name="qr-code" size={180} color="white" />
-                    </View>
-                    <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
-                      <Feather name="log-out" size={24} color="white" />
-                    </View>
-                    <View style={tw`mt-6`}>
-                      <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
-                      <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
+                {(myActiveHandover && myActiveHandover.type === 'mulai' && (myActiveHandover.status === 'STARTED' || myActiveHandover.status === 'Ada Masalah' || myActiveHandover.status === 'Siap Operasi (Normal)')) && (
+                  <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
+                    <LinearGradient colors={['#dc2626', '#7f1d1d']} style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}>
+                      <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                        <Ionicons name="qr-code" size={180} color="white" />
+                      </View>
+                      <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                        <Feather name="log-out" size={24} color="white" />
+                      </View>
+                      <View style={tw`mt-6`}>
+                        <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                        <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -505,12 +592,11 @@ export default function UserDashboardScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-
-            {(isSuperAdmin || isPengawas) && (
-              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
-                {activeMenu === 'Messages' && (
-                  <>
-                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+            {/* Message Center Nav Icon - Available for ALL */}
+            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
+              {activeMenu === 'Messages' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                       <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
                         <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                       </Animated.View>
@@ -525,10 +611,9 @@ export default function UserDashboardScreen({ navigation }) {
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
-                  {alerts.length > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
                 </View>
               </TouchableOpacity>
-            )}
 
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
               {activeMenu === 'Logout' && (
@@ -553,6 +638,50 @@ export default function UserDashboardScreen({ navigation }) {
       </SafeAreaView>
 
       {/* Logout Modal */}
+      {/* Notification Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showNotificationsModal}
+        onRequestClose={() => setShowNotificationsModal(false)}
+      >
+        <View style={tw`flex-1 justify-end bg-black/40`}>
+          <View style={[tw`bg-white w-full rounded-t-3xl shadow-2xl`, { height: '80%' }]}>
+            <View style={tw`flex-row justify-between items-center p-6 border-b border-gray-100`}>
+              <Text style={tw`text-xl font-black text-gray-800`}>Notifikasi</Text>
+              <TouchableOpacity onPress={() => setShowNotificationsModal(false)} style={tw`bg-gray-100 p-2 rounded-full`}>
+                <Feather name="x" size={20} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={tw`p-6`}>
+              {notifications.length === 0 ? (
+                <View style={tw`items-center justify-center py-10`}>
+                  <Feather name="bell-off" size={48} color="#D1D5DB" />
+                  <Text style={tw`text-gray-400 mt-4 font-bold`}>Belum ada notifikasi</Text>
+                </View>
+              ) : (
+                notifications.map((notif) => (
+                  <TouchableOpacity
+                    key={notif.id}
+                    style={tw`mb-4 p-4 rounded-2xl border ${notif.isRead ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50'}`}
+                    onPress={() => {
+                      if (!notif.isRead) handleReadNotification(notif.id);
+                    }}
+                  >
+                    <View style={tw`flex-row items-center justify-between mb-2`}>
+                      <Text style={tw`font-bold ${notif.isRead ? 'text-gray-700' : 'text-red-700'}`}>{notif.title}</Text>
+                      {!notif.isRead && <View style={tw`w-2 h-2 rounded-full bg-[#ED1C24]`} />}
+                    </View>
+                    <Text style={tw`text-gray-600 text-sm leading-5`}>{notif.message}</Text>
+                    <Text style={tw`text-gray-400 text-xs mt-3`}>{new Date(notif.createdAt).toLocaleString('id-ID')}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={isLogoutVisible}
         transparent={true}
