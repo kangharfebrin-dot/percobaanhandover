@@ -419,18 +419,7 @@ export default function AdminDashboardScreen({ navigation }) {
               </View>
             </View>
             
-            {/* Bell Icon */}
-            <TouchableOpacity 
-              style={tw`w-[50px] h-[50px] rounded-full bg-white items-center justify-center shadow-sm border border-gray-100 relative`}
-              onPress={() => setShowNotificationsModal(true)}
-            >
-              <Feather name="bell" size={22} color="#0055A5" />
-              {unreadNotificationsCount > 0 && (
-                <View style={tw`absolute top-2 right-2 w-4 h-4 rounded-full bg-[#ED1C24] items-center justify-center border-2 border-white`}>
-                  <Text style={tw`text-white text-[8px] font-bold`}>{unreadNotificationsCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
