@@ -1,5 +1,5 @@
 const ExcelJS = require('exceljs');
-const PDFDocument = require('pdfkit');
+const PDFDocument = require('pdfkit-table');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -81,46 +81,61 @@ const exportPdf = async (req, res) => {
       include: { user: true, items: true, issue: true }
     });
 
-    const doc = new PDFDocument({ margin: 30 });
+    const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=' + 'Handover_Report.pdf');
     doc.pipe(res);
 
-    doc.fontSize(20).text('Handover Report', { align: 'center' });
-    doc.moveDown();
+    // Title
+    doc.fontSize(20).text('Rekapitulasi Laporan Handover Kendaraan', { align: 'center' });
+    doc.moveDown(1.5);
 
-    const issuesCount = handovers.filter(h => h.status === 'Ada Masalah').length;
-    doc.fontSize(12).text(`Total Handovers: ${handovers.length}`);
-    doc.text(`Siap Operasi: ${handovers.length - issuesCount}`);
-    doc.text(`Ada Masalah: ${issuesCount}`);
-    doc.moveDown();
+    // Prepare table structure
+    const table = {
+      headers: [
+        { label: "Waktu Kejadian", property: 'waktu', width: 90, renderer: null },
+        { label: "Nama dan Jabatan", property: 'nama', width: 140, renderer: null },
+        { label: "Nopol Truk", property: 'nopol', width: 70, renderer: null },
+        { label: "Tipe", property: 'tipe', width: 80, renderer: null },
+        { label: "Titik Lokasi", property: 'lokasi', width: 150, renderer: null },
+        { label: "Komponen Rusak", property: 'rusak', width: 180, renderer: null }
+      ],
+      datas: handovers.map(h => {
+        const typeStr = h.type === 'mulai' ? 'Mulai Pekerjaan' : 'Akhiri Pekerjaan';
+        const userName = h.user ? h.user.name : 'Unknown User';
+        const jabatan = h.user ? h.user.jabatan : '-';
+        const itemRusak = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
+        const lokasi = h.locationLat && h.locationLng ? `${h.locationLat}, ${h.locationLng}` : '-';
 
-    doc.fontSize(14).text('Laporan Detail Kendala:', { underline: true });
-    doc.moveDown(0.5);
+        return {
+          waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 19),
+          nama: `${userName} - ${jabatan}`,
+          nopol: h.noPolisi,
+          tipe: typeStr,
+          lokasi: lokasi,
+          rusak: itemRusak || '-',
+          options: {
+            // Apply red color for damaged component row text if exists
+            waktu: { columnColor: 'white' },
+            rusak: itemRusak ? { columnColor: 'white' } : { columnColor: 'white' }
+          }
+        };
+      })
+    };
 
-    handovers.filter(h => h.status === 'Ada Masalah').slice(0, 20).forEach(h => {
-      const issueItems = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
-      doc.fontSize(10).text(`- [${h.noPolisi}] ${h.timestamp.toISOString().split('T')[0]} : ${issueItems} (${h.issue ? h.issue.status : 'UNKNOWN'})`);
-    });
-    doc.moveDown(1);
-
-    doc.fontSize(14).text('Semua Data Handover (Detail AMT):', { underline: true });
-    doc.moveDown(0.5);
-
-    handovers.forEach(h => {
-      const typeStr = h.type === 'mulai' ? 'Mulai Pekerjaan' : 'Akhiri Pekerjaan';
-      const userName = h.user ? h.user.name : 'Unknown User';
-      const jabatan = h.user ? h.user.jabatan : '-';
-      const itemRusak = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
-      const lokasi = h.locationLat && h.locationLng ? `${h.locationLat}, ${h.locationLng}` : '-';
-
-      doc.fontSize(10).text(`[${h.timestamp.toISOString().replace('T', ' ').substring(0, 19)}] ${userName} (${jabatan}) - Nopol: ${h.noPolisi}`);
-      doc.fontSize(9).fillColor('gray').text(`  Tipe: ${typeStr} | Shift: ${h.shift} | Status: ${h.status} | Lokasi: ${lokasi}`);
-      if (h.status === 'Ada Masalah') {
-         doc.fillColor('red').text(`  Kerusakan: ${itemRusak || '-'}`);
-      }
-      doc.fillColor('black');
-      doc.moveDown(0.5);
+    // Before drawing table, we need a custom hook to render red text for broken components
+    // We will do it simple by passing it directly to table
+    await doc.table(table, {
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(10),
+      prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
+        doc.font("Helvetica").fontSize(9);
+        // If column is 'rusak' and it's not '-', make it red
+        if (indexColumn === 5 && row.rusak !== '-') {
+          doc.fillColor('red');
+        } else {
+          doc.fillColor('black');
+        }
+      },
     });
 
     if (req.user && req.user.id) {
