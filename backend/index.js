@@ -587,7 +587,7 @@ app.delete('/api/checklists/:id', async (req, res) => {
 app.get('/api/issues/ongoing', async (req, res) => {
   try {
     const issues = await prisma.issue.findMany({
-      where: { status: 'ONGOING' },
+      where: { status: { in: ['ONGOING', 'PENDING_APPROVAL'] } },
       include: {
         handover: {
           include: { user: true, items: true, photos: true }
@@ -627,6 +627,50 @@ app.put('/api/issues/:id/resolve', async (req, res) => {
     });
     res.json({ success: true, issue: updatedIssue });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST Verify Repair
+app.post('/api/issues/:id/verify-repair', upload.any(), async (req, res) => {
+  try {
+    const issueId = req.params.id;
+    const { itemsData } = req.body; 
+    const items = JSON.parse(itemsData || '[]');
+    
+    // Update each item
+    for (const item of items) {
+      const file = req.files.find(f => f.fieldname === 'photo_' + item.id);
+      let photoUrl = null;
+      if (file) {
+        photoUrl = file.path.replace(/\\/g, '/');
+      }
+      
+      await prisma.handoverItem.update({
+        where: { id: item.id },
+        data: {
+          repairNote: item.repairNote,
+          repairPhotoUrl: photoUrl,
+          isRepaired: true
+        }
+      });
+    }
+
+    // Update Issue status to PENDING_APPROVAL
+    const updatedIssue = await prisma.issue.update({
+      where: { id: issueId },
+      data: {
+        status: 'PENDING_APPROVAL',
+        repairRequestedAt: new Date()
+      },
+      include: {
+        handover: { include: { items: true } }
+      }
+    });
+
+    res.json({ success: true, issue: updatedIssue });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });

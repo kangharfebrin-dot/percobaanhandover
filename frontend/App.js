@@ -22,6 +22,7 @@ import MessageCenterScreen from './screens/pengawas/MessageCenterScreen';
 import UserDashboardScreen from './screens/user/UserDashboardScreen';
 import ScannerScreen from './screens/user/ScannerScreen';
 import HandoverFormScreen from './screens/user/HandoverFormScreen';
+import FixVerificationScreen from './screens/user/FixVerificationScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -114,6 +115,7 @@ export default function App() {
         <Stack.Screen name="UserDashboard" component={UserDashboardScreen} />
         <Stack.Screen name="Scanner" component={ScannerScreen} />
         <Stack.Screen name="HandoverForm" component={HandoverFormScreen} />
+        <Stack.Screen name="FixVerification" component={FixVerificationScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="HandoverDetail" component={HandoverDetailScreen} />
         <Stack.Screen name="VehicleList" component={VehicleListScreen} />

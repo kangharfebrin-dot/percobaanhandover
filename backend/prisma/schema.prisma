@@ -46,6 +46,10 @@ model HandoverItem {
   isGood     Boolean
   handoverId String
 
+  repairNote     String?
+  repairPhotoUrl String?
+  isRepaired     Boolean @default(false)
+
   handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
 
   @@index([handoverId], map: "HandoverItem_handoverId_fkey")
@@ -53,12 +57,13 @@ model HandoverItem {
 }
 
 model Issue {
-  id         String    @id @default(cuid())
-  handoverId String    @unique(map: "Issue_handoverId_key")
-  status     String    @default("ONGOING")
-  resolvedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  handoverId        String    @unique(map: "Issue_handoverId_key")
+  status            String    @default("ONGOING")
+  resolvedAt        DateTime?
+  repairRequestedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
 
