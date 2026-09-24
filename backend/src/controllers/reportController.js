@@ -16,89 +16,40 @@ const exportExcel = async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     
-    // Sheet 1: Summary
-    const summarySheet = workbook.addWorksheet('Summary');
-    summarySheet.columns = [
-      { header: 'Total Handovers', key: 'total', width: 25 },
-      { header: 'Ada Masalah', key: 'issues', width: 25 },
-      { header: 'Siap Operasi', key: 'ok', width: 25 }
+    // Sheet 1: Rekap Data AMT
+    const rekapSheet = workbook.addWorksheet('Rekap Handover');
+    rekapSheet.columns = [
+      { header: 'Waktu Kejadian', key: 'waktu', width: 22 },
+      { header: 'Nama dan Jabatan', key: 'namaJabatan', width: 35 },
+      { header: 'Nopol Truk', key: 'nopol', width: 18 },
+      { header: 'Tipe Handover', key: 'tipe', width: 20 },
+      { header: 'Titik Lokasi', key: 'lokasi', width: 40 },
+      { header: 'Komponen Rusak', key: 'komponenRusak', width: 50 }
     ];
     
-    // Style Summary Header
-    summarySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
-    summarySheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-    summarySheet.addRow({
-      total: handovers.length,
-      issues: handovers.filter(h => h.status === 'Ada Masalah').length,
-      ok: handovers.filter(h => h.status === 'Siap Operasi (Normal)').length
-    });
-
-    // Sheet 2: Detail Handover
-    const detailSheet = workbook.addWorksheet('Detail Handover');
-    detailSheet.columns = [
-      { header: 'Waktu', key: 'waktu', width: 22 },
-      { header: 'Nama Pekerja (AMT)', key: 'nama', width: 30 },
-      { header: 'Jabatan', key: 'jabatan', width: 20 },
-      { header: 'No Polisi', key: 'nopol', width: 18 },
-      { header: 'Shift', key: 'shift', width: 15 },
-      { header: 'Tipe Handover', key: 'tipe', width: 25 },
-      { header: 'Status Handover', key: 'status', width: 25 },
-      { header: 'Lokasi (Lat, Lng)', key: 'lokasi', width: 35 },
-      { header: 'Item Baik', key: 'itemBaik', width: 45 },
-      { header: 'Item Rusak', key: 'itemRusak', width: 45 },
-      { header: 'Status Perbaikan', key: 'issueStatus', width: 25 },
-      { header: 'Catatan Perbaikan', key: 'issueNote', width: 40 }
-    ];
+    // Style Header
+    rekapSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    rekapSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
+    rekapSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
     
-    // Style Detail Header
-    detailSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    detailSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
-    detailSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    // Sheet 3: Issues Tracking
-    const issuesSheet = workbook.addWorksheet('Issues Tracking');
-    issuesSheet.columns = [
-      { header: 'Handover ID', key: 'id', width: 35 },
-      { header: 'No Polisi', key: 'nopol', width: 18 },
-      { header: 'Issue Status', key: 'status', width: 25 },
-      { header: 'Detail Item', key: 'detail', width: 50 }
-    ];
-    
-    // Style Issues Header
-    issuesSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    issuesSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFED1C24' } };
-    issuesSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-
     handovers.forEach(h => {
-      const itemBaik = h.items.filter(i => i.isGood).map(i => i.name).join(', ');
       const itemRusak = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
-      const issueNote = h.issue ? (h.issue.notes || 'Tidak ada catatan') : '-';
-      const issueStatus = h.issue ? h.issue.status : '-';
-
-      detailSheet.addRow({
+      
+      const userName = h.user ? h.user.name : 'Unknown User';
+      const userJabatan = h.user ? h.user.jabatan : '-';
+      
+      const row = rekapSheet.addRow({
         waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 19),
-        nama: h.user ? h.user.name : 'Unknown User',
-        jabatan: h.user ? h.user.jabatan : '-',
+        namaJabatan: `${userName} - ${userJabatan}`,
         nopol: h.noPolisi,
-        shift: h.shift,
         tipe: h.type === 'mulai' ? 'Mulai Pekerjaan' : 'Akhiri Pekerjaan',
-        status: h.status,
         lokasi: h.locationLat && h.locationLng ? `${h.locationLat}, ${h.locationLng}` : '-',
-        itemBaik: itemBaik || '-',
-        itemRusak: itemRusak || '-',
-        issueStatus: issueStatus,
-        issueNote: issueNote
+        komponenRusak: itemRusak || '-'
       });
 
-      if (h.status === 'Ada Masalah') {
-        const issueItems = h.items.filter(i => !i.isGood).map(i => i.name).join(', ');
-        issuesSheet.addRow({
-          id: h.id,
-          nopol: h.noPolisi,
-          status: h.issue ? h.issue.status : 'UNKNOWN',
-          detail: issueItems
-        });
+      // Teks merah khusus untuk komponen rusak
+      if (itemRusak) {
+        row.getCell('komponenRusak').font = { bold: true, color: { argb: 'FFFF0000' } };
       }
     });
 
