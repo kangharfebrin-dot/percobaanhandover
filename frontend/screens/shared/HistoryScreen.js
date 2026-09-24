@@ -180,6 +180,40 @@ export default function HistoryScreen({ route, navigation }) {
     }
   };
 
+  const handleExportPdf = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const url = `${API_URL}/api/reports/pdf?token=${token}`;
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.pdf`;
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        
+        if (downloadRes.status === 200) {
+          if (await Sharing.isAvailableAsync()) {
+            try {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Bagikan Laporan Handover (PDF)',
+                UTI: 'com.adobe.pdf'
+              });
+            } catch (shareErr) {
+              Alert.alert("Gagal Membagikan", "Tidak dapat membuka file: " + shareErr.message);
+            }
+          } else {
+            Alert.alert("Sukses", "File PDF berhasil diunduh ke perangkat Anda.\nLokasi: " + fileUri);
+          }
+        } else {
+          Alert.alert("Gagal", "Gagal mengunduh file PDF dari server. Status: " + downloadRes.status);
+        }
+      }
+    } catch (err) {
+      console.log('Gagal export PDF:', err);
+      Alert.alert('Gagal Mengunduh', 'Tidak dapat mengunduh PDF: ' + err.message);
+    }
+  };
+
   const handleLogout = () => {
     setPreviousMenu(activeMenu);
     setActiveMenu('Logout');
@@ -569,12 +603,20 @@ export default function HistoryScreen({ route, navigation }) {
 
           {/* Export to Excel FAB (Only for Admin/Pengawas) */}
           {user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
-            <TouchableOpacity
-              style={tw`absolute bottom-28 right-6 bg-[#00A651] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-green-500/40 z-40`}
-              onPress={handleExportExcel}
-            >
-              <Ionicons name="document-text" size={24} color="white" />
-            </TouchableOpacity>
+            <View style={tw`absolute bottom-28 right-6 z-40 items-end`}>
+              <TouchableOpacity
+                style={tw`bg-[#ED1C24] w-12 h-12 rounded-full items-center justify-center shadow-lg shadow-red-500/40 mb-3`}
+                onPress={handleExportPdf}
+              >
+                <Ionicons name="document-outline" size={20} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`bg-[#00A651] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-green-500/40`}
+                onPress={handleExportExcel}
+              >
+                <Ionicons name="document-text" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}

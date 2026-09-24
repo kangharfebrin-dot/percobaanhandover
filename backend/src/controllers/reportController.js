@@ -19,10 +19,15 @@ const exportExcel = async (req, res) => {
     // Sheet 1: Summary
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.columns = [
-      { header: 'Total Handovers', key: 'total', width: 20 },
-      { header: 'Ada Masalah', key: 'issues', width: 20 },
-      { header: 'Siap Operasi', key: 'ok', width: 20 }
+      { header: 'Total Handovers', key: 'total', width: 25 },
+      { header: 'Ada Masalah', key: 'issues', width: 25 },
+      { header: 'Siap Operasi', key: 'ok', width: 25 }
     ];
+    
+    // Style Summary Header
+    summarySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
+    summarySheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
     summarySheet.addRow({
       total: handovers.length,
       issues: handovers.filter(h => h.status === 'Ada Masalah').length,
@@ -32,28 +37,38 @@ const exportExcel = async (req, res) => {
     // Sheet 2: Detail Handover
     const detailSheet = workbook.addWorksheet('Detail Handover');
     detailSheet.columns = [
-      { header: 'Waktu', key: 'waktu', width: 20 },
-      { header: 'Nama Pekerja (AMT)', key: 'nama', width: 25 },
-      { header: 'Jabatan', key: 'jabatan', width: 15 },
-      { header: 'No Polisi', key: 'nopol', width: 15 },
-      { header: 'Shift', key: 'shift', width: 10 },
-      { header: 'Tipe Handover', key: 'tipe', width: 20 },
+      { header: 'Waktu', key: 'waktu', width: 22 },
+      { header: 'Nama Pekerja (AMT)', key: 'nama', width: 30 },
+      { header: 'Jabatan', key: 'jabatan', width: 20 },
+      { header: 'No Polisi', key: 'nopol', width: 18 },
+      { header: 'Shift', key: 'shift', width: 15 },
+      { header: 'Tipe Handover', key: 'tipe', width: 25 },
       { header: 'Status Handover', key: 'status', width: 25 },
-      { header: 'Lokasi (Lat, Lng)', key: 'lokasi', width: 30 },
-      { header: 'Item Baik', key: 'itemBaik', width: 40 },
-      { header: 'Item Rusak', key: 'itemRusak', width: 40 },
-      { header: 'Status Perbaikan', key: 'issueStatus', width: 20 },
-      { header: 'Catatan Perbaikan', key: 'issueNote', width: 30 }
+      { header: 'Lokasi (Lat, Lng)', key: 'lokasi', width: 35 },
+      { header: 'Item Baik', key: 'itemBaik', width: 45 },
+      { header: 'Item Rusak', key: 'itemRusak', width: 45 },
+      { header: 'Status Perbaikan', key: 'issueStatus', width: 25 },
+      { header: 'Catatan Perbaikan', key: 'issueNote', width: 40 }
     ];
+    
+    // Style Detail Header
+    detailSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    detailSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
+    detailSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
     
     // Sheet 3: Issues Tracking
     const issuesSheet = workbook.addWorksheet('Issues Tracking');
     issuesSheet.columns = [
-      { header: 'Handover ID', key: 'id', width: 30 },
-      { header: 'No Polisi', key: 'nopol', width: 15 },
-      { header: 'Issue Status', key: 'status', width: 20 },
-      { header: 'Detail Item', key: 'detail', width: 40 }
+      { header: 'Handover ID', key: 'id', width: 35 },
+      { header: 'No Polisi', key: 'nopol', width: 18 },
+      { header: 'Issue Status', key: 'status', width: 25 },
+      { header: 'Detail Item', key: 'detail', width: 50 }
     ];
+    
+    // Style Issues Header
+    issuesSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    issuesSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFED1C24' } };
+    issuesSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
     handovers.forEach(h => {
       const itemBaik = h.items.filter(i => i.isGood).map(i => i.name).join(', ');

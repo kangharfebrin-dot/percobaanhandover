@@ -498,3 +498,17 @@
 {"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:38:30 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:38:30"}
 {"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:38:30 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:38:30"}
 {"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 20:44:53"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-24 20:45:16"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:07 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:07"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:09 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:09"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"POST /api/auth/login HTTP/1.1\" 200 630 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:22"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:26 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:26"}
+{"level":"info","message":"192.168.1.8 - - [24/Sep/2026:13:46:28 +0000] \"GET /api/reports/excel?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1NmY3ZWNkLWZhOTYtNDhkMi1iMzE4LWNkYWIyOGJlY2Q3OCIsInVzZXJuYW1lIjoieW9hbiIsInJvbGUiOiJTVVBFUl9BRE1JTiIsImlhdCI6MTc5MDI1NzU4MiwiZXhwIjoxNzkwODYyMzgyfQ.nnTYlRgYhWnXMEbgKXatybIvctxFiNts6HxXsWxTHyc HTTP/1.1\" 200 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-24 20:46:28"}
