@@ -36,120 +36,133 @@ export default function ScannerScreen({ route, navigation }) {
   const handleBarcodeScanned = async ({ data }) => {
     if (loading) return;
 
-    // Bersihkan data dari spasi tambahan dan jadikan huruf besar semua
     const cleanedData = data.trim().toUpperCase();
-
     setLoading(true);
-
-    // Gunakan data yang sudah dibersihkan
     const scannedText = cleanedData;
 
     try {
-      // Ambil userId dari AsyncStorage
       const userStr = await AsyncStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
       const userId = user ? user.id : '';
+      const userRole = user ? user.role : 'USER';
+      const isAdminOrPengawas = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'PENGAWAS';
 
-      // CEK STATUS MAINTENANCE KE BACKEND (Penting!)
-      const fetchPromise = axios.get(`${API_URL}/api/vehicles/scan/${scannedText}?userId=${userId}`);
-      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`);
+      // Fetch vehicle data dan ongoing issues secara paralel
+      const [vehicleRes, issueRes] = await Promise.all([
+        Promise.race([
+          axios.get(`${API_URL}/api/vehicles/scan/${scannedText}?userId=${userId}`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000))
+        ]),
+        axios.get(`${API_URL}/api/issues/ongoing`).catch(() => ({ data: [] }))
+      ]);
+
+      const res = vehicleRes;
       const ongoingIssues = issueRes.data || [];
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000));
 
-      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (!(res && res.data && res.data.success && res.data.vehicle)) {
+        throw new Error('Barcode tidak valid atau data kendaraan tidak ditemukan');
+      }
 
-      if (res && res.data && res.data.success && res.data.vehicle) {
-        setScannedNoPolisi(res.data.vehicle.noPolisi);
-        const activeIssue = ongoingIssues.find(issue => issue.handover && issue.handover.noPolisi === res.data.vehicle.noPolisi);
-        const hasMajorIssue = activeIssue?.handover?.items?.some(item => item.severity === 'Major' && !item.isGood);
-        const isUnderRepair = !!activeIssue;
+      const vehicleNoPolisi = res.data.vehicle.noPolisi;
+      setScannedNoPolisi(vehicleNoPolisi);
 
-        const userRole = user ? user.role : 'USER';
-        const isAdminOrPengawas = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'PENGAWAS';
+      // === STEP 1: Cek apakah kendaraan sedang dalam perbaikan (ada issue ONGOING) ===
+      const activeIssue = ongoingIssues.find(issue => issue.handover && issue.handover.noPolisi === vehicleNoPolisi);
+      const isUnderRepair = !!activeIssue;
+      const hasMajorIssue = activeIssue?.handover?.items?.some(item => item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
 
-        const isReporter = activeIssue?.handover?.userId === userId;
-        const isAmt1 = activeIssue?.handover?.amt1 && user?.name && activeIssue.handover.amt1.trim().toLowerCase() === user.name.trim().toLowerCase();
-        const isAmt2 = activeIssue?.handover?.amt2 && user?.name && activeIssue.handover.amt2.trim().toLowerCase() === user.name.trim().toLowerCase();
+      // Cek apakah user ini berhak melakukan verifikasi perbaikan
+      const isReporter = String(activeIssue?.handover?.userId) === String(userId);
+      const isAmt1 = activeIssue?.handover?.amt1 && user?.name && activeIssue.handover.amt1.trim().toLowerCase() === user.name.trim().toLowerCase();
+      const isAmt2 = activeIssue?.handover?.amt2 && user?.name && activeIssue.handover.amt2.trim().toLowerCase() === user.name.trim().toLowerCase();
+      const canRepair = isUnderRepair ? (isAmt1 || isAmt2 || (isReporter && !isAdminOrPengawas) || userRole === 'SUPER_ADMIN') : false;
 
-        const canRepair = isUnderRepair ? (isAdminOrPengawas || isReporter || isAmt1 || isAmt2) : false;
-
-        if (isUnderRepair && hasMajorIssue) {
-          // Hanya pelapor kerusakan atau Admin/Pengawas yang boleh mengisi FixVerification
-          if (!canRepair) {
-            setErrorMessage('Kendaraan ini sedang dalam perbaikan (Kerusakan Major). Hanya petugas pelapor atau Admin/Pengawas yang dapat mengirim laporan perbaikan.');
-            setScanResult('error');
-            setLoading(false);
-            return;
-          }
-          setScanResult('repair');
+      // === STEP 2: Handle kendaraan dengan issue Major (DIBLOKIR) ===
+      if (isUnderRepair && hasMajorIssue) {
+        if (!canRepair) {
+          setErrorMessage('Kendaraan ini sedang dalam perbaikan (Kerusakan Major). Hanya AMT 1 dan AMT 2 yang bertugas yang dapat mengirim laporan perbaikan.');
+          setScanResult('error');
           setLoading(false);
           return;
         }
+        // AMT bertugas → tampilkan opsi verifikasi perbaikan
+        setScanResult('repair');
+        setLoading(false);
+        return;
+      }
 
-        if (res.data.vehicle.status === 'Maintenance') {
-          setScanResult('maintenance');
+      // === STEP 3: Handle status Maintenance (tanpa issue ONGOING — dead end) ===
+      if (res.data.vehicle.status === 'Maintenance' && !isUnderRepair) {
+        setScanResult('maintenance');
+        setLoading(false);
+        return;
+      }
+
+      // === STEP 4: Untuk Akhiri Pekerjaan — blokir jika ada issue Minor yang masih ONGOING ===
+      // (Mobil Minor masih bisa jalan, jadi Akhiri tetap boleh — TIDAK diblokir)
+
+      // === STEP 5: Cek apakah user sedang aktif di mobil LAIN ===
+      if (!isAdminOrPengawas && res.data.activeUserHandover) {
+        const activePolisi = res.data.activeUserHandover.noPolisi;
+        if (activePolisi !== vehicleNoPolisi) {
+          setErrorMessage(`Anda sedang aktif di pekerjaan kendaraan ${activePolisi}. Selesaikan (Akhiri) pekerjaan tersebut terlebih dahulu.`);
           setLoading(false);
+          setScanResult('error');
           return;
         }
-        // CEK APAKAH USER SEDANG AKTIF DI MOBIL LAIN (Kecuali Admin/Pengawas)
-        if (!isAdminOrPengawas && res.data.activeUserHandover) {
-          const activePolisi = res.data.activeUserHandover.noPolisi;
-          if (activePolisi !== res.data.vehicle.noPolisi) {
-             setErrorMessage(`Anda sedang aktif di pekerjaan kendaraan ${activePolisi}. Selesaikan (Akhiri) pekerjaan tersebut terlebih dahulu.`);
-             setLoading(false);
-             setScanResult('error');
-             return;
-          }
-        }
+      }
 
-        // Jika lolos (Active), gunakan Nomor Polisi aslinya!
-        setScannedNoPolisi(res.data.vehicle.noPolisi);
+      // === STEP 6: Validasi urutan Mulai → Akhiri ===
+      let finalResult = 'success';
 
-        let finalResult = 'success';
+      if (res.data.lastHandover) {
+        const lastType = res.data.lastHandover.type;
+        const lastHasIssue = !!res.data.lastHandover.issue;
 
-        if (res.data.lastHandover) {
-          const lastType = res.data.lastHandover.type;
-
-          if (!isAdminOrPengawas) {
-            if (type === 'mulai' && lastType === 'mulai') {
-              // Pengecualian: jika handover terakhir "mulai" tapi punya issue (kerusakan), 
-              // berarti mobil itu sempat rusak. Setelah diperbaiki admin, AMT boleh "mulai" lagi.
-              if (!res.data.lastHandover.issue) {
-                setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
-                setLoading(false);
-                setScanResult('error');
-                return;
-              }
-            } else if (type === 'akhiri' && lastType !== 'mulai') {
-              setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
+        if (!isAdminOrPengawas) {
+          if (type === 'mulai' && lastType === 'mulai') {
+            // Boleh mulai lagi jika handover terakhir punya issue (mobil rusak, sudah diverifikasi/resolved)
+            if (!lastHasIssue) {
+              setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
               setLoading(false);
               setScanResult('error');
               return;
             }
-          }
-
-          setLastHandover(res.data.lastHandover);
-          finalResult = 'recap';
-        } else {
-          if (type === 'akhiri' && !isAdminOrPengawas) {
-            setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
+          } else if (type === 'akhiri' && lastType !== 'mulai') {
+            setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
             setLoading(false);
             setScanResult('error');
             return;
           }
-          finalResult = 'success';
         }
 
-        if (isUnderRepair && !hasMajorIssue && canRepair) {
-          setNextScanResult(finalResult);
-          setScanResult('repair_minor');
+        // Tampilkan recap jika ada data items dari handover terakhir
+        if (res.data.lastHandover.items && res.data.lastHandover.items.length > 0) {
+          setLastHandover(res.data.lastHandover);
+          finalResult = 'recap';
         } else {
-          setScanResult(finalResult);
+          setLastHandover(null);
+          finalResult = 'success';
         }
-        setLoading(false);
       } else {
-        throw new Error('Barcode tidak valid atau data kendaraan tidak ditemukan');
+        // Belum ada handover sama sekali
+        if (type === 'akhiri' && !isAdminOrPengawas) {
+          setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
+          setLoading(false);
+          setScanResult('error');
+          return;
+        }
+        finalResult = 'success';
       }
+
+      // === STEP 7: Handle issue Minor (masih bisa lanjut kerja) ===
+      if (isUnderRepair && !hasMajorIssue && canRepair) {
+        setNextScanResult(finalResult);
+        setScanResult('repair_minor');
+      } else {
+        setScanResult(finalResult);
+      }
+      setLoading(false);
 
     } catch (error) {
       console.error(error);
@@ -161,7 +174,7 @@ export default function ScannerScreen({ route, navigation }) {
 
   const proceedToForm = () => {
     setScanResult(null);
-    navigation.navigate('HandoverForm', { noPolisi: scannedNoPolisi, type });
+    navigation.navigate('HandoverForm', { noPolisi: scannedNoPolisi, type, lastHandover });
   };
 
   const renderRecapModal = () => {
@@ -172,8 +185,8 @@ export default function ScannerScreen({ route, navigation }) {
     const itemsB = lastHandover.items.filter(i => i.category === 'B');
     const odoItem = lastHandover.items.find(i => i.category === 'C');
 
-    const countAGood = itemsA.filter(i => i.isGood).length;
-    const countBGood = itemsB.filter(i => i.isGood).length;
+    const countAGood = itemsA.filter(i => i.isGood || i.isRepaired).length;
+    const countBGood = itemsB.filter(i => i.isGood || i.isRepaired).length;
     const odoMeter = odoItem ? odoItem.name.replace('Odo Meter: ', '') : '-';
 
     return (
@@ -289,7 +302,13 @@ export default function ScannerScreen({ route, navigation }) {
 
       {scanResult === 'repair' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+              onPress={() => setScanResult(null)}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
             <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
               <Ionicons name="construct" size={50} color="#ED1C24" />
             </View>
@@ -315,7 +334,13 @@ export default function ScannerScreen({ route, navigation }) {
 
       {scanResult === 'repair_minor' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-yellow-400`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-yellow-400 relative`}>
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+              onPress={() => setScanResult(null)}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
             <View style={tw`w-24 h-24 bg-yellow-100 rounded-full items-center justify-center mb-6 shadow-lg shadow-yellow-200`}>
               <Ionicons name="warning" size={50} color="#F59E0B" />
             </View>
@@ -350,7 +375,13 @@ export default function ScannerScreen({ route, navigation }) {
 
       {scanResult === 'maintenance' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+              onPress={() => setScanResult(null)}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
             <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
               <Ionicons name="lock-closed" size={50} color="#ED1C24" />
             </View>
@@ -368,7 +399,15 @@ export default function ScannerScreen({ route, navigation }) {
 
       {scanResult === 'error' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl relative`}>
+            {/* Tombol Silang (X) */}
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+              onPress={() => setScanResult(null)}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
+
             <View style={tw`w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-6`}>
               <Ionicons name="close-circle" size={48} color="#ED1C24" />
             </View>

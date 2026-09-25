@@ -10,7 +10,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFindingReportEmail } from '../../hooks/useFindingReportEmail';
+
 
 const DEFAULT_ITEMS = [
   { id: 'A1', category: 'A', name: 'Kondisi Rem', severity: 'Major' },
@@ -45,7 +45,7 @@ const PERTAMINA_RED = ['#FF4B4B', '#ED1C24'];
 const PERTAMINA_GREEN = ['#2ECC71', '#00A651'];
 
 export default function HandoverFormScreen({ route, navigation }) {
-  const { noPolisi: initialNoPolisi, type } = route?.params || {};
+  const { noPolisi: initialNoPolisi, type, lastHandover } = route?.params || {};
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
   const now = new Date();
   const currentHour = String(now.getHours()).padStart(2, '0');
@@ -79,12 +79,12 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState('USER');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedWithMajorIssue, setSubmittedWithMajorIssue] = useState(false);
   const [validationModalVisible, setValidationModalVisible] = useState(false);
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const cameraRef = useRef(null);
 
-  const { sendFindingReportWithEmail } = useFindingReportEmail();
 
   const showValidationError = (title, message) => {
     setValidationTitle(title);
@@ -111,22 +111,44 @@ export default function HandoverFormScreen({ route, navigation }) {
         if (!sourceItems || sourceItems.length === 0) {
           sourceItems = DEFAULT_ITEMS;
         }
-        setItems(sourceItems.map(item => ({
-          category: item.category,
-          name: item.name,
-          status: null,
-          severity: item.severity || 'Minor',
-          catatan: ''
-        })));
+        setItems(sourceItems.map(item => {
+          let status = null;
+          let catatan = '';
+          if (lastHandover && lastHandover.items) {
+            const pastItem = lastHandover.items.find(i => i.name === item.name && i.category === item.category);
+            if (pastItem && !pastItem.isGood && !pastItem.isRepaired) {
+              status = 'RUSAK';
+              catatan = pastItem.repairNote || 'Masih rusak sejak inspeksi sebelumnya.';
+            }
+          }
+          return {
+            category: item.category,
+            name: item.name,
+            status: status,
+            severity: item.severity || 'Minor',
+            catatan: catatan
+          };
+        }));
       } catch (e) {
         console.error("Gagal mengambil checklist dari API, menggunakan default:", e);
-        setItems(DEFAULT_ITEMS.map(item => ({
-          category: item.category,
-          name: item.name,
-          status: null,
-          severity: item.severity || 'Minor',
-          catatan: ''
-        })));
+        setItems(DEFAULT_ITEMS.map(item => {
+          let status = null;
+          let catatan = '';
+          if (lastHandover && lastHandover.items) {
+            const pastItem = lastHandover.items.find(i => i.name === item.name && i.category === item.category);
+            if (pastItem && !pastItem.isGood && !pastItem.isRepaired) {
+              status = 'RUSAK';
+              catatan = pastItem.repairNote || 'Masih rusak sejak inspeksi sebelumnya.';
+            }
+          }
+          return {
+            category: item.category,
+            name: item.name,
+            status: status,
+            severity: item.severity || 'Minor',
+            catatan: catatan
+          };
+        }));
       }
     };
     loadChecklist();
@@ -193,7 +215,6 @@ export default function HandoverFormScreen({ route, navigation }) {
     const newItems = [...items];
     newItems[index].status = statusValue;
     if (statusValue === 'BAIK') {
-      newItems[index].severity = null;
       newItems[index].catatan = '';
       // Hapus foto kerusakan item ini jika user memilih atau membatalkan ke BAIK
       setPhotos(prev => {
@@ -202,8 +223,6 @@ export default function HandoverFormScreen({ route, navigation }) {
         delete nextPhotos[`item_${index}`];
         return nextPhotos;
       });
-    } else {
-      newItems[index].severity = 'Minor'; // Default saat diset rusak
     }
     setItems(newItems);
   };
@@ -331,7 +350,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     }
 
     // 6. Validasi Wajib Foto Kerusakan
-    const missingIssuePhotos = items.filter((item, idx) => item.status === 'RUSAK' && !photos[`item_${idx}`]);
+    const missingIssuePhotos = items.filter((item, idx) => item.status === 'RUSAK' && item.category === 'A' && !photos[`item_${idx}`]);
     if (missingIssuePhotos.length > 0) {
       showValidationError("Foto Kerusakan Belum Lengkap", `Harap ambil foto untuk kerusakan pada item:\n"${missingIssuePhotos[0].name}"`);
       return;
@@ -349,11 +368,13 @@ export default function HandoverFormScreen({ route, navigation }) {
       formData.append('noPolisi', noPolisi);
       formData.append('shift', shift);
       formData.append('type', type || 'mulai');
+      formData.append('amt1', amt1 || '');
+      formData.append('amt2', amt2 || '');
 
       const finalItems = items.map(i => ({
         ...i,
         isGood: i.status === 'BAIK',
-        name: i.name + (i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
+        name: i.name + (i.status === 'RUSAK' && i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
       }));
       finalItems.push({ category: 'C', name: `Odo Meter: ${odoMeter}`, isGood: true });
       formData.append('items', JSON.stringify(finalItems));
@@ -391,23 +412,28 @@ export default function HandoverFormScreen({ route, navigation }) {
       });
 
       const issueItems = finalItems.filter(i => !i.isGood);
+      const hasMajorIssue = issueItems.some(i => i.name.includes('[MAJOR]'));
+
       if (issueItems.length > 0 && response.data.handover) {
-        // Panggil hook untuk ngirim notifikasi email tentang temuan ini
-        // Kita juga bisa kirim photoUrl (misal gambar kerusakan pertama), tapi ini contoh
-        await sendFindingReportWithEmail(response.data.handover.id, issueItems, noPolisi, null);
+        // Jika ada temuan, backend bisa mengirim notifikasi email dll (diurus di backend)
+        console.log("Handover dengan temuan berhasil disubmit:", response.data.handover.id);
       }
 
       setLoading(false);
 
+      if (hasMajorIssue) {
+        setSubmittedWithMajorIssue(true);
+      }
+
       // Tampilkan Modal Sukses Cantik
       setShowSuccessModal(true);
 
-      // Otomatis kembali ke dashboard setelah 2.5 detik
-      // Gunakan currentRole (variabel lokal) agar tidak bergantung state yang async
+      // Otomatis kembali ke dashboard (lebih lama jika diblokir agar sempat dibaca)
       setTimeout(() => {
         setShowSuccessModal(false);
+        setSubmittedWithMajorIssue(false); // Reset state
         goToDashboard(currentRole);
-      }, 2500);
+      }, hasMajorIssue ? 4000 : 2500);
 
     } catch (error) {
       setLoading(false);
@@ -479,54 +505,48 @@ export default function HandoverFormScreen({ route, navigation }) {
               />
             </View>
 
-            {item.severity === 'Major' && (
-              <View style={tw`bg-red-100 p-4 rounded-xl border border-red-300 items-center flex-row`}>
-                <Ionicons name="warning" size={24} color="#DC2626" style={tw`mr-3`} />
-                <Text style={tw`text-red-800 flex-1 text-xs font-bold leading-5`}>
-                  Status Major menyebabkan kendaraan <Text style={tw`font-black text-red-600 uppercase`}>diblokir</Text>. Laporan ditandai bahaya!
-                </Text>
-              </View>
-            )}
 
             {/* Wajib Foto Kerusakan */}
-            <View style={tw`mt-4 items-start`}>
-              <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider mb-2`}>* Foto Kerusakan (Wajib)</Text>
-              <View style={tw`relative`}>
-                <TouchableOpacity
-                  style={tw`w-32 h-32 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
-                  onPress={() => openCameraFor(`item_${originalIdx}`)}
-                >
-                  {photos[`item_${originalIdx}`] ? (
-                    <>
-                      <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-                      <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
-                        <Ionicons name="checkmark-circle" size={32} color="white" />
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="camera" size={32} color="#DC2626" />
-                      <Text style={tw`text-xs text-red-600 mt-2 font-bold`}>Ambil Foto</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {photos[`item_${originalIdx}`] && (
+            {item.category === 'A' && (
+              <View style={tw`mt-4 items-start`}>
+                <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider mb-2`}>* Foto Kerusakan (Wajib)</Text>
+                <View style={tw`relative`}>
                   <TouchableOpacity
-                    style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
-                    onPress={() => {
-                      setPhotos(prev => {
-                        const nextPhotos = { ...prev };
-                        delete nextPhotos[`item_${originalIdx}`];
-                        return nextPhotos;
-                      });
-                    }}
+                    style={tw`w-32 h-32 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
+                    onPress={() => openCameraFor(`item_${originalIdx}`)}
                   >
-                    <Ionicons name="trash-outline" size={16} color="white" />
+                    {photos[`item_${originalIdx}`] ? (
+                      <>
+                        <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
+                        <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
+                          <Ionicons name="checkmark-circle" size={32} color="white" />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="camera" size={32} color="#DC2626" />
+                        <Text style={tw`text-xs text-red-600 mt-2 font-bold`}>Ambil Foto</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
-                )}
+
+                  {photos[`item_${originalIdx}`] && (
+                    <TouchableOpacity
+                      style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
+                      onPress={() => {
+                        setPhotos(prev => {
+                          const nextPhotos = { ...prev };
+                          delete nextPhotos[`item_${originalIdx}`];
+                          return nextPhotos;
+                        });
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="white" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </View>
+            )}
           </View>
         )}
       </View>
@@ -923,13 +943,27 @@ export default function HandoverFormScreen({ route, navigation }) {
       <Modal visible={showSuccessModal} transparent={true} animationType="fade">
         <View style={tw`flex-1 justify-center items-center bg-slate-900/80 px-6`}>
           <View style={tw`bg-white w-full max-w-sm rounded-[40px] p-8 items-center shadow-2xl border border-white/20`}>
-            <View style={tw`w-28 h-28 bg-green-50 rounded-full items-center justify-center mb-6 border-8 border-green-100`}>
-              <Ionicons name="checkmark-done" size={60} color="#2ECC71" />
-            </View>
-            <Text style={tw`text-3xl font-black text-gray-800 mb-3 text-center tracking-tight`}>Berhasil!</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6`}>
-              Laporan Handover kendaraan Anda telah tersimpan dengan aman ke server Pertamina.
-            </Text>
+            {submittedWithMajorIssue ? (
+              <>
+                <View style={tw`w-28 h-28 bg-red-50 rounded-full items-center justify-center mb-6 border-8 border-red-100`}>
+                  <Ionicons name="warning" size={60} color="#E74C3C" />
+                </View>
+                <Text style={tw`text-3xl font-black text-red-600 mb-3 text-center tracking-tight`}>Perhatian!</Text>
+                <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6`}>
+                  Laporan Anda tersimpan. Karena terdapat temuan kerusakan MAJOR, kendaraan ini otomatis <Text style={tw`font-bold text-red-600`}>DIBLOKIR</Text> dan tidak dapat digunakan.
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={tw`w-28 h-28 bg-green-50 rounded-full items-center justify-center mb-6 border-8 border-green-100`}>
+                  <Ionicons name="checkmark-done" size={60} color="#2ECC71" />
+                </View>
+                <Text style={tw`text-3xl font-black text-gray-800 mb-3 text-center tracking-tight`}>Berhasil!</Text>
+                <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6`}>
+                  Laporan Handover kendaraan Anda telah tersimpan dengan aman ke server Pertamina.
+                </Text>
+              </>
+            )}
             <ActivityIndicator size="large" color="#4A90E2" />
             <Text style={tw`text-gray-400 text-xs mt-4 font-bold tracking-widest uppercase`}>Kembali otomatis...</Text>
           </View>

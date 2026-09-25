@@ -1,8 +1,5 @@
 const nodemailer = require('nodemailer');
 const emailTemplates = require('./emailTemplates');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
@@ -11,8 +8,12 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const currentAdminEmail = process.env.ADMIN_EMAIL;
+
 exports.sendPasswordResetNotification = async (adminEmail, user, reason, requestId) => {
   try {
+    const targetEmail = adminEmail || currentAdminEmail;
+
     const html = emailTemplates.passwordResetNotification({
       adminName: 'Admin',
       userName: user.name,
@@ -24,15 +25,15 @@ exports.sendPasswordResetNotification = async (adminEmail, user, reason, request
     });
     
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: adminEmail,
+      from: transporter.options.auth.user,
+      to: targetEmail,
       subject: `🔔 Notifikasi: User ${user.name} Lupa Password`,
       html: html
     });
     
     await prisma.emailNotificationLog.create({
       data: {
-        emailAddress: adminEmail,
+        emailAddress: targetEmail,
         subject: `🔔 Notifikasi: User ${user.name} Lupa Password`,
         emailType: 'PASSWORD_RESET',
         emailStatus: 'SENT',
@@ -40,7 +41,7 @@ exports.sendPasswordResetNotification = async (adminEmail, user, reason, request
       }
     });
     
-    console.log(`✅ Password reset notification sent to ${adminEmail}`);
+    console.log(`✅ Password reset notification sent to ${targetEmail}`);
   } catch (error) {
     console.error('❌ Send notification error:', error);
   }
@@ -54,7 +55,7 @@ exports.sendPasswordResetCompletedEmail = async (userEmail, userName, newPasswor
     });
     
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: transporter.options.auth.user,
       to: userEmail,
       subject: '✅ Password Anda Telah Direset',
       html: html
@@ -73,44 +74,5 @@ exports.sendPasswordResetCompletedEmail = async (userEmail, userName, newPasswor
     console.log(`✅ Password reset email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Send email error:', error);
-  }
-};
-
-exports.sendFindingReportEmail = async (adminEmail, finding, photoUrl) => {
-  try {
-    const html = emailTemplates.findingReportEmail({
-      adminName: 'Admin',
-      reporterName: finding.reporterName,
-      reporterEmail: finding.reporterEmail,
-      reporterPhone: finding.reporterPhone,
-      location: finding.location,
-      category: finding.category,
-      description: finding.description,
-      photoUrl: photoUrl,
-      severity: finding.severity || 'MEDIUM',
-      reportDate: finding.createdAt
-    });
-    
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: adminEmail,
-      subject: `🚨 Laporan Baru: ${finding.category}`,
-      html: html
-    });
-    
-    await prisma.emailNotificationLog.create({
-      data: {
-        handoverId: finding.handoverId,
-        emailAddress: adminEmail,
-        subject: `🚨 Laporan Baru: ${finding.category}`,
-        emailType: 'FINDING_REPORT',
-        emailStatus: 'SENT',
-        sentAt: new Date()
-      }
-    });
-
-    console.log(`✅ Finding report email sent to ${adminEmail}`);
-  } catch (error) {
-    console.error('❌ Send finding email error:', error);
   }
 };

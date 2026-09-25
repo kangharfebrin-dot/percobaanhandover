@@ -1,5 +1,6 @@
 import Toast from 'react-native-toast-message';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView } from 'react-native';
@@ -40,7 +41,14 @@ export default function WorkerListScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('AMT');
-  const [jabatan, setJabatan] = useState('');
+  const [jabatan, setJabatan] = useState('AMT I');
+
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [workerToDelete, setWorkerToDelete] = useState(null);
+  const [notificationModal, setNotificationModal] = useState({ visible: false, title: '', message: '', type: 'success' });
+  const showNotification = (title, message, type = 'success') => {
+    setNotificationModal({ visible: true, title, message, type });
+  };
 
   const [filterJabatan, setFilterJabatan] = useState('Semua');
   const [sortBy, setSortBy] = useState('Abjad');
@@ -87,25 +95,7 @@ export default function WorkerListScreen({ navigation }) {
     }
   };
 
-  const filteredWorkers = workers.filter((item) => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = item.name.toLowerCase().includes(searchLower) ||
-                          item.username.toLowerCase().includes(searchLower);
-                          
-    let matchesJabatan = true;
-    if (filterJabatan !== 'Semua') {
-      matchesJabatan = item.jabatan === filterJabatan;
-    }
-
-    return matchesSearch && matchesJabatan;
-  }).sort((a, b) => {
-    if (sortBy === 'Abjad') {
-      return a.name.localeCompare(b.name);
-    } else if (sortBy === 'NIP') {
-      return a.username.localeCompare(b.username);
-    }
-    return 0;
-  });
+  const filteredWorkers = useMemo(() => { return workers.filter((item) => { const searchLower = (searchQuery || '').toLowerCase().trim(); const matchesSearch = (item.name || '').toLowerCase().includes(searchLower) || (item.username || '').toLowerCase().includes(searchLower); let matchesJabatan = true; if (filterJabatan !== 'Semua') { matchesJabatan = item.jabatan === filterJabatan; } return matchesSearch && matchesJabatan; }).sort((a, b) => { if (sortBy === 'Abjad') { return a.name.localeCompare(b.name); } else if (sortBy === 'NIP') { return a.username.localeCompare(b.username); } return 0; }); }, [workers, searchQuery, filterJabatan, sortBy]);
 
   const openAddModal = () => {
     setSelectedWorker(null);
@@ -129,32 +119,20 @@ export default function WorkerListScreen({ navigation }) {
 
   const handleSaveWorker = async () => {
     if (!name || !username || (!selectedWorker && !password)) {
-      Toast.show({
-        type: 'info',
-        text1: `Data Tidak Lengkap`,
-        text2: `Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.`
-      });
+      showNotification('Data Tidak Lengkap', 'Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.', 'info');
       return;
     }
 
-    const isUsernameValid = /^[a-zA-Z]+$/.test(username);
+    const isUsernameValid = /^[a-zA-Z0-9\s.\-_]+$/.test(username);
     const isPasswordValid = selectedWorker && !password ? true : /^[0-9]+$/.test(password);
 
     if (!isUsernameValid) {
-      Toast.show({
-        type: 'info',
-        text1: `Format Tidak Valid`,
-        text2: `Username hanya boleh berisi huruf (alfabet) tanpa spasi atau angka.`
-      });
+      showNotification('Format Tidak Valid', 'Username hanya boleh berisi huruf, angka, spasi, titik, strip atau underscore.', 'info');
       return;
     }
 
     if (!isPasswordValid) {
-      Toast.show({
-        type: 'info',
-        text1: `Format Tidak Valid`,
-        text2: `Password hanya boleh berisi angka.`
-      });
+      showNotification('Format Tidak Valid', 'Password hanya boleh berisi angka.', 'info');
       return;
     }
 
@@ -165,51 +143,38 @@ export default function WorkerListScreen({ navigation }) {
       if (selectedWorker) {
         // Update
         await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data);
-        Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Data pekerja berhasil diperbarui!`
-      });
+        showNotification('Berhasil', 'Data pekerja berhasil diperbarui!', 'success');
       } else {
         // Create
         await axios.post(`${API_BASE}/workers`, data);
-        Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Pekerja baru berhasil ditambahkan!`
-      });
+        showNotification('Berhasil', 'Pekerja baru berhasil ditambahkan!', 'success');
+        setSearchQuery('');
       }
       setManageModalVisible(false);
       fetchWorkers();
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
+      showNotification('Gagal', error.response?.data?.error || error.message, 'error');
     }
   };
 
-  const handleDeleteWorker = () => {
-    if (!selectedWorker) return;
+    const handleDeleteWorker = () => {
+    setWorkerToDelete(selectedWorker);
+    setConfirmModalVisible(true);
+  };
 
-    Alert.alert("Konfirmasi Hapus", `Apakah Anda yakin ingin menghapus ${selectedWorker.name}?`, [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Hapus",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await axios.delete(`${API_BASE}/workers/${selectedWorker.id}`);
-            Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Pekerja berhasil dihapus!`
-      });
-            setManageModalVisible(false);
-            fetchWorkers();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
-          }
-        }
-      }
-    ]);
+  const confirmDelete = async () => {
+    if(!workerToDelete) return;
+    try {
+      await axios.delete(`${API_BASE}/workers/${workerToDelete.id}`);
+      setConfirmModalVisible(false);
+      setManageModalVisible(false);
+      fetchWorkers();
+      showNotification('Berhasil!', 'Data pekerja berhasil dihapus.', 'success');
+    } catch (error) {
+      console.error(error);
+      setConfirmModalVisible(false);
+      showNotification('Error', 'Gagal menghapus pekerja', 'error');
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -358,13 +323,21 @@ export default function WorkerListScreen({ navigation }) {
             </View>
 
             <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan (Cth: AMT I / AMT II)</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan jabatan (opsional)"
-                value={jabatan}
-                onChangeText={setJabatan}
-              />
+              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan</Text>
+              <View style={tw`flex-row justify-between`}>
+                <TouchableOpacity
+                  style={tw`flex-1 p-4 rounded-xl border ${jabatan === 'AMT I' ? 'border-[#0055A5] bg-[#0055A5]' : 'border-slate-200 bg-slate-50'} mr-2 items-center`}
+                  onPress={() => setJabatan('AMT I')}
+                >
+                  <Text style={tw`font-bold ${jabatan === 'AMT I' ? 'text-white' : 'text-gray-600'}`}>AMT I</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={tw`flex-1 p-4 rounded-xl border ${jabatan === 'AMT II' ? 'border-[#0055A5] bg-[#0055A5]' : 'border-slate-200 bg-slate-50'} ml-2 items-center`}
+                  onPress={() => setJabatan('AMT II')}
+                >
+                  <Text style={tw`font-bold ${jabatan === 'AMT II' ? 'text-white' : 'text-gray-600'}`}>AMT II</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={tw`mb-6`}>
@@ -406,6 +379,35 @@ export default function WorkerListScreen({ navigation }) {
               )}
             </View>
 
+          </View>
+        </View>
+      </Modal>
+
+    
+      <ConfirmModal visible={confirmModalVisible} title="Konfirmasi Hapus" message={workerToDelete ? `Apakah Anda yakin ingin menghapus ${workerToDelete.name}?` : ''} onConfirm={confirmDelete} onCancel={() => setConfirmModalVisible(false)} />
+
+      {/* Modal Kustom Notifikasi */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={notificationModal.visible}
+        onRequestClose={() => setNotificationModal({ ...notificationModal, visible: false })}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/50 px-4`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
+            <View style={tw`${notificationModal.type === 'success' ? 'bg-green-50' : 'bg-red-50'} p-4 rounded-full mb-4`}>
+              <Ionicons name={notificationModal.type === 'success' ? 'checkmark-circle' : notificationModal.type === 'info' ? 'information-circle' : 'close-circle'} size={40} color={notificationModal.type === 'success' ? '#10B981' : notificationModal.type === 'info' ? '#3B82F6' : '#EF4444'} />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>{notificationModal.title}</Text>
+            <Text style={tw`text-gray-500 text-center text-base mb-6 leading-relaxed`}>
+              {notificationModal.message}
+            </Text>
+            <TouchableOpacity
+              style={tw`w-full ${notificationModal.type === 'success' ? 'bg-[#0055A5]' : notificationModal.type === 'info' ? 'bg-[#3B82F6]' : 'bg-[#ED1C24]'} py-4 rounded-2xl items-center shadow-md`}
+              onPress={() => setNotificationModal({ ...notificationModal, visible: false })}
+            >
+              <Text style={tw`text-white font-bold`}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

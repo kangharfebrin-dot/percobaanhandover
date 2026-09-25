@@ -2,11 +2,11 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const userCount = await prisma.user.count();
-  const vehicleCount = await prisma.vehicle.count();
-  console.log(`Users: ${userCount}, Vehicles: ${vehicleCount}`);
+  const notifs = await prisma.notification.findMany({ where: { type: 'AUTH' } });
+  console.log(notifs);
+  
+  const reqs = await prisma.passwordResetRequest.findMany();
+  console.log(reqs);
 }
 
-main()
-  .catch(e => console.error(e))
-  .finally(() => prisma.$disconnect());
+main().catch(console.error).finally(() => prisma.$disconnect());

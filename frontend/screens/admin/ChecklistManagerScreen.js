@@ -1,5 +1,6 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, Easing, Dimensions } from 'react-native';
 import tw from 'twrnc';
@@ -40,6 +41,12 @@ const DEFAULT_ITEMS = [
 
 export default function ChecklistManagerScreen({ navigation }) {
   const [items, setItems] = useState([]);
+  const [notificationModal, setNotificationModal] = useState({ visible: false, title: '', message: '', type: 'success' });
+  const showNotification = (title, message, type = 'success') => {
+    setNotificationModal({ visible: true, title, message, type });
+  };
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
@@ -48,6 +55,25 @@ export default function ChecklistManagerScreen({ navigation }) {
   const [newSeverity, setNewSeverity] = useState('Minor');
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [user, setUser] = useState(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
+  const fetchUnreadNotificationsCount = async (userData) => {
+    try {
+      const res = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${userData.token}` }
+      });
+      setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+    } catch (error) {
+      console.log('Error fetching notifications:', error.message);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user) fetchUnreadNotificationsCount(user);
+    });
+    return unsubscribe;
+  }, [navigation, user]);
   const isLargeScreen = screenWidth > 768;
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -69,7 +95,11 @@ export default function ChecklistManagerScreen({ navigation }) {
 
   const loadUser = async () => {
     const userStr = await AsyncStorage.getItem('user');
-    if (userStr) setUser(JSON.parse(userStr));
+    if (userStr) {
+      const userData = JSON.parse(userStr);
+      setUser(userData);
+      fetchUnreadNotificationsCount(userData);
+    }
   };
 
   const loadItems = async () => {
@@ -78,21 +108,13 @@ export default function ChecklistManagerScreen({ navigation }) {
       setItems(res.data);
     } catch (e) {
       console.error(e);
-      Toast.show({
-        type: 'error',
-        text1: `Error`,
-        text2: `Gagal memuat data checklist dari server`
-      });
+      showNotification('Error', 'Gagal memuat data checklist dari server', 'error');
     }
   };
 
   const handleSave = async () => {
     if (!newName.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: `Error`,
-        text2: `Nama pengecekan tidak boleh kosong.`
-      });
+      showNotification('Error', 'Nama pengecekan tidak boleh kosong.', 'error');
       return;
     }
 
@@ -112,33 +134,31 @@ export default function ChecklistManagerScreen({ navigation }) {
       }
       loadItems();
       setModalVisible(false);
+      showNotification('Berhasil', 'Item berhasil disimpan!', 'success');
     } catch (e) {
       console.error(e);
-      Toast.show({
-        type: 'error',
-        text1: `Error`,
-        text2: `Gagal menyimpan data ke server`
-      });
+      showNotification('Error', 'Gagal menyimpan data ke server', 'error');
     }
   };
 
-  const handleDelete = (id) => {
-    Alert.alert('Hapus Item', 'Yakin ingin menghapus form pengecekan ini?', [
-      { text: 'Batal', style: 'cancel' },
-      { text: 'Hapus', style: 'destructive', onPress: async () => {
-        try {
-          await axios.delete(`${API_URL}/api/checklists/${id}`);
-          loadItems();
-        } catch (e) {
-          console.error(e);
-          Toast.show({
-        type: 'error',
-        text1: `Error`,
-        text2: `Gagal menghapus data dari server`
-      });
-        }
-      }}
-    ]);
+    const handleDelete = (id) => {
+    const it = items.find(i => i.id === id);
+    setItemToDelete(it);
+    setConfirmModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if(!itemToDelete) return;
+    try {
+      await axios.delete(`${API_URL}/api/checklists/${itemToDelete.id}`);
+      setConfirmModalVisible(false);
+      loadItems();
+      showNotification('Berhasil', 'Item berhasil dihapus!', 'success');
+    } catch (e) {
+      console.error(e);
+      setConfirmModalVisible(false);
+      showNotification('Error', 'Gagal menghapus data dari server', 'error');
+    }
   };
 
   const openAddModal = () => {
@@ -248,7 +268,7 @@ export default function ChecklistManagerScreen({ navigation }) {
           {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
               <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-              {/* Titik merah disembunyikan karena tidak ada state alerts di sini */}
+              {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
             </TouchableOpacity>
           )}
 
@@ -306,6 +326,34 @@ export default function ChecklistManagerScreen({ navigation }) {
                 <Text style={tw`font-bold text-white`}>Simpan</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+    <ConfirmModal visible={confirmModalVisible} title="Hapus Item" message={itemToDelete ? `Yakin ingin menghapus form pengecekan ${itemToDelete.name}?` : ''} onConfirm={confirmDelete} onCancel={() => setConfirmModalVisible(false)} />
+      
+      {/* Modal Kustom Notifikasi */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={notificationModal.visible}
+        onRequestClose={() => setNotificationModal({ ...notificationModal, visible: false })}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/50 px-4`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
+            <View style={tw`${notificationModal.type === 'success' ? 'bg-green-50' : 'bg-red-50'} p-4 rounded-full mb-4`}>
+              <Ionicons name={notificationModal.type === 'success' ? 'checkmark-circle' : notificationModal.type === 'info' ? 'information-circle' : 'close-circle'} size={40} color={notificationModal.type === 'success' ? '#10B981' : notificationModal.type === 'info' ? '#3B82F6' : '#EF4444'} />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>{notificationModal.title}</Text>
+            <Text style={tw`text-gray-500 text-center text-base mb-6 leading-relaxed`}>
+              {notificationModal.message}
+            </Text>
+            <TouchableOpacity
+              style={tw`w-full ${notificationModal.type === 'success' ? 'bg-[#0055A5]' : notificationModal.type === 'info' ? 'bg-[#3B82F6]' : 'bg-[#ED1C24]'} py-4 rounded-2xl items-center shadow-md`}
+              onPress={() => setNotificationModal({ ...notificationModal, visible: false })}
+            >
+              <Text style={tw`text-white font-bold`}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

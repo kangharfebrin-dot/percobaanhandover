@@ -24,3 +24,15 @@ exports.adminMiddleware = (req, res, next) => {
     }
   });
 };
+
+exports.authenticateToken = exports.authMiddleware;
+
+exports.authorizeRole = (roles) => {
+  return (req, res, next) => {
+    if (req.user && roles.includes(req.user.role)) {
+      next();
+    } else {
+      res.status(403).json({ error: 'Akses ditolak: Role tidak diizinkan' });
+    }
+  };
+};

@@ -189,8 +189,12 @@ export default function FixVerificationScreen({ route, navigation }) {
         }
       });
 
+      const token = await AsyncStorage.getItem('token');
       const res = await axios.post(`${API_URL}/api/issues/${issue.id}/verify-repair`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        },
       });
 
       setShowSuccessModal(true);

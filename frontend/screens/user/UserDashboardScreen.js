@@ -362,7 +362,7 @@ export default function UserDashboardScreen({ navigation }) {
               </View>
               <View style={tw`flex-1 pr-24`}>
                 <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
-                <Text style={tw`text-gray-800 text-lg font-black`}>{user.name}</Text>
+                <Text style={tw`text-gray-800 text-lg font-black max-w-[150px]`} numberOfLines={1} ellipsizeMode="tail">{user.name}</Text>
               </View>
             </View>
 
@@ -433,41 +433,53 @@ export default function UserDashboardScreen({ navigation }) {
 
             {/* Action Card */}
             {canSeeActions && (
-              <View style={tw`flex-row justify-between mb-10`}>
-                {(!myActiveHandover || myActiveHandover.type !== 'mulai' || myActiveHandover.status === 'NOT_STARTED' || myActiveHandover.status === 'FINISHED') && (
-                  <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
-                    <LinearGradient colors={PERTAMINA_GREEN} style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}>
-                      <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
-                        <Ionicons name="qr-code" size={180} color="white" />
-                      </View>
-                      <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
-                        <Feather name="log-in" size={24} color="white" />
-                      </View>
-                      <View style={tw`mt-6`}>
-                        <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
-                        <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
-                      </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                )}
+              (() => {
+                let isTripBlocked = false;
+                if (myActiveHandover && myActiveHandover.type === 'mulai' && myActiveHandover.items) {
+                  isTripBlocked = myActiveHandover.items.some(item => !item.isGood && item.name.includes('[MAJOR]'));
+                }
 
-                {(myActiveHandover && myActiveHandover.type === 'mulai' && (myActiveHandover.status === 'STARTED' || myActiveHandover.status === 'Ada Masalah' || myActiveHandover.status === 'Siap Operasi (Normal)')) && (
-                  <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
-                    <LinearGradient colors={['#dc2626', '#7f1d1d']} style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}>
-                      <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
-                        <Ionicons name="qr-code" size={180} color="white" />
-                      </View>
-                      <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
-                        <Feather name="log-out" size={24} color="white" />
-                      </View>
-                      <View style={tw`mt-6`}>
-                        <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
-                        <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
-                      </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                )}
-              </View>
+                const showMulai = !myActiveHandover || myActiveHandover.type !== 'mulai' || myActiveHandover.status === 'NOT_STARTED' || myActiveHandover.status === 'FINISHED' || isTripBlocked;
+                const showAkhiri = myActiveHandover && myActiveHandover.type === 'mulai' && (myActiveHandover.status === 'STARTED' || myActiveHandover.status === 'Ada Masalah' || myActiveHandover.status === 'Siap Operasi (Normal)') && !isTripBlocked;
+
+                return (
+                  <View style={tw`flex-row justify-between mb-10`}>
+                    {showMulai && (
+                      <TouchableOpacity style={tw`flex-1 mr-3`} onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}>
+                        <LinearGradient colors={PERTAMINA_GREEN} style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}>
+                          <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                            <Ionicons name="qr-code" size={180} color="white" />
+                          </View>
+                          <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                            <Feather name="log-in" size={24} color="white" />
+                          </View>
+                          <View style={tw`mt-6`}>
+                            <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                            <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
+                          </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+
+                    {showAkhiri && (
+                      <TouchableOpacity style={tw`flex-1 ml-3`} onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}>
+                        <LinearGradient colors={['#dc2626', '#7f1d1d']} style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}>
+                          <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                            <Ionicons name="qr-code" size={180} color="white" />
+                          </View>
+                          <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                            <Feather name="log-out" size={24} color="white" />
+                          </View>
+                          <View style={tw`mt-6`}>
+                            <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                            <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
+                          </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()
             )}
 
             {canSeeOverview && (
@@ -655,6 +667,12 @@ export default function UserDashboardScreen({ navigation }) {
                     style={tw`mb-4 p-4 rounded-2xl border ${notif.isRead ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50'}`}
                     onPress={() => {
                       if (!notif.isRead) handleReadNotification(notif.id);
+                      setShowNotificationsModal(false);
+                      if (notif.actionType === 'SCAN_REPAIR' && notif.actionId) {
+                        navigation.navigate('FixVerification', { noPolisi: notif.actionId });
+                      } else if (notif.actionType === 'VIEW_ISSUE' && notif.actionId) {
+                        navigation.navigate('IssueDetail', { issueId: notif.actionId });
+                      }
                     }}
                   >
                     <View style={tw`flex-row items-center justify-between mb-2`}>

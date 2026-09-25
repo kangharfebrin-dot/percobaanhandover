@@ -1,5 +1,6 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView } from 'react-native';
@@ -39,8 +40,15 @@ export default function PengawasListScreen({ navigation }) {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [pengawasToDelete, setPengawasToDelete] = useState(null);
   const [role, setRole] = useState('AMT');
   const [jabatan, setJabatan] = useState('');
+  const [notificationModal, setNotificationModal] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showNotification = (title, message, type) => {
+    setNotificationModal({ visible: true, title, message, type });
+  };
 
   const [filterJabatan, setFilterJabatan] = useState('Semua');
   const [sortBy, setSortBy] = useState('Abjad');
@@ -88,7 +96,7 @@ export default function PengawasListScreen({ navigation }) {
   };
 
   const filteredPengawass = pengawass.filter((item) => {
-    const searchLower = searchQuery.toLowerCase();
+    const searchLower = searchQuery.toLowerCase().trim();
     const matchesSearch = item.name.toLowerCase().includes(searchLower) ||
                           item.username.toLowerCase().includes(searchLower);
                           
@@ -112,7 +120,7 @@ export default function PengawasListScreen({ navigation }) {
     setName('');
     setUsername('');
     setPassword('');
-    setJabatan('');
+    
     setRole('PENGAWAS');
     setManageModalVisible(true);
   };
@@ -122,94 +130,69 @@ export default function PengawasListScreen({ navigation }) {
     setName(pengawas.name);
     setUsername(pengawas.username);
     setPassword(''); // biarkan kosong jika tidak diubah
-    setJabatan(pengawas.jabatan || '');
+    
     setRole(pengawas.role);
     setManageModalVisible(true);
   };
 
   const handleSavePengawas = async () => {
     if (!name || !username || (!selectedPengawas && !password)) {
-      Toast.show({
-        type: 'info',
-        text1: `Data Tidak Lengkap`,
-        text2: `Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.`
-      });
+      showNotification('Data Tidak Lengkap', 'Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.', 'info');
       return;
     }
 
-    const isUsernameValid = /^[a-zA-Z]+$/.test(username);
+    const isUsernameValid = /^[a-zA-Z0-9\s.\-_]+$/.test(username);
     const isPasswordValid = selectedPengawas && !password ? true : /^[0-9]+$/.test(password);
 
     if (!isUsernameValid) {
-      Toast.show({
-        type: 'info',
-        text1: `Format Tidak Valid`,
-        text2: `Username hanya boleh berisi huruf (alfabet) tanpa spasi atau angka.`
-      });
+      showNotification('Format Tidak Valid', 'Username hanya boleh berisi huruf, angka, spasi, titik, strip atau underscore.', 'info');
       return;
     }
 
     if (!isPasswordValid) {
-      Toast.show({
-        type: 'info',
-        text1: `Format Tidak Valid`,
-        text2: `Password hanya boleh berisi angka.`
-      });
+      showNotification('Format Tidak Valid', 'Password hanya boleh berisi angka.', 'info');
       return;
     }
 
     try {
-      const data = { name, username, role, jabatan };
+      const data = { name, username, role: 'PENGAWAS' };
       if (password) data.password = password;
 
       if (selectedPengawas) {
         // Update
         await axios.put(`${API_BASE}/pengawas/${selectedPengawas.id}`, data);
-        Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Data pekerja berhasil diperbarui!`
-      });
+        showNotification('Berhasil', 'Data pekerja berhasil diperbarui!', 'success');
       } else {
         // Create
         await axios.post(`${API_BASE}/pengawas`, data);
-        Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Pekerja baru berhasil ditambahkan!`
-      });
+        showNotification('Berhasil', 'Pekerja baru berhasil ditambahkan!', 'success');
       }
       setManageModalVisible(false);
       fetchPengawass();
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
+      showNotification('Gagal', error.response?.data?.error || error.message, 'error');
     }
   };
 
   const handleDeletePengawas = () => {
     if (!selectedPengawas) return;
 
-    Alert.alert("Konfirmasi Hapus", `Apakah Anda yakin ingin menghapus ${selectedPengawas.name}?`, [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Hapus",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await axios.delete(`${API_BASE}/pengawas/${selectedPengawas.id}`);
-            Toast.show({
-        type: 'success',
-        text1: `Berhasil`,
-        text2: `Pengawas berhasil dihapus!`
-      });
-            setManageModalVisible(false);
-            fetchPengawass();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Gagal', text2: error.response?.data?.error || error.message });
-          }
-        }
-      }
-    ]);
+    setPengawasToDelete(selectedPengawas);
+    setConfirmModalVisible(true);
+  };
+
+  const confirmDeletePengawas = async () => {
+    if (!pengawasToDelete) return;
+    try {
+      await axios.delete(`${API_BASE}/pengawas/${pengawasToDelete.id}`);
+      showNotification('Berhasil', 'Pengawas berhasil dihapus!', 'success');
+      setManageModalVisible(false);
+      setConfirmModalVisible(false);
+      fetchPengawass();
+    } catch (error) {
+      showNotification('Gagal', error.response?.data?.error || error.message, 'error');
+      setConfirmModalVisible(false);
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -299,7 +282,7 @@ export default function PengawasListScreen({ navigation }) {
         {/* Floating Action Button (Only for Admin) */}
         {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
           <TouchableOpacity
-            style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50`}
+            style={tw`absolute bottom-6 right-6 bg-[#4F46E5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50`}
             onPress={openAddModal}
           >
             <Feather name="plus" size={28} color="white" />
@@ -320,7 +303,7 @@ export default function PengawasListScreen({ navigation }) {
             </View>
 
             <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pekerja</Text>
+              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pengawas</Text>
               <TextInput
                 style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
                 placeholder="Masukkan nama lengkap"
@@ -338,17 +321,7 @@ export default function PengawasListScreen({ navigation }) {
                 onChangeText={setUsername}
                 autoCapitalize="none"
               />
-            </View>
-
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan (Cth: AMT I / AMT II)</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan jabatan (opsional)"
-                value={jabatan}
-                onChangeText={setJabatan}
-              />
-            </View>
+                        </View>
 
             <View style={tw`mb-6`}>
               {selectedPengawas && (
@@ -378,17 +351,70 @@ export default function PengawasListScreen({ navigation }) {
                   <TouchableOpacity style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`} onPress={handleDeletePengawas}>
                     <Text style={tw`text-red-700 font-bold`}>Hapus Data</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`} onPress={handleSavePengawas}>
+                  <TouchableOpacity style={tw`flex-1 bg-[#4F46E5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-indigo-500/40`} onPress={handleSavePengawas}>
                     <Text style={tw`text-white font-bold`}>Simpan</Text>
                   </TouchableOpacity>
                 </>
               ) : (
-                <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSavePengawas}>
-                  <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PEKERJA</Text>
+                <TouchableOpacity style={tw`flex-1 bg-[#4F46E5] p-4 rounded-xl items-center shadow-lg shadow-indigo-500/40`} onPress={handleSavePengawas}>
+                  <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PENGAWAS</Text>
                 </TouchableOpacity>
               )}
             </View>
 
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus */}
+      <Modal visible={confirmModalVisible} animationType="fade" transparent={true} onRequestClose={() => setConfirmModalVisible(false)}>
+        <View style={tw`flex-1 justify-center items-center bg-black/50`}>
+          <View style={tw`bg-white w-11/12 max-w-sm rounded-3xl p-6 items-center shadow-xl`}>
+            <View style={tw`w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4`}>
+              <Feather name="alert-triangle" size={32} color="#EF4444" />
+            </View>
+            <Text style={tw`text-xl font-black text-gray-800 mb-2`}>Hapus Pengawas?</Text>
+            <Text style={tw`text-center text-gray-500 font-bold mb-6`}>
+              Apakah Anda yakin ingin menghapus <Text style={tw`text-red-500`}>{pengawasToDelete?.name}</Text>? Tindakan ini tidak dapat dibatalkan.
+            </Text>
+            <View style={tw`flex-row w-full justify-between gap-3`}>
+              <TouchableOpacity onPress={() => setConfirmModalVisible(false)} style={tw`flex-1 p-4 rounded-xl border border-gray-200 bg-gray-50 items-center`}>
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmDeletePengawas} style={tw`flex-1 p-4 rounded-xl bg-red-500 items-center shadow-lg shadow-red-500/30`}>
+                <Text style={tw`font-bold text-white`}>Ya, Hapus</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      
+
+    
+      {/* Modal Kustom Notifikasi */}
+      <Modal visible={notificationModal.visible} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center items-center bg-black/40 px-6 z-50`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl ${notificationModal.type === 'success' ? 'border-green-100' : 'border-red-100'} relative overflow-hidden`}>
+            
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 ${notificationModal.type === 'success' ? 'bg-green-50' : 'bg-red-50'} rounded-full`} />
+            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 ${notificationModal.type === 'success' ? 'bg-blue-50' : 'bg-orange-50'} rounded-full`} />
+
+            <View style={tw`w-20 h-20 ${notificationModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'} rounded-full items-center justify-center mb-5 shadow-lg ${notificationModal.type === 'success' ? 'shadow-green-500/30' : 'shadow-red-500/30'} z-10 border-4 border-white`}>
+              <Feather name={notificationModal.type === 'success' ? 'check-circle' : 'alert-triangle'} size={40} color={notificationModal.type === 'success' ? '#00A651' : '#ED1C24'} />
+            </View>
+
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 tracking-tight z-10 text-center`}>{notificationModal.title}</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 z-10 px-4`}>
+              {notificationModal.message}
+            </Text>
+
+            <TouchableOpacity
+              style={tw`${notificationModal.type === 'success' ? 'bg-[#00A651]' : 'bg-[#ED1C24]'} px-8 py-4 rounded-2xl shadow-lg z-10 w-full items-center`}
+              onPress={() => setNotificationModal({ ...notificationModal, visible: false })}
+            >
+              <Text style={tw`text-white text-sm font-black tracking-widest uppercase`}>OK, MENGERTI</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

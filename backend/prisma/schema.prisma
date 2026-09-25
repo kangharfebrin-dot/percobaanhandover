@@ -68,6 +68,7 @@ model Issue {
   status            String    @default("ONGOING")
   resolvedAt        DateTime?
   repairRequestedAt DateTime?
+  resolvedBy        String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -132,6 +133,9 @@ model Notification {
   type        String   @default("INFO")
   targetRole  String?  @default("ADMIN")
   createdAt   DateTime @default(now())
+  actionType  String?
+  actionId    String?
+  noPolisi    String?
 
   @@map("notification")
 }
@@ -142,6 +146,9 @@ model AuditLog {
   action    String
   details   String?  @db.Text
   createdAt DateTime @default(now())
+  actionType  String?
+  actionId    String?
+  noPolisi    String?
 
   @@map("audit_log")
 }
@@ -190,3 +197,11 @@ model EmailNotificationLog {
   @@map("email_notification_log")
 }
 
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String?  @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("system_setting")
+}

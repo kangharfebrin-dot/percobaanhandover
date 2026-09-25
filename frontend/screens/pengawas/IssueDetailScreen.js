@@ -1,5 +1,6 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ export default function IssueDetailScreen({ route, navigation }) {
   // evaluations: { [itemId]: { approved: true/false, reason: string } }
   const [evaluations, setEvaluations] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
 
   useEffect(() => {
     fetchIssueDetail();
@@ -91,38 +93,33 @@ export default function IssueDetailScreen({ route, navigation }) {
       return;
     }
 
-    Alert.alert(
-      "Konfirmasi Evaluasi",
-      "Kirim hasil evaluasi ini?",
-      [
-        { text: "Batal", style: "cancel" },
-        { 
-          text: "Kirim", 
-          onPress: async () => {
-            setIsSubmitting(true);
-            try {
-              const evalArray = Object.keys(evaluations).map(itemId => ({
-                itemId,
-                approved: evaluations[itemId].approved,
-                reason: evaluations[itemId].reason
-              }));
+    setConfirmModalVisible(true);
+  };
 
-              await axios.post(`${API_URL}/api/issues/${issueId}/evaluate-repair`, { evaluations: evalArray });
-              Toast.show({ type: 'success', text1: 'Sukses', text2: 'Evaluasi perbaikan berhasil dikirim.' }); setTimeout(() => navigation.goBack(), 1000);
-            } catch (error) {
-              console.error(error);
-              Toast.show({
+  const confirmEvaluate = async () => {
+    setIsSubmitting(true);
+    try {
+      const evalArray = Object.keys(evaluations).map(itemId => ({
+        itemId,
+        approved: evaluations[itemId].approved,
+        reason: evaluations[itemId].reason
+      }));
+
+      await axios.post(`${API_URL}/api/issues/${issueId}/evaluate-repair`, { evaluations: evalArray });
+      Toast.show({ type: 'success', text1: 'Sukses', text2: 'Evaluasi perbaikan berhasil dikirim.' });
+      setConfirmModalVisible(false);
+      setTimeout(() => navigation.goBack(), 1000);
+    } catch (error) {
+      console.error(error);
+      Toast.show({
         type: 'error',
-        text1: `Gagal`,
-        text2: `Terjadi kesalahan saat mengirim evaluasi.`
+        text1: 'Gagal',
+        text2: 'Terjadi kesalahan saat mengirim evaluasi.'
       });
-            } finally {
-              setIsSubmitting(false);
-            }
-          }
-        }
-      ]
-    );
+      setConfirmModalVisible(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -263,6 +260,13 @@ export default function IssueDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         )}
+        <ConfirmModal
+          visible={confirmModalVisible}
+          title="Konfirmasi Evaluasi"
+          message="Kirim hasil evaluasi ini?"
+          onConfirm={confirmEvaluate}
+          onCancel={() => setConfirmModalVisible(false)}
+        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

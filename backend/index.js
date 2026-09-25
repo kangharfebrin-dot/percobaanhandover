@@ -34,7 +34,7 @@ const rateLimit = require('express-rate-limit');
 const errorHandler = require('./src/middleware/errorHandler');
 const { loginSchema } = require('./src/validators/schemas');
 const passwordResetRoutes = require('./src/routes/passwordReset');
-const { sendFindingReportEmail } = require('./src/services/emailService');
+
 
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_rahasia_negara_pertamina_123';
 
@@ -130,10 +130,12 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
 
     // Create DB Notification for Admin and Pengawas
     const notificationTitle = isResolved ? `Isu Selesai: ${noPolisi}` : (isBlocked ? `Kendaraan Diblokir: ${noPolisi}` : `Isu Baru: ${noPolisi}`);
+    const notificationType = isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING');
+    const actionType = isResolved ? 'VIEW_HANDOVER' : 'VIEW_ISSUE';
     await prisma.notification.createMany({
       data: [
-        { title: notificationTitle, message: textBody, type: isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING'), targetRole: 'ADMIN' },
-        { title: notificationTitle, message: textBody, type: isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING'), targetRole: 'PENGAWAS' }
+        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'ADMIN', actionType, actionId: handoverId, noPolisi },
+        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: handoverId, noPolisi }
       ]
     });
 
@@ -166,37 +168,7 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
   }
 }
 
-// 0. API Endpoint untuk mengirim email notifikasi temuan (dipanggil oleh hook frontend)
-app.post('/api/notifications/send-finding-email', authenticateToken, async (req, res) => {
-  try {
-    const { handoverId, items, photoUrl, noPolisi } = req.body;
-    
-    // Get reporter info
-    const reporter = await prisma.user.findUnique({ where: { id: req.user.id } });
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@amt.local";
-    
-    const description = `Terdapat laporan kerusakan pada kendaraan ${noPolisi}:\n` + items.map(i => `- ${i.name}`).join('\n');
-    
-    const finding = {
-      reporterName: reporter?.name || req.user.username,
-      reporterEmail: reporter?.username || 'Tidak ada',
-      reporterPhone: reporter?.jabatan || 'Tidak ada',
-      location: 'Depo',
-      category: 'Laporan Kerusakan',
-      description: description,
-      severity: 'HIGH',
-      createdAt: new Date(),
-      handoverId: handoverId
-    };
-    
-    await sendFindingReportEmail(adminEmail, finding, photoUrl);
-    
-    res.json({ success: true, message: 'Email notifikasi berhasil dikirim' });
-  } catch (error) {
-    console.error('Error sending finding email:', error);
-    res.status(500).json({ success: false, message: 'Gagal mengirim email' });
-  }
-});
+
 
 // --- API ROUTES ---
 
@@ -223,11 +195,15 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
       const userLastHandover = await prisma.handover.findFirst({
         where: { userId: userId },
         orderBy: { timestamp: 'desc' },
-        include: { issue: true }
+        include: { issue: true, items: true }
       });
 
       if (userLastHandover && userLastHandover.type === 'mulai' && !userLastHandover.issue) {
-        activeUserHandover = userLastHandover;
+        // Cek juga apakah ada kerusakan Major — jika iya, user tidak "aktif" di mobil itu
+        const hasMajorBlock = userLastHandover.items?.some(item => !item.isGood && item.name.includes('[MAJOR]'));
+        if (!hasMajorBlock) {
+          activeUserHandover = userLastHandover;
+        }
       }
     }
 
@@ -349,7 +325,7 @@ app.get('/api/handovers/my-active', async (req, res) => {
     const lastHandover = await prisma.handover.findFirst({
       where: { userId: req.user.id },
       orderBy: { timestamp: 'desc' },
-      include: { issue: true }
+      include: { issue: true, vehicle: true, items: true }
     });
 
     if (!lastHandover) {
@@ -910,7 +886,7 @@ app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (r
 
     // Update each item
     for (const item of items) {
-      const file = req.files.find(f => f.fieldname === 'photo_' + item.id);
+      const file = (req.files || []).find(f => f.fieldname === 'photo_' + item.id);
       let photoUrl = null;
       if (file) {
         photoUrl = file.path.replace(/\\/g, '/');
@@ -939,6 +915,35 @@ app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (r
     });
 
     res.json({ success: true, issue: updatedIssue });
+
+    // Notify Admin & Pengawas that repair verification needs review
+    const vehicleNoPolisi = updatedIssue.handover?.noPolisi || '';
+    try {
+      await prisma.notification.createMany({
+        data: [
+          {
+            title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
+            message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+            type: 'INFO',
+            targetRole: 'ADMIN',
+            actionType: 'VIEW_ISSUE',
+            actionId: issueId,
+            noPolisi: vehicleNoPolisi
+          },
+          {
+            title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
+            message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+            type: 'INFO',
+            targetRole: 'PENGAWAS',
+            actionType: 'VIEW_ISSUE',
+            actionId: issueId,
+            noPolisi: vehicleNoPolisi
+          }
+        ]
+      });
+    } catch (notifErr) {
+      console.error('Notification creation error:', notifErr);
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
@@ -987,7 +992,8 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
         where: { id: issueId },
         data: {
           status: 'RESOLVED',
-          resolvedAt: new Date()
+          resolvedAt: new Date(),
+          resolvedBy: req.user ? req.user.name : null
         }
       });
 
@@ -1014,7 +1020,11 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
         data: {
           title: 'Perbaikan Disetujui',
           message: `Perbaikan untuk truk ${issue.handover.noPolisi} telah disetujui. Kendaraan siap jalan.`,
+          type: 'SUCCESS',
           targetRole: 'USER',
+          actionType: 'VIEW_HANDOVER',
+          actionId: issue.handoverId,
+          noPolisi: issue.handover.noPolisi,
           isRead: false
         }
       });
@@ -1032,7 +1042,11 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
         data: {
           title: 'Perbaikan Ditolak',
           message: `Beberapa perbaikan untuk truk ${issue.handover.noPolisi} ditolak. Silakan periksa catatan Admin dan perbaiki kembali.`,
+          type: 'WARNING',
           targetRole: 'USER',
+          actionType: 'SCAN_REPAIR',
+          actionId: issueId,
+          noPolisi: issue.handover.noPolisi,
           isRead: false
         }
       });
@@ -1055,8 +1069,8 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
       targetRoles = ['PENGAWAS', 'ALL'];
     } else {
       // ADMIN, SUPER_ADMIN
-      // Menampilkan semua notifikasi untuk Admin dan Super Admin
-      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'USER', 'AMT', 'ALL'];
+      // Menampilkan notifikasi untuk Admin dan Super Admin (pisahkan dengan Pengawas)
+      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'ALL'];
     }
     const notifications = await prisma.notification.findMany({
       where: { targetRole: { in: targetRoles } },

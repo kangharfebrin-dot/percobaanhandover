@@ -7,11 +7,16 @@
 
 // Mendapatkan IP laptop secara otomatis dari koneksi Expo
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 let HOST_IP = '192.168.1.7'; // Default fallback
 
 // Cek dari mana Expo berjalan
-if (Constants.expoConfig?.hostUri) {
+if (Platform.OS === 'web') {
+  if (typeof window !== 'undefined') {
+    HOST_IP = window.location.hostname;
+  }
+} else if (Constants.expoConfig?.hostUri) {
   HOST_IP = Constants.expoConfig.hostUri.split(':')[0];
 } else if (Constants.manifest?.debuggerHost) {
   HOST_IP = Constants.manifest.debuggerHost.split(':')[0];

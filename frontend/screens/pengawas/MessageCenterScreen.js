@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, Animated, Easing, Dimensions, Image, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, Animated, Easing, Dimensions, Image, Modal, ActivityIndicator, ScrollView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ export default function MessageCenterScreen({ navigation }) {
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [user, setUser] = useState(null);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
   const isLargeScreen = screenWidth > 768;
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -69,9 +70,12 @@ export default function MessageCenterScreen({ navigation }) {
           id: n.id,
           title: n.title,
           message: n.message,
-          type: n.type.toLowerCase(),
+          type: n.type ? n.type.toLowerCase() : 'info',
           read: n.isRead,
-          time: new Date(n.createdAt).toLocaleString('id-ID')
+          time: new Date(n.createdAt).toLocaleString('id-ID'),
+          actionType: n.actionType || null,
+          actionId: n.actionId || null,
+          noPolisi: n.noPolisi || null,
         })));
       }
     } catch (error) {
@@ -111,37 +115,104 @@ export default function MessageCenterScreen({ navigation }) {
     messages.filter(m => !m.read).forEach(m => markAsRead(m.id));
   };
 
-  const renderMessage = ({ item }) => {
-    const isUnread = !item.read;
-    let iconName = "information-circle";
-    let iconColor = "#3B82F6"; // Blue
-    let bgColor = "bg-blue-100";
+  // === Fungsi navigasi berdasarkan actionType ===
+  const handleNotificationAction = (item) => {
+    setSelectedMessage(null);
+    if (!item.actionType) return;
 
-    if (item.type === 'auth') {
-      iconName = "key";
-      iconColor = "#F59E0B"; // Yellow/Orange
-      bgColor = "bg-amber-100";
-    } else if (item.type === 'issue') {
-      iconName = "warning";
-      iconColor = "#ED1C24"; // Red
-      bgColor = "bg-red-100";
+    switch (item.actionType) {
+      case 'VIEW_ISSUE':
+        // Admin/Pengawas → buka IssueList (karena IssueDetail butuh data issue lengkap)
+        navigation.navigate('IssueList');
+        break;
+      case 'VIEW_HANDOVER':
+        // Lihat detail handover
+        navigation.navigate('History');
+        break;
+      case 'SCAN_REPAIR':
+        // AMT → scan QR untuk verifikasi perbaikan
+        navigation.navigate('Scanner', { type: 'mulai' });
+        break;
+      default:
+        break;
     }
+  };
+
+  // === Helper: Teks tombol aksi berdasarkan actionType ===
+  const getActionLabel = (actionType) => {
+    switch (actionType) {
+      case 'VIEW_ISSUE': return 'Lihat Isu Kendaraan';
+      case 'VIEW_HANDOVER': return 'Lihat Riwayat';
+      case 'SCAN_REPAIR': return 'Scan QR Perbaikan';
+      default: return null;
+    }
+  };
+
+  const getActionIcon = (actionType) => {
+    switch (actionType) {
+      case 'VIEW_ISSUE': return 'alert-circle';
+      case 'VIEW_HANDOVER': return 'document-text';
+      case 'SCAN_REPAIR': return 'qr-code';
+      default: return 'arrow-forward';
+    }
+  };
+
+  const getActionColor = (actionType) => {
+    switch (actionType) {
+      case 'VIEW_ISSUE': return ['#ED1C24', '#B91C1C'];
+      case 'VIEW_HANDOVER': return ['#0055A5', '#1E3A5F'];
+      case 'SCAN_REPAIR': return ['#00A651', '#166534'];
+      default: return ['#6B7280', '#4B5563'];
+    }
+  };
+
+  // === Ikon & warna berdasarkan tipe notifikasi ===
+  const getNotifStyle = (type) => {
+    switch (type) {
+      case 'error':
+        return { icon: 'alert-circle', color: '#ED1C24', bg: 'bg-red-100' };
+      case 'warning':
+        return { icon: 'warning', color: '#F59E0B', bg: 'bg-amber-100' };
+      case 'success':
+        return { icon: 'checkmark-circle', color: '#00A651', bg: 'bg-green-100' };
+      case 'auth':
+        return { icon: 'key', color: '#F59E0B', bg: 'bg-amber-100' };
+      default:
+        return { icon: 'information-circle', color: '#3B82F6', bg: 'bg-blue-100' };
+    }
+  };
+
+  const renderMessage = ({ item }) => {
+    const handlePress = () => {
+      setSelectedMessage(item);
+      if (!item.read) markAsRead(item.id);
+    };
+    const isUnread = !item.read;
+    const style = getNotifStyle(item.type);
 
     return (
       <TouchableOpacity 
         style={tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isUnread ? 'border-blue-200' : 'border-gray-100'} flex-row items-start`}
-        onPress={() => markAsRead(item.id)}
+        onPress={handlePress}
       >
-        <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-4 mt-1 ${bgColor}`}>
-          <Ionicons name={iconName} size={24} color={iconColor} />
+        <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-4 mt-1 ${style.bg}`}>
+          <Ionicons name={style.icon} size={24} color={style.color} />
         </View>
         <View style={tw`flex-1`}>
           <View style={tw`flex-row justify-between items-center mb-1`}>
-            <Text style={tw`text-base font-black ${isUnread ? 'text-gray-900' : 'text-gray-600'}`}>{item.title}</Text>
+            <Text style={tw`text-base font-black ${isUnread ? 'text-gray-900' : 'text-gray-600'} flex-1 mr-2`} numberOfLines={1}>{item.title}</Text>
             {isUnread && <View style={tw`w-2.5 h-2.5 bg-blue-500 rounded-full ml-2`} />}
           </View>
-          <Text style={tw`text-sm font-medium ${isUnread ? 'text-gray-700' : 'text-gray-400'} leading-5 mb-2`}>{item.message}</Text>
-          <Text style={tw`text-xs font-bold text-gray-400`}>{item.time}</Text>
+          <Text style={tw`text-sm font-medium ${isUnread ? 'text-gray-700' : 'text-gray-400'} leading-5 mb-2`} numberOfLines={2}>{item.message}</Text>
+          <View style={tw`flex-row justify-between items-center`}>
+            <Text style={tw`text-xs font-bold text-gray-400`}>{item.time}</Text>
+            {item.actionType && (
+              <View style={tw`flex-row items-center`}>
+                <Ionicons name={getActionIcon(item.actionType)} size={14} color={getActionColor(item.actionType)[0]} />
+                <Text style={[tw`text-xs font-bold ml-1`, { color: getActionColor(item.actionType)[0] }]}>{getActionLabel(item.actionType)?.split(' ').slice(0, 2).join(' ')}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -197,9 +268,70 @@ export default function MessageCenterScreen({ navigation }) {
             }
           />
         )}
+      
+        {/* MODAL DETAIL PESAN */}
+        <Modal visible={!!selectedMessage} transparent={true} animationType="fade">
+          <View style={tw`flex-1 justify-center items-center bg-black/50 px-6`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-6 shadow-2xl`}>
+              {/* Header */}
+              <View style={tw`flex-row items-center mb-4 pb-4 border-b border-gray-100`}>
+                <View style={tw`w-10 h-10 rounded-full items-center justify-center mr-3 ${getNotifStyle(selectedMessage?.type).bg}`}>
+                  <Ionicons name={getNotifStyle(selectedMessage?.type).icon} size={20} color={getNotifStyle(selectedMessage?.type).color} />
+                </View>
+                <View style={tw`flex-1`}>
+                  <Text style={tw`text-lg font-black text-gray-800`}>{selectedMessage?.title}</Text>
+                  <Text style={tw`text-xs text-gray-400 font-bold`}>{selectedMessage?.time}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedMessage(null)} style={tw`p-1`}>
+                  <Ionicons name="close" size={22} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Isi pesan */}
+              <ScrollView style={tw`max-h-48 mb-6`}>
+                <Text style={tw`text-gray-600 text-sm leading-relaxed`}>
+                  {selectedMessage?.message}
+                </Text>
+              </ScrollView>
+
+              {/* No Polisi badge jika ada */}
+              {selectedMessage?.noPolisi && (
+                <View style={tw`flex-row items-center mb-4 p-3 bg-gray-50 rounded-xl`}>
+                  <Ionicons name="car" size={18} color="#6B7280" />
+                  <Text style={tw`text-gray-700 font-bold ml-2`}>Kendaraan: {selectedMessage.noPolisi}</Text>
+                </View>
+              )}
+
+              {/* Tombol Aksi (jika ada actionType) */}
+              {selectedMessage?.actionType && getActionLabel(selectedMessage.actionType) && (
+                <TouchableOpacity
+                  style={tw`w-full mb-3 rounded-2xl overflow-hidden shadow-md`}
+                  onPress={() => handleNotificationAction(selectedMessage)}
+                >
+                  <LinearGradient
+                    colors={getActionColor(selectedMessage.actionType)}
+                    style={tw`py-4 px-5 flex-row items-center justify-center`}
+                  >
+                    <Ionicons name={getActionIcon(selectedMessage.actionType)} size={20} color="white" />
+                    <Text style={tw`text-white font-bold ml-2 text-[15px]`}>{getActionLabel(selectedMessage.actionType)}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {/* Tombol Tutup */}
+              <TouchableOpacity
+                style={tw`w-full bg-gray-100 py-4 rounded-2xl items-center`}
+                onPress={() => setSelectedMessage(null)}
+              >
+                <Text style={tw`text-gray-600 font-bold`}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        
       </SafeAreaView>
 
-      {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
+      {/* BOTTOM NAVBAR */}
       {!isLargeScreen && user && (
         <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
           <TouchableOpacity 
@@ -242,7 +374,6 @@ export default function MessageCenterScreen({ navigation }) {
             </View>
             <View style={tw`relative`}>
               <Ionicons name="chatbubble-ellipses-outline" size={26} color="#1F2937" />
-              {/* RED DOT BADGE MOCK */}
               {messages.some(m => !m.read) && (
                 <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
               )}

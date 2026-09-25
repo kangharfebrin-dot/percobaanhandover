@@ -797,4 +797,4 @@ const emailTemplates = {
   }
 };
 
-module.exports = { emailTemplates };
+module.exports = emailTemplates;

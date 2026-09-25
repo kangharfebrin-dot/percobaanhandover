@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, ScrollView, Animated, Easing, Platform, Alert, Image, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, ScrollView, Animated, Easing, Platform, Alert, Image, Modal, RefreshControl } from 'react-native';
 import tw from 'twrnc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {}
 
 export default function AdminDashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [alerts, setAlerts] = useState([]);
   const [activeIssuesCount, setActiveIssuesCount] = useState(0);
   const [allHandovers, setAllHandovers] = useState([]);
@@ -29,7 +30,17 @@ export default function AdminDashboardScreen({ navigation }) {
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Home');
   const [previousMenu, setPreviousMenu] = useState('Home');
+  const [displayedAlertsCount, setDisplayedAlertsCount] = useState(3);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchAlerts(),
+      fetchNotifications()
+    ]);
+    setRefreshing(false);
+  }, []);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
 
   // Animasi Background Orbs
@@ -399,7 +410,7 @@ export default function AdminDashboardScreen({ navigation }) {
               <TextLogo style={[tw`absolute`, { top: 15, right: -10, transform: [{ scale: 0.65 }] }]} />
             </View>
 
-            <View style={tw`flex-row items-center`}>
+            <View style={tw`flex-row items-center flex-1`}>
               <View style={tw`w-[50px] h-[50px] mr-4 shadow-lg shadow-gray-300 relative justify-center items-center`}>
                 <Animated.View style={[tw`absolute w-full h-full rounded-full overflow-hidden`, { transform: [{ rotate: spinInterpolate }] }]}>
                   <LinearGradient
@@ -413,9 +424,9 @@ export default function AdminDashboardScreen({ navigation }) {
                   <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`}>{getInitials()}</Text>
                 </View>
               </View>
-              <View>
+              <View style={tw`flex-1 pr-2`}>
                 <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
-                <Text style={tw`text-gray-800 text-lg font-black`}>{user.name}</Text>
+                <Text style={tw`text-gray-800 text-lg font-black max-w-[150px]`} numberOfLines={1} ellipsizeMode="tail">{user.name}</Text>
               </View>
             </View>
             
@@ -568,12 +579,22 @@ export default function AdminDashboardScreen({ navigation }) {
                 {loadingAlerts ? (
                   <ActivityIndicator size="large" color="#ED1C24" style={tw`my-10`} />
                 ) : alerts.length > 0 ? (
-                  <View style={tw`${isLargeScreen ? 'flex-row flex-wrap justify-between' : ''}`}>
-                    {alerts.map(item => (
-                      <View key={item.id} style={tw`${isLargeScreen ? 'w-[48%] mb-4' : 'w-full'}`}>
-                        {renderAlertItem({ item })}
-                      </View>
-                    ))}
+                  <View>
+                    <View style={tw`${isLargeScreen ? 'flex-row flex-wrap justify-between' : ''}`}>
+                      {alerts.slice(0, displayedAlertsCount).map(item => (
+                        <View key={item.id} style={tw`${isLargeScreen ? 'w-[48%] mb-4' : 'w-full'}`}>
+                          {renderAlertItem({ item })}
+                        </View>
+                      ))}
+                    </View>
+                    {alerts.length > displayedAlertsCount && (
+                      <TouchableOpacity 
+                        style={tw`mt-4 bg-white/60 border border-gray-200 py-3 rounded-2xl items-center justify-center`} 
+                        onPress={() => setDisplayedAlertsCount(prev => prev + 10)}
+                      >
+                        <Text style={tw`text-blue-600 font-bold text-sm tracking-wide`}>Tampilkan Lebih Banyak</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : (
                   <View style={[tw`items-center justify-center py-16 px-6 rounded-[35px] border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }]}>
@@ -671,7 +692,11 @@ export default function AdminDashboardScreen({ navigation }) {
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
-                  {alerts.length > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+                  {unreadNotificationsCount > 0 && (
+                    <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-5 min-h-5 items-center justify-center border-2 border-white px-1`}>
+                      <Text style={tw`text-white text-[10px] font-bold`}>{unreadMessages}</Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             )}

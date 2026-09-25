@@ -79,10 +79,16 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const [notificationModal, setNotificationModal] = useState({ visible: false, title: '', message: '', type: 'success' });
+
+  const showNotification = (title, message, type = 'success') => {
+    setNotificationModal({ visible: true, title, message, type });
+  };
+
   const handleForgotPassword = async () => {
     if (!username.trim()) {
-      alert("Mohon isi username Anda pada form login sebelum meminta reset password.");
       setShowForgotPasswordModal(false);
+      showNotification('Username Kosong', 'Mohon isi username Anda pada form login sebelum meminta reset password.', 'error');
       return;
     }
     
@@ -91,11 +97,11 @@ export default function LoginScreen({ navigation }) {
         email: username, 
         reason: 'Lupa password dari aplikasi' 
       });
-      alert(`Permintaan reset password untuk '${username}' telah dikirim ke Admin.`);
-    } catch (error) {
-      alert(error.response?.data?.message || "Gagal mengirim permintaan reset password.");
-    } finally {
       setShowForgotPasswordModal(false);
+      showNotification('Berhasil', `Permintaan reset password untuk '${username}' telah dikirim ke Admin.`, 'success');
+    } catch (error) {
+      setShowForgotPasswordModal(false);
+      showNotification('Gagal', error.response?.data?.message || "Gagal mengirim permintaan reset password.", 'error');
     }
   };
 
@@ -108,6 +114,32 @@ export default function LoginScreen({ navigation }) {
       />
       <View style={[tw`absolute top-0 left-0 bg-black/10`, Platform.OS !== 'web' ? { width: Dimensions.get('screen').width, height: Dimensions.get('screen').height } : tw`w-full h-full`]} />
       <SafeAreaView style={tw`flex-1`}>
+
+        {/* Modal Kustom Notifikasi */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={notificationModal.visible}
+          onRequestClose={() => setNotificationModal({ ...notificationModal, visible: false })}
+        >
+          <View style={tw`flex-1 justify-center items-center bg-black/50 px-4`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl`}>
+              <View style={tw`${notificationModal.type === 'success' ? 'bg-green-50' : 'bg-red-50'} p-4 rounded-full mb-4`}>
+                <Ionicons name={notificationModal.type === 'success' ? 'checkmark-circle' : 'close-circle'} size={40} color={notificationModal.type === 'success' ? '#10B981' : '#EF4444'} />
+              </View>
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>{notificationModal.title}</Text>
+              <Text style={tw`text-gray-500 text-center text-base mb-6 leading-relaxed`}>
+                {notificationModal.message}
+              </Text>
+              <TouchableOpacity
+                style={tw`w-full ${notificationModal.type === 'success' ? 'bg-[#0055A5]' : 'bg-[#ED1C24]'} py-4 rounded-2xl items-center shadow-md`}
+                onPress={() => setNotificationModal({ ...notificationModal, visible: false })}
+              >
+                <Text style={tw`text-white font-bold`}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Modal Kustom Lupa Password */}
         <Modal

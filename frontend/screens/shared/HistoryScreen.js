@@ -8,7 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system/legacy';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
 
@@ -29,6 +30,13 @@ export default function HistoryScreen({ route, navigation }) {
   const [selectedShift, setSelectedShift] = useState('Semua');
   const [selectedMonth, setSelectedMonth] = useState('Semua');
   const [selectedYear, setSelectedYear] = useState('Semua');
+  const defaultDateObj = new Date();
+  const defaultDate = `${defaultDateObj.getFullYear()}-${String(defaultDateObj.getMonth() + 1).padStart(2, '0')}-${String(defaultDateObj.getDate()).padStart(2, '0')}`;
+  const [startDate, setStartDate] = useState(defaultDate);
+  const [endDate, setEndDate] = useState(defaultDate);
+  const [tempStartDate, setTempStartDate] = useState(defaultDate);
+  const [tempEndDate, setTempEndDate] = useState(defaultDate);
+  const [tempQuickSelect, setTempQuickSelect] = useState('Hari Ini');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
   // Temp filter states (inside modal, only applied on TERAPKAN)
@@ -40,6 +48,44 @@ export default function HistoryScreen({ route, navigation }) {
 
   const [activeMenu, setActiveMenu] = useState('History');
   const [previousMenu, setPreviousMenu] = useState('History');
+
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
+  const fetchUnreadNotificationsCount = async (userData) => {
+    try {
+      const res = await axios.get(`${API_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${userData.token}` }
+      });
+      setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+    } catch (error) {
+      console.log('Error fetching notifications:', error.message);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user) fetchUnreadNotificationsCount(user);
+    });
+    return unsubscribe;
+  }, [navigation, user]);
+
+  const onChangeStart = (event, selectedDate) => {
+    setShowStartPicker(false);
+    if (selectedDate) {
+      const s = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      setTempStartDate(s);
+    }
+  };
+
+  const onChangeEnd = (event, selectedDate) => {
+    setShowEndPicker(false);
+    if (selectedDate) {
+      const e = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      setTempEndDate(e);
+    }
+  };
 
   const fadeAnim = React.useRef(new Animated.Value(0.3)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
@@ -106,6 +152,7 @@ export default function HistoryScreen({ route, navigation }) {
       if (userStr) {
         userData = JSON.parse(userStr);
         setUser(userData);
+        fetchUnreadNotificationsCount(userData);
       }
       fetchHistory(userData);
     };
@@ -150,13 +197,19 @@ export default function HistoryScreen({ route, navigation }) {
   const handleExportExcel = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const url = `${API_URL}/api/reports/excel?token=${token}`;
+      let queryParams = `?token=${token}`;
+      if (selectedStatus && selectedStatus !== 'Semua') queryParams += `&status=${selectedStatus}`;
+      if (selectedShift && selectedShift !== 'Semua') queryParams += `&shift=${selectedShift}`;
+      if (startDate && endDate) {
+        queryParams += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const url = `${API_URL}/api/reports/excel${queryParams}`;
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
         const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.xlsx`;
         const downloadRes = await FileSystem.downloadAsync(url, fileUri);
-        
+
         if (downloadRes.status === 200) {
           if (await Sharing.isAvailableAsync()) {
             try {
@@ -184,13 +237,19 @@ export default function HistoryScreen({ route, navigation }) {
   const handleExportPdf = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const url = `${API_URL}/api/reports/pdf?token=${token}`;
+      let queryParams = `?token=${token}`;
+      if (selectedStatus && selectedStatus !== 'Semua') queryParams += `&status=${selectedStatus}`;
+      if (selectedShift && selectedShift !== 'Semua') queryParams += `&shift=${selectedShift}`;
+      if (startDate && endDate) {
+        queryParams += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const url = `${API_URL}/api/reports/pdf${queryParams}`;
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
         const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.pdf`;
         const downloadRes = await FileSystem.downloadAsync(url, fileUri);
-        
+
         if (downloadRes.status === 200) {
           if (await Sharing.isAvailableAsync()) {
             try {
@@ -257,6 +316,28 @@ export default function HistoryScreen({ route, navigation }) {
     setTempShift(selectedShift);
     setTempMonth(selectedMonth);
     setTempYear(selectedYear);
+    setTempStartDate(startDate);
+    setTempEndDate(endDate);
+    
+    // Check if the current applied dates match a quick select
+    const dObj = new Date();
+    const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+    let d7 = new Date(); d7.setDate(d7.getDate() - 7);
+    const last7 = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`;
+    const monthStart = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-01`;
+    const dEnd = new Date(dObj.getFullYear(), dObj.getMonth() + 1, 0);
+    const monthEnd = `${dEnd.getFullYear()}-${String(dEnd.getMonth() + 1).padStart(2, '0')}-${String(dEnd.getDate()).padStart(2, '0')}`;
+
+    if (startDate === defaultDate && endDate === defaultDate) {
+      setTempQuickSelect('Hari Ini');
+    } else if (startDate === last7 && endDate === defaultDate) {
+      setTempQuickSelect('7 Hari Terakhir');
+    } else if (startDate === monthStart && endDate === monthEnd) {
+      setTempQuickSelect('Bulan Ini');
+    } else {
+      setTempQuickSelect(null);
+    }
+    
     setIsFilterVisible(true);
   };
 
@@ -265,6 +346,8 @@ export default function HistoryScreen({ route, navigation }) {
     setSelectedShift(tempShift);
     setSelectedMonth(tempMonth);
     setSelectedYear(tempYear);
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
     setIsFilterVisible(false);
   };
 
@@ -273,6 +356,11 @@ export default function HistoryScreen({ route, navigation }) {
     setTempShift('Semua');
     setTempMonth('Semua');
     setTempYear('Semua');
+    const dObj = new Date();
+    const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+    setTempStartDate(defaultDate);
+    setTempEndDate(defaultDate);
+    setTempQuickSelect('Hari Ini');
   };
 
   const resetAllFilters = () => {
@@ -280,6 +368,10 @@ export default function HistoryScreen({ route, navigation }) {
     setSelectedShift('Semua');
     setSelectedMonth('Semua');
     setSelectedYear('Semua');
+    const dObj = new Date();
+    const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+    setStartDate(defaultDate);
+    setEndDate(defaultDate);
     setSearchQuery('');
   };
 
@@ -315,7 +407,14 @@ export default function HistoryScreen({ route, navigation }) {
       matchesYear = new Date(item.timestamp).getFullYear() === parseInt(selectedYear);
     }
 
-    return matchesSearch && matchesStatus && matchesShift && matchesMonth && matchesYear;
+    let matchesDateRange = true;
+    if (startDate && endDate) {
+      const d = new Date(item.timestamp);
+      const itemDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      matchesDateRange = itemDateStr >= startDate && itemDateStr <= endDate;
+    }
+
+    return matchesSearch && matchesStatus && matchesShift && matchesMonth && matchesYear && matchesDateRange;
   });
 
   const renderItem = ({ item }) => {
@@ -439,6 +538,20 @@ export default function HistoryScreen({ route, navigation }) {
                   <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
                 </TouchableOpacity>
               )}
+              {startDate !== '' && (
+                <TouchableOpacity onPress={() => setStartDate('')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
+                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>Mulai: {startDate}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              {endDate !== '' && (
+                <TouchableOpacity onPress={() => setEndDate('')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
+                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white text-xs font-bold mr-1`}>Sampai: {endDate}</Text>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
               {selectedYear !== 'Semua' && (
                 <TouchableOpacity onPress={() => setSelectedYear('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
                   <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
@@ -520,37 +633,104 @@ export default function HistoryScreen({ route, navigation }) {
                     ))}
                   </View>
 
-                  {/* Year Filter */}
+
+                  {/* Rentang Waktu Cepat (Banking App Style) */}
                   <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
-                    <Ionicons name="calendar" size={14} color="#9CA3AF" />  Tahun
+                    <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />  Pilih Cepat
                   </Text>
                   <View style={tw`flex-row flex-wrap mb-5`}>
-                    {['Semua', ...uniqueYears.map(String)].map(year => (
+                    {[
+                      { label: 'Hari Ini', getRange: () => { const d = new Date(); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return [s, s] } },
+                      { label: '7 Hari Terakhir', getRange: () => { const d = new Date(); const e = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; d.setDate(d.getDate() - 7); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return [s, e] } },
+                      { label: 'Bulan Ini', getRange: () => { const d = new Date(); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; const dEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0); const e = `${dEnd.getFullYear()}-${String(dEnd.getMonth() + 1).padStart(2, '0')}-${String(dEnd.getDate()).padStart(2, '0')}`; return [s, e] } },
+                    ].map(preset => (
                       <TouchableOpacity
-                        key={year}
-                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempYear === year ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
-                        onPress={() => setTempYear(year)}
+                        key={preset.label}
+                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempQuickSelect === preset.label ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
+                        onPress={() => {
+                          const [s, e] = preset.getRange();
+                          setTempStartDate(s);
+                          setTempEndDate(e);
+                          setTempYear('Semua');
+                          setTempMonth('Semua');
+                          setTempQuickSelect(preset.label);
+                        }}
                       >
-                        <Text style={tw`text-sm font-bold ${tempYear === year ? 'text-white' : 'text-gray-600'}`}>{year}</Text>
+                        <Text style={tw`text-sm font-bold ${tempQuickSelect === preset.label ? 'text-white' : 'text-gray-600'}`}>{preset.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
-                  {/* Month Filter */}
+                  {/* Date Range Filter Custom */}
                   <Text style={tw`text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex-row items-center`}>
-                    <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />  Bulan
+                    <Ionicons name="calendar" size={14} color="#9CA3AF" />  Rentang Kustom
                   </Text>
-                  <View style={tw`flex-row flex-wrap mb-8`}>
-                    {['Semua', ...uniqueMonths].map(month => (
-                      <TouchableOpacity
-                        key={month}
-                        style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempMonth === month ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}
-                        onPress={() => setTempMonth(month)}
-                      >
-                        <Text style={tw`text-sm font-bold ${tempMonth === month ? 'text-white' : 'text-gray-600'}`}>{month}</Text>
-                      </TouchableOpacity>
-                    ))}
+                  <View style={tw`flex-row items-center justify-between mb-5`}>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-xs text-gray-400 mb-1 font-bold`}>Dari Tanggal</Text>
+                      {Platform.OS === 'web' ? (
+                        <input
+                          type="date"
+                          value={tempStartDate}
+                          onChange={(e) => setTempStartDate(e.target.value)}
+                          onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                          style={{ padding: 12, borderRadius: 16, border: '1px solid #E5E7EB', width: '100%', outline: 'none', fontFamily: 'inherit', backgroundColor: '#F9FAFB', fontWeight: 'bold', color: '#1F2937', cursor: 'pointer' }}
+                        />
+                      ) : (
+                        <>
+                          <TouchableOpacity 
+                            onPress={() => setShowStartPicker(true)}
+                            style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
+                          >
+                            <Text style={tw`text-gray-800 font-bold`}>{tempStartDate}</Text>
+                            <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
+                          </TouchableOpacity>
+                          {showStartPicker && (
+                            <DateTimePicker
+                              value={new Date(tempStartDate)}
+                              mode="date"
+                              display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                              onChange={onChangeStart}
+                            />
+                          )}
+                        </>
+                      )}
+                    </View>
+                    <View style={tw`px-3 mt-4`}>
+                      <Ionicons name="arrow-forward" size={20} color="#9CA3AF" />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-xs text-gray-400 mb-1 font-bold`}>Sampai Tanggal</Text>
+                      {Platform.OS === 'web' ? (
+                        <input
+                          type="date"
+                          value={tempEndDate}
+                          onChange={(e) => setTempEndDate(e.target.value)}
+                          onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                          style={{ padding: 12, borderRadius: 16, border: '1px solid #E5E7EB', width: '100%', outline: 'none', fontFamily: 'inherit', backgroundColor: '#F9FAFB', fontWeight: 'bold', color: '#1F2937', cursor: 'pointer' }}
+                        />
+                      ) : (
+                        <>
+                          <TouchableOpacity 
+                            onPress={() => setShowEndPicker(true)}
+                            style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
+                          >
+                            <Text style={tw`text-gray-800 font-bold`}>{tempEndDate}</Text>
+                            <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
+                          </TouchableOpacity>
+                          {showEndPicker && (
+                            <DateTimePicker
+                              value={new Date(tempEndDate)}
+                              mode="date"
+                              display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                              onChange={onChangeEnd}
+                            />
+                          )}
+                        </>
+                      )}
+                    </View>
                   </View>
+
                 </ScrollView>
 
                 {/* Apply Button */}
@@ -652,9 +832,7 @@ export default function HistoryScreen({ route, navigation }) {
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-                  {/* RED DOT BADGE MOCK */}
-                  {/* Note: In History screen we might not have 'unreadNotificationsCount' readily available like in Dashboard, 
-                      so we omit the badge or rely on local state if needed. But making the icon visible is the priority. */}
+                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
                 </View>
               </TouchableOpacity>
 
