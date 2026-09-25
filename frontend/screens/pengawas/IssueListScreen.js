@@ -124,7 +124,7 @@ export default function IssueListScreen({ navigation }) {
     return (
       <TouchableOpacity 
         style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
-        onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS') navigation.navigate('IssueDetail', { issueId: item.issueId }); }}
+        onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS' || user?.role === 'ADMIN') navigation.navigate('IssueDetail', { issueId: item.issueId }); }}
         activeOpacity={0.7}
       >
         <View style={tw`flex-row justify-between items-start mb-3`}>

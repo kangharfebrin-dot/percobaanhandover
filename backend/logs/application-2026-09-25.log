@@ -2559,3 +2559,671 @@
 {"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:39:07 +0000] \"POST /api/password-reset/request HTTP/1.1\" 400 79 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9549\"","timestamp":"2026-09-25 20:39:07"}
 {"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 20:39:33"}
 {"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:39:49 +0000] \"POST /api/password-reset/request HTTP/1.1\" 200 117 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9549\"","timestamp":"2026-09-25 20:39:49"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 20:44:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/notifications HTTP/1.1\" 200 1521 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/notifications HTTP/1.1\" 200 1521 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:48 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:46:55 +0000] \"PUT /api/notifications/cmuh0cilv0002dzz1uxtbepwy/read HTTP/1.1\" 200 323 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:46:55"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/notifications HTTP/1.1\" 200 1520 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/notifications HTTP/1.1\" 200 1520 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:06 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:06"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:11 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:11 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:35 +0000] \"POST /api/auth/login HTTP/1.1\" 200 620 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:35 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17973 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:35 +0000] \"GET /api/notifications HTTP/1.1\" 200 1237 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17973 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/notifications HTTP/1.1\" 200 1237 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/handovers HTTP/1.1\" 200 25216 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/handovers HTTP/1.1\" 200 25216 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 8764 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:36 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 8764 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:36"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:37 +0000] \"POST /api/vehicles HTTP/1.1\" 201 239 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:37"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:37 +0000] \"GET /api/vehicles HTTP/1.1\" 200 18186 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:37"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:37 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:37"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:38 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:38"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/vehicles HTTP/1.1\" 200 18186 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/vehicles HTTP/1.1\" 200 18186 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:41 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:41 +0000] \"GET /barcodes/HDHSBDN7.png HTTP/1.1\" 200 6434 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:43 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:45 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:46 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:46"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:54 +0000] \"PUT /api/vehicles/cmuh0mjhg0000lgrkddwygi5a HTTP/1.1\" 200 230 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:54"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:54 +0000] \"GET /api/vehicles HTTP/1.1\" 200 18177 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:54"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:54 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:54"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:47:56 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:56"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:47:58 +0000] \"GET /barcodes/HDHSB.png HTTP/1.1\" 200 6447 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:47:58"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:12 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:12 +0000] \"GET /api/vehicles HTTP/1.1\" 200 18177 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:12 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:17 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:17 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:19 +0000] \"GET /barcodes/H8428OH.png HTTP/1.1\" 200 6478 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:19"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:20 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:20 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:20 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:20 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:23 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:23"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:23 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:23"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:24 +0000] \"GET /api/issues HTTP/1.1\" 200 25213 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:24"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:25 +0000] \"DELETE /api/vehicles/cmuh0mjhg0000lgrkddwygi5a HTTP/1.1\" 200 55 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:25 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17973 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:25 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:25 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17973 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:25 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:25 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:26 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:29 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:29"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:29 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:29"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:29 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:29"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:29 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:30 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:30"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:30 +0000] \"GET /api/workers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:13:48:33 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:33"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:46 +0000] \"POST /api/workers HTTP/1.1\" 201 256 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:46"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:48:46 +0000] \"GET /api/workers HTTP/1.1\" 200 84902 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:48:46"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17973 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/notifications HTTP/1.1\" 200 1520 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/handovers HTTP/1.1\" 200 25216 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 8764 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:07 +0000] \"PUT /api/workers/cmuh0o1800001lgrk3is9z60x HTTP/1.1\" 200 268 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:07 +0000] \"GET /api/workers HTTP/1.1\" 200 84914 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:14 +0000] \"DELETE /api/workers/cmuh0o1800001lgrk3is9z60x HTTP/1.1\" 200 53 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:14"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:14 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:14"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:17 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:18 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:18 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:19 +0000] \"GET /api/pengawas HTTP/1.1\" 200 482 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:19"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:26 +0000] \"POST /api/pengawas HTTP/1.1\" 201 264 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:26 +0000] \"GET /api/pengawas HTTP/1.1\" 200 719 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:36 +0000] \"PUT /api/pengawas/cmuh0ovy60002lgrkxc2ly5fo HTTP/1.1\" 200 274 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:36"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:36 +0000] \"GET /api/pengawas HTTP/1.1\" 200 729 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:36"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:40 +0000] \"DELETE /api/pengawas/cmuh0ovy60002lgrkxc2ly5fo HTTP/1.1\" 200 54 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:40 +0000] \"GET /api/pengawas HTTP/1.1\" 200 482 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:43 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:43"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:43 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:43"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:43 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:43"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:43 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:43"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:49:45 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 25216 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:49:45"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:50:31 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 25216 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:50:31"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:48 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:48 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:48 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:48 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:51 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:51"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:50:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:50:53"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:51:09 +0000] \"GET /api/reports/excel?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1NmY3ZWNkLWZhOTYtNDhkMi1iMzE4LWNkYWIyOGJlY2Q3OCIsInVzZXJuYW1lIjoieW9hbiIsInJvbGUiOiJTVVBFUl9BRE1JTiIsImlhdCI6MTc5MDMyNTc0NywiZXhwIjoxNzkwOTMwNTQ3fQ.IfbL05uzQ2KD54DJGMDyFEcYGgzgpgfh48olq0e3qY8&startDate=2026-09-01&endDate=2026-09-30 HTTP/1.1\" 200 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:51:09"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:51:11 +0000] \"GET /api/reports/pdf?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1NmY3ZWNkLWZhOTYtNDhkMi1iMzE4LWNkYWIyOGJlY2Q3OCIsInVzZXJuYW1lIjoieW9hbiIsInJvbGUiOiJTVVBFUl9BRE1JTiIsImlhdCI6MTc5MDMyNTc0NywiZXhwIjoxNzkwOTMwNTQ3fQ.IfbL05uzQ2KD54DJGMDyFEcYGgzgpgfh48olq0e3qY8&startDate=2026-09-01&endDate=2026-09-30 HTTP/1.1\" 200 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:51:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"POST /api/auth/login HTTP/1.1\" 200 630 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:40 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:40"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:42 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:45 +0000] \"PUT /api/notifications/cmuh03s4d0023dr40s9xilfu9/read HTTP/1.1\" 200 485 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:45"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:47 +0000] \"PUT /api/notifications/cmuh02xbw000zdr40pxsgur50/read HTTP/1.1\" 200 382 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:47"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:49 +0000] \"PUT /api/notifications/cmuh00t5s000xdr40a4pxv0fu/read HTTP/1.1\" 200 417 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:49"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/notifications HTTP/1.1\" 200 1517 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/notifications HTTP/1.1\" 200 1517 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:51:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:51:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:13:52:08 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 20:52:08"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:58:01 +0000] \"GET /api/notifications HTTP/1.1\" 200 1517 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:58:01"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:58:01 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:58:01"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:58:01 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:58:01"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:58:01 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:58:01"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:13:58:03 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 20:58:03"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:11 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:11 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:11 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:11 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:13 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:13 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:13 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:13 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:13"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 21:21:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"POST /api/auth/login HTTP/1.1\" 200 630 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:42 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:42"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:46 +0000] \"GET /api/notifications HTTP/1.1\" 403 60 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:46"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:21:46 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:21:46"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:25 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:25 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:25 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:25 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:25"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:35 +0000] \"POST /api/auth/login HTTP/1.1\" 200 605 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:35"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:35 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:35"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:35 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:35"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:35 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:35"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:38 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 8764 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:38 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:39 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:39"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:22:39 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:22:39"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:24:44 +0000] \"POST /api/handovers HTTP/1.1\" 201 385 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:24:44"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:24:48 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:24:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:24:48 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:24:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:24:48 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:24:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"POST /api/auth/login HTTP/1.1\" 200 630 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/notifications HTTP/1.1\" 200 1971 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17970 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/notifications HTTP/1.1\" 200 1971 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17970 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/handovers HTTP/1.1\" 200 33212 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/handovers HTTP/1.1\" 200 33212 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 17194 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:04 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 17194 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:04"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:11 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:11"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:13 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:13"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:14 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:14"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:14 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:14"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:23 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:23"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:28 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:31 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:31"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:36 +0000] \"PUT /api/notifications/cmuh1ya3z0013lgrkk0kauid2/read HTTP/1.1\" 200 484 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:36"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/notifications HTTP/1.1\" 200 1970 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/notifications HTTP/1.1\" 200 1970 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:38 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:38"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:39 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:39"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:25:39 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:25:39"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:39:59 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:39:59"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:39:59 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:39:59"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:39:59 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:39:59"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:39:59 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:39:59"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:00 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:00"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:00 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:00"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:00 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:00"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:00 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:00"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:16 +0000] \"GET /api/notifications HTTP/1.1\" 403 60 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:16"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:16 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 33212 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:16"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:26 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:26 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:26 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:26 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:26"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:45 +0000] \"POST /api/auth/login HTTP/1.1\" 200 605 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:45 +0000] \"POST /api/auth/login HTTP/1.1\" 200 598 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:45 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:46 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 17194 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:46"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:46 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6441 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:46"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:47 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 17194 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:47"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:47 +0000] \"GET /api/vehicles/scan/R9675B?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:47"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:50 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:50 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:53 +0000] \"GET /api/vehicles/scan/R9675B?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6457 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:53"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:40:53 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 200 6441 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:56 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:56"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:56 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:56"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:58 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:58"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:40:58 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:40:58"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:00 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:00"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:00 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:00"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:01 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:01 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:06 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:06 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:08 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:08"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:08 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:08"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:09 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:09 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:11 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:11 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:22"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:22 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 288 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:41:22 +0000] \"GET /api/vehicles/scan/N9405UH?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 200 288 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:41:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:22"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:23 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:23"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:41:23 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:23"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:41:24 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:24"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:41:24 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:41:24"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:21 +0000] \"POST /api/handovers HTTP/1.1\" 201 378 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:21"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:21 +0000] \"POST /api/handovers HTTP/1.1\" 201 398 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:21"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:24 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:24"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:24 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:24"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:24 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:24"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:25 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:25 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:25 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 500 879 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:34 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6402 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:34"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:42:34 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25260 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:34"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:51 +0000] \"POST /api/auth/login HTTP/1.1\" 200 630 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:51"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:51 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17967 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:51"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/notifications HTTP/1.1\" 200 2338 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17967 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/notifications HTTP/1.1\" 200 2338 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/handovers HTTP/1.1\" 200 47964 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/handovers HTTP/1.1\" 200 47964 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25260 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:52 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25260 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:52"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:42:55 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:42:55"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:07"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:15 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:15"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:17 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:17 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:18 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:18 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:18 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:18 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:36 +0000] \"POST /api/auth/login HTTP/1.1\" 401 40 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:36"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:48 +0000] \"POST /api/auth/login HTTP/1.1\" 401 40 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:43:49 +0000] \"POST /api/auth/login HTTP/1.1\" 401 40 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:43:49"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"POST /api/auth/login HTTP/1.1\" 200 620 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/notifications HTTP/1.1\" 200 2065 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/notifications HTTP/1.1\" 200 2065 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:12"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:22 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:22"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:28 +0000] \"GET /api/notifications HTTP/1.1\" 403 60 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:28 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 47964 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:28"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:34 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:34"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:34 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:34"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:34 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:34"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:44:34 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:44:34"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 21:52:33"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 21:52:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:52:33 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:52:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:52:33 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6378 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:52:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:52:37 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:52:37"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:52:37 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 200 6378 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:52:37"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:14:52:47 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 401 48 \"-\" \"node\"","timestamp":"2026-09-25 21:52:47"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:14:53:18 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 200 38 \"-\" \"node\"","timestamp":"2026-09-25 21:53:18"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:14:53:29 +0000] \"GET /api/handovers/my-active HTTP/1.1\" 200 6163 \"-\" \"node\"","timestamp":"2026-09-25 21:53:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:54:22 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:54:22"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:54:22 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:54:22"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:12 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:12 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:15 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:15"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:15 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:15"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:15 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 47964 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:15"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:16 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:16"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:17 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:17 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:21 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:21"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:21 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:21"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:24 +0000] \"GET /api/notifications HTTP/1.1\" 403 60 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:24"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:24 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:24"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:29 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:29 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:29 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:29 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:29"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 21:55:39"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:43 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:43 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:43 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:43 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:48 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:48"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:48 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:48"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:48 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:48"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:55:48 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:48"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:56 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:56"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:56 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:56"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:56 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:56"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:56 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:56"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:57 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:57"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:57 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:57"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:57 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:57"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:55:57 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:55:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:56:57 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:56:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:56:57 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:56:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:56:57 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:56:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:56:57 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:56:57"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:57:17 +0000] \"POST /api/auth/login HTTP/1.1\" 200 605 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:57:17"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:57:18 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:57:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:57:18 +0000] \"GET /api/notifications HTTP/1.1\" 200 358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:57:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:57:18 +0000] \"GET /api/handovers/my-active?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 200 6163 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:57:18"}
+{"level":"info","message":"192.168.1.3 - - [25/Sep/2026:14:57:18 +0000] \"GET /api/handovers/my-active?userId=cmudheyu7000jofxrs198uizm HTTP/1.1\" 200 6163 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:57:18"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:59:59 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:59:59"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:14:59:59 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 21:59:59"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:00 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:00"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:00 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:00"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:05 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:05 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:05 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /uploads/photos-1790347338883-246-thumb.webp HTTP/1.1\" 200 3102 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /uploads/photos-1790347340772-704-thumb.webp HTTP/1.1\" 200 3070 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /uploads/photos-1790347339378-27-thumb.webp HTTP/1.1\" 200 3344 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /uploads/photos-1790347340309-905-thumb.webp HTTP/1.1\" 200 3202 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /uploads/photos-1790347339841-11-thumb.webp HTTP/1.1\" 200 3284 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:07 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:09 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:09 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:09 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:09 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:11 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25260 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:11 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:17 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:43 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:43 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:43"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:45 +0000] \"GET /api/vehicles/scan/N9405UH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6187 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:45 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:47 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:47"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:47 +0000] \"GET /api/vehicles/scan/N9405UH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:47"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:48 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:48"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:00:48 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:00:48"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:01 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:01 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:04 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:04 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:05 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:05 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:06 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:06 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:17 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:17 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:31 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:31 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:45 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:45 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:45"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:46 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:46"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:57 +0000] \"POST /api/issues/cmuh2kxqc0021lgrk67grrtm4/verify-repair HTTP/1.1\" 200 6247 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:01:59 +0000] \"POST /api/issues/cmuh2kxqc0021lgrk67grrtm4/verify-repair HTTP/1.1\" 200 6247 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:01:59"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:01 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:01 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6476 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:01"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:03 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25358 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:03"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:03 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6500 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:03"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:08 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:08"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:08 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:08"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:09 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:12 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:18 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:18"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:02:18 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:02:18"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:03:06 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:03:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:03:06 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:03:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:04:00 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:04:00"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:04:00 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:04:00"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:04:13 +0000] \"GET /health HTTP/1.1\" 200 46 \"-\" \"node\"","timestamp":"2026-09-25 22:04:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17967 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/notifications HTTP/1.1\" 200 3042 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/handovers HTTP/1.1\" 200 48062 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25358 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:13 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:13"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:15 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:15"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:15 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:15"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:17 +0000] \"GET /api/issues HTTP/1.1\" 200 41807 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:17"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:05:17 +0000] \"GET /uploads/photo_cmuh2kxqc0017lgrkumu1fu4n-1790348519416-968-full.webp HTTP/1.1\" 200 56206 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:05:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:50 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:50 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:50 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 48062 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:52 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:52"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:52 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:52"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:52 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:52"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:53 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:53 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:53 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:06:54 +0000] \"GET /uploads/photo_cmuh2kxqc0017lgrkumu1fu4n-1790348519416-968-full.webp HTTP/1.1\" 200 56206 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:06:54"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:07:05 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:07:05"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:42 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:42"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:42 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:42"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:42 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:42"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:42 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:42"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:44 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:44"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:44 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:44"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:47 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:47"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:47 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:47"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:52 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:52"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:14:52 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:14:52"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:15:08 +0000] \"POST /api/issues/cmuh2kxqc0021lgrk67grrtm4/evaluate-repair HTTP/1.1\" 200 323 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:15:08"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:15:11 +0000] \"GET /api/notifications HTTP/1.1\" 200 683 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:15:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:15:11 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 610 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:15:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:15:14 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 634 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:15:14"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:15:14 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 17194 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:15:14"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:16:12 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:16:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:16:12 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:16:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:18:28 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:18:28"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:18:28 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:18:28"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:18:29 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:18:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:18:29 +0000] \"GET /api/workers HTTP/1.1\" 200 84671 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:18:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:26 +0000] \"POST /api/handovers HTTP/1.1\" 201 395 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:26"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:31 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:31 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:31 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6401 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:31 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6401 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:31"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:33 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25289 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:33 +0000] \"GET /api/vehicles/scan/R9238IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6425 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:33"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17967 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/notifications HTTP/1.1\" 200 3439 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/handovers HTTP/1.1\" 200 56152 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 25289 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:40 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:40"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:42 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:42"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:42 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:42"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:44 +0000] \"GET /api/issues HTTP/1.1\" 200 49916 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:44"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:46 +0000] \"GET /api/issues HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:46"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:47 +0000] \"GET /api/issues HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:47"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:19:50 +0000] \"GET /api/issues HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:19:50"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:19:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:19:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:21:57 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:21:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:21:57 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:21:57"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:04 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:04 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:04 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:04 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:04"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:06 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:06 +0000] \"GET /api/vehicles/scan/R9839BR?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:06"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:19 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:19"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:19 +0000] \"GET /api/vehicles/scan/N9405UH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:19"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:27 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:27"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:27 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:27"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:59 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:59"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:22:59 +0000] \"GET /api/vehicles/scan/N9405UH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:22:59"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:30 +0000] \"GET /api/vehicles/scan/H8428OH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 287 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:30 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:32 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:32"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:32 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:32"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:34 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:34"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:34 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:34"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:34 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 56152 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:34"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:35 +0000] \"GET /uploads/photos-1790349563019-266-thumb.webp HTTP/1.1\" 200 3246 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:35 +0000] \"GET /uploads/photos-1790349563905-783-thumb.webp HTTP/1.1\" 200 6246 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:35 +0000] \"GET /uploads/photos-1790349562234-328-thumb.webp HTTP/1.1\" 200 3374 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:35 +0000] \"GET /uploads/photos-1790349562629-244-thumb.webp HTTP/1.1\" 200 3198 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:35 +0000] \"GET /uploads/photos-1790349563479-434-thumb.webp HTTP/1.1\" 200 3080 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:35"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:37 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:37"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:38 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:38"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:41 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:41 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:41"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:23:41 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:23:41"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:25:18 +0000] \"GET /api/issues HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:25:18"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:51 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:51"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:51 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:51"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:51 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:51"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:51 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:51"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:53 +0000] \"GET /api/vehicles/scan/H8428OH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:53 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:53"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:55 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:55"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:55 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:55"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:56 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:56"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:56 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:56"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:26:56 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:26:56"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:11 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:11 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:11 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:11 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:11"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:12 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:12 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 288 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:13 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:13"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:13 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:13"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:14 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:14"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:14 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:14"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:15 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:15"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:15 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:15"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:16 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:16"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:16 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:16"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:17 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:17 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:17"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:20 +0000] \"GET /api/vehicles/scan/H8428OH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:20 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:20 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:20 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:20"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:24 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:24"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:24 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:24"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:26 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:26"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:26 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:26"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:27 +0000] \"GET /api/workers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:27"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:27 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:27"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:32 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:32"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:32 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:32"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:33 +0000] \"GET /api/checklists HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:27:33 +0000] \"GET /api/workers HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:27:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:25 +0000] \"POST /api/handovers HTTP/1.1\" 201 390 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:25"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:30 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:30 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:30 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6396 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:30 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6396 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:30"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:33 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 200 6420 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:33 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 33379 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:33"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:28:36 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:28:36"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:07 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:07 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:07"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:09 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:09 +0000] \"GET /api/vehicles/scan/R9237IH?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:09 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:09 +0000] \"GET /api/handovers/my-active?userId=cmudhez1f000mofxrg9mnwqq1 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:09"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:10 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:10"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:12 +0000] \"PUT /api/notifications/cmuh3r3tv0006pbxbrt0lmh5i/read HTTP/1.1\" 200 355 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:12"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:13 +0000] \"GET /api/notifications HTTP/1.1\" 200 682 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:13"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:13 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 63808 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:13"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:13 +0000] \"GET /api/notifications HTTP/1.1\" 200 682 \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:13"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:14 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:14"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/vehicles HTTP/1.1\" 200 17964 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/notifications HTTP/1.1\" 200 3843 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/handovers HTTP/1.1\" 200 63808 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 200 33379 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:26 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:26"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:28 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:28"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:28 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 200 63808 \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:28"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:28 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:28"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:29 +0000] \"GET /api/vehicles HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:29"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:29 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:29"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:29 +0000] \"GET /api/handovers HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:29"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:29:29 +0000] \"GET /api/issues/ongoing HTTP/1.1\" 304 - \"http://localhost:8081/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\"","timestamp":"2026-09-25 22:29:29"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:44 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:44"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:44 +0000] \"GET /api/notifications HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:44"}
+{"level":"info","message":"192.168.1.48 - - [25/Sep/2026:15:29:44 +0000] \"GET /api/handovers?page=1&limit=20 HTTP/1.1\" 304 - \"-\" \"okhttp/4.12.0\"","timestamp":"2026-09-25 22:29:44"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:33:13"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:33:14"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:33:19"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:33:19"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:33:25 +0000] \"GET /api/handovers/cmuh2kxqc0016lgrkpj0uekyd HTTP/1.1\" 401 48 \"-\" \"-\"","timestamp":"2026-09-25 22:33:25"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:33:53 +0000] \"GET /api/handovers/cmuh2kxqc0016lgrkpj0uekyd HTTP/1.1\" 403 60 \"-\" \"-\"","timestamp":"2026-09-25 22:33:53"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:34:08 +0000] \"GET /api/handovers/cmuh2kxqc0016lgrkpj0uekyd HTTP/1.1\" 500 1059 \"-\" \"-\"","timestamp":"2026-09-25 22:34:08"}
+{"level":"info","message":"127.0.0.1 - - [25/Sep/2026:15:34:13 +0000] \"GET /api/handovers/cmuh2kxqc0016lgrkpj0uekyd HTTP/1.1\" 500 1059 \"-\" \"-\"","timestamp":"2026-09-25 22:34:13"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:35:34"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:35:34"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:39:56"}
+{"level":"warn","message":"Redis connection failed, gracefully degrading cache features.","timestamp":"2026-09-25 22:39:56"}

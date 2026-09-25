@@ -599,7 +599,7 @@ export default function PengawasDashboardScreen({ navigation }) {
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
-                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}
                 </View>
               </TouchableOpacity>
             )}

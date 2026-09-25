@@ -57,10 +57,12 @@ export default function ChecklistManagerScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
-  const fetchUnreadNotificationsCount = async (userData) => {
+  const fetchUnreadNotificationsCount = async () => {
     try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
       const res = await axios.get(`${API_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${userData.token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
     } catch (error) {
@@ -268,7 +270,7 @@ export default function ChecklistManagerScreen({ navigation }) {
           {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
               <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-              {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+              {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}
             </TouchableOpacity>
           )}
 

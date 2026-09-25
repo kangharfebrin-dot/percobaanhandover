@@ -95,6 +95,9 @@ export default function UserDashboardScreen({ navigation }) {
           fetchAlerts();
         }
         fetchNotifications();
+        if (userData.role === 'AMT' || userData.role === 'USER') {
+          fetchMyActiveHandover();
+        }
       }
     };
     loadData();
@@ -161,8 +164,14 @@ export default function UserDashboardScreen({ navigation }) {
   const fetchMyActiveHandover = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const res = await axios.get(`${API_URL}/api/handovers/my-active`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const userStr = await AsyncStorage.getItem('user');
+      const userData = userStr ? JSON.parse(userStr) : null;
+      const url = userData?.id 
+        ? `${API_URL}/api/handovers/my-active?userId=${userData.id}` 
+        : `${API_URL}/api/handovers/my-active`;
+
+      const res = await axios.get(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data.success) {
         setMyActiveHandover(res.data.activeHandover);
@@ -612,7 +621,7 @@ export default function UserDashboardScreen({ navigation }) {
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
-                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}
                 </View>
               </TouchableOpacity>
 

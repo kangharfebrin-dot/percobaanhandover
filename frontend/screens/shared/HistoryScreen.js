@@ -53,12 +53,16 @@ export default function HistoryScreen({ route, navigation }) {
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
-  const fetchUnreadNotificationsCount = async (userData) => {
+  const fetchUnreadNotificationsCount = async () => {
     try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
       const res = await axios.get(`${API_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${userData.token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+      if (res.data && res.data.notifications) {
+        setUnreadNotificationsCount(res.data.notifications.filter(n => !n.isRead).length);
+      }
     } catch (error) {
       console.log('Error fetching notifications:', error.message);
     }
@@ -66,10 +70,10 @@ export default function HistoryScreen({ route, navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (user) fetchUnreadNotificationsCount(user);
+      fetchUnreadNotificationsCount();
     });
     return unsubscribe;
-  }, [navigation, user]);
+  }, [navigation]);
 
   const onChangeStart = (event, selectedDate) => {
     setShowStartPicker(false);
@@ -152,7 +156,7 @@ export default function HistoryScreen({ route, navigation }) {
       if (userStr) {
         userData = JSON.parse(userStr);
         setUser(userData);
-        fetchUnreadNotificationsCount(userData);
+        fetchUnreadNotificationsCount();
       }
       fetchHistory(userData);
     };
@@ -690,7 +694,7 @@ export default function HistoryScreen({ route, navigation }) {
                               value={new Date(tempStartDate)}
                               mode="date"
                               display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                              onChange={onChangeStart}
+                              onValueChange={(event, date) => onChangeStart(event, date)} onDismiss={() => setShowStartPicker(false)}
                             />
                           )}
                         </>
@@ -723,7 +727,7 @@ export default function HistoryScreen({ route, navigation }) {
                               value={new Date(tempEndDate)}
                               mode="date"
                               display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                              onChange={onChangeEnd}
+                              onValueChange={(event, date) => onChangeEnd(event, date)} onDismiss={() => setShowEndPicker(false)}
                             />
                           )}
                         </>
@@ -832,7 +836,7 @@ export default function HistoryScreen({ route, navigation }) {
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
                 <View style={tw`relative`}>
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
-                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />}
+                  {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}
                 </View>
               </TouchableOpacity>
 

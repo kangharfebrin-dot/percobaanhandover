@@ -322,18 +322,53 @@ app.use('/api', (req, res, next) => {
 // 1.5 GET My Latest Handover (Untuk Cek Status Scan Mulai / Akhiri)
 app.get('/api/handovers/my-active', async (req, res) => {
   try {
+    let userId = null;
+    const authHeader = req.headers['authorization'];
+    const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded?.id;
+      } catch (e) {
+        // Token tidak valid/expired
+      }
+    }
+    if (!userId && req.query.userId) {
+      userId = req.query.userId;
+    }
+
+    if (!userId) {
+      return res.json({ success: true, activeHandover: null });
+    }
+
     const lastHandover = await prisma.handover.findFirst({
-      where: { userId: req.user.id },
+      where: { userId },
       orderBy: { timestamp: 'desc' },
-      include: { issue: true, vehicle: true, items: true }
+      include: { issue: true, items: true }
     });
 
     if (!lastHandover) {
       return res.json({ success: true, activeHandover: null });
     }
 
-    res.json({ success: true, activeHandover: lastHandover });
+    let vehicleData = null;
+    if (lastHandover.noPolisi) {
+      try {
+        vehicleData = await prisma.vehicle.findUnique({
+          where: { noPolisi: lastHandover.noPolisi }
+        });
+      } catch (e) {}
+    }
+
+    res.json({ 
+      success: true, 
+      activeHandover: {
+        ...lastHandover,
+        vehicle: vehicleData
+      } 
+    });
   } catch (error) {
+    console.error('Error fetching my-active handover:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -515,6 +550,49 @@ app.get('/api/handovers', async (req, res) => {
     await CacheService.set(cacheKey, responseData, 3600);
 
     res.json(responseData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3.1 Get Single Handover by ID
+app.get('/api/handovers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let handover = await prisma.handover.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, jabatan: true } },
+        items: true,
+        photos: true,
+        issue: true
+      }
+    });
+
+    if (!handover) {
+      // Fallback: check if id is an issueId
+      const issue = await prisma.issue.findUnique({
+        where: { id },
+        select: { handoverId: true }
+      });
+      if (issue && issue.handoverId) {
+        handover = await prisma.handover.findUnique({
+          where: { id: issue.handoverId },
+          include: {
+            user: { select: { name: true, jabatan: true } },
+            items: true,
+            photos: true,
+            issue: true
+          }
+        });
+      }
+    }
+
+    if (!handover) {
+      return res.status(404).json({ error: 'Data riwayat handover tidak ditemukan.' });
+    }
+
+    res.json({ success: true, handover });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Animated, Easing, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Animated, Easing, Modal, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function HandoverDetailScreen({ route, navigation }) {
-  const { handover } = route.params;
+  const initialHandover = route.params?.handover || null;
+  const handoverId = route.params?.handoverId || route.params?.id || initialHandover?.id;
+
+  const [handover, setHandover] = useState(initialHandover);
+  const [loading, setLoading] = useState(!initialHandover && !!handoverId);
+  const [fetchError, setFetchError] = useState(null);
 
   const floatAnim1 = React.useRef(new Animated.Value(0)).current;
   const floatAnim2 = React.useRef(new Animated.Value(0)).current;
@@ -24,6 +29,41 @@ export default function HandoverDetailScreen({ route, navigation }) {
     const subscription = Dimensions.addEventListener('change', onChange);
     return () => subscription?.remove();
   }, []);
+
+  const fetchHandoverDetail = async () => {
+    if (!handoverId) {
+      setFetchError('ID Riwayat handover tidak ditemukan.');
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/handovers/${handoverId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (response.ok && data.success && data.handover) {
+        setHandover(data.handover);
+      } else {
+        setFetchError(data.error || 'Data riwayat handover tidak ditemukan.');
+      }
+    } catch (err) {
+      console.error('Error fetching handover detail:', err);
+      setFetchError('Gagal terhubung ke server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!initialHandover && handoverId) {
+      fetchHandoverDetail();
+    }
+  }, [handoverId]);
 
   useEffect(() => {
     Animated.loop(
@@ -50,13 +90,68 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const orb2TranslateY = floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, 60] });
   const orb3TranslateY = floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, -70] });
 
-  const isNormal = handover.status === 'Siap Operasi (Normal)';
-  const isResolved = handover.issue && handover.issue.status === 'RESOLVED';
+  if (loading) {
+    return (
+      <View style={tw`flex-1 bg-[#F4F7FA]`}>
+        <SafeAreaView style={tw`flex-1 relative`}>
+          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+              <Ionicons name="arrow-back" size={24} color="#0055A5" />
+            </TouchableOpacity>
+            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
+          </View>
+          <View style={tw`flex-1 items-center justify-center p-6`}>
+            <ActivityIndicator size="large" color="#0055A5" />
+            <Text style={tw`mt-4 text-base font-bold text-gray-600`}>Memuat riwayat handover...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  if (fetchError || !handover) {
+    return (
+      <View style={tw`flex-1 bg-[#F4F7FA]`}>
+        <SafeAreaView style={tw`flex-1 relative`}>
+          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+              <Ionicons name="arrow-back" size={24} color="#0055A5" />
+            </TouchableOpacity>
+            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
+          </View>
+          <View style={tw`flex-1 items-center justify-center p-6`}>
+            <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
+              <Ionicons name="alert-circle" size={36} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-lg font-bold text-gray-800 text-center mb-2`}>{fetchError || 'Data riwayat tidak ditemukan'}</Text>
+            {handoverId ? (
+              <TouchableOpacity
+                onPress={() => fetchHandoverDetail()}
+                style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
+              >
+                <Text style={tw`text-white font-bold`}>Coba Lagi</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('History')}
+                style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
+              >
+                <Text style={tw`text-white font-bold`}>Buka Semua Riwayat</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const isNormal = handover?.status === 'Siap Operasi (Normal)';
+  const isResolved = handover?.issue && handover.issue.status === 'RESOLVED';
 
   // Parse items by category
-  const itemsA = (handover.items || []).filter(i => i.category === 'A');
-  const itemsB = (handover.items || []).filter(i => i.category === 'B');
-  const itemsC = (handover.items || []).filter(i => i.category === 'C');
+  const itemsA = (handover?.items || []).filter(i => i.category === 'A');
+  const itemsB = (handover?.items || []).filter(i => i.category === 'B');
+  const itemsC = (handover?.items || []).filter(i => i.category === 'C');
 
   // Parse name to extract original name, severity, and catatan
   // Format from submit: "Nama Item [SEVERITY] - catatan"
@@ -82,7 +177,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
     return { name: name.trim(), severity, catatan };
   };
 
-  const photos = handover.photos || [];
+  const photos = handover?.photos || [];
 
   const renderChecklistItem = (item, index) => {
     const parsed = parseItemName(item.name);
@@ -238,7 +333,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                 </View>
                 <View>
                   <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider`}>Tanggal & Waktu</Text>
-                  <Text style={tw`text-sm font-bold text-gray-800`}>{new Date(handover.timestamp).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</Text>
+                  <Text style={tw`text-sm font-bold text-gray-800`}>{new Date(handover.timestamp || handover.createdAt || Date.now()).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</Text>
                 </View>
               </View>
 

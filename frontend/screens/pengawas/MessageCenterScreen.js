@@ -122,12 +122,25 @@ export default function MessageCenterScreen({ navigation }) {
 
     switch (item.actionType) {
       case 'VIEW_ISSUE':
-        // Admin/Pengawas → buka IssueList (karena IssueDetail butuh data issue lengkap)
-        navigation.navigate('IssueList');
+        // Admin/Pengawas → buka IssueDetail jika ada actionId, atau IssueList
+        if (item.actionId) {
+          navigation.navigate('IssueDetail', { issueId: item.actionId });
+        } else {
+          navigation.navigate('IssueList');
+        }
         break;
       case 'VIEW_HANDOVER':
-        // Lihat detail handover
-        navigation.navigate('History');
+        // Langsung navigasi ke detail riwayat handover yang dimaksud
+        if (item.actionId) {
+          navigation.navigate('HandoverDetail', { 
+            handoverId: item.actionId, 
+            noPolisi: item.noPolisi 
+          });
+        } else if (item.noPolisi) {
+          navigation.navigate('History', { noPolisi: item.noPolisi });
+        } else {
+          navigation.navigate('History');
+        }
         break;
       case 'SCAN_REPAIR':
         // AMT → scan QR untuk verifikasi perbaikan
@@ -207,10 +220,17 @@ export default function MessageCenterScreen({ navigation }) {
           <View style={tw`flex-row justify-between items-center`}>
             <Text style={tw`text-xs font-bold text-gray-400`}>{item.time}</Text>
             {item.actionType && (
-              <View style={tw`flex-row items-center`}>
+              <TouchableOpacity 
+                style={tw`flex-row items-center bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-100`}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  if (!item.read) markAsRead(item.id);
+                  handleNotificationAction(item);
+                }}
+              >
                 <Ionicons name={getActionIcon(item.actionType)} size={14} color={getActionColor(item.actionType)[0]} />
-                <Text style={[tw`text-xs font-bold ml-1`, { color: getActionColor(item.actionType)[0] }]}>{getActionLabel(item.actionType)?.split(' ').slice(0, 2).join(' ')}</Text>
-              </View>
+                <Text style={[tw`text-xs font-bold ml-1.5`, { color: getActionColor(item.actionType)[0] }]}>{getActionLabel(item.actionType)}</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>

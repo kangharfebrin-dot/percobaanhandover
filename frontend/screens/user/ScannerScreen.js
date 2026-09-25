@@ -66,10 +66,13 @@ export default function ScannerScreen({ route, navigation }) {
       const vehicleNoPolisi = res.data.vehicle.noPolisi;
       setScannedNoPolisi(vehicleNoPolisi);
 
-      // === STEP 1: Cek apakah kendaraan sedang dalam perbaikan (ada issue ONGOING) ===
+      // === STEP 1: Cek apakah kendaraan sedang dalam perbaikan (ada issue ONGOING / PENDING_APPROVAL) ===
       const activeIssue = ongoingIssues.find(issue => issue.handover && issue.handover.noPolisi === vehicleNoPolisi);
       const isUnderRepair = !!activeIssue;
-      const hasMajorIssue = activeIssue?.handover?.items?.some(item => item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
+      const isPendingApproval = activeIssue?.status === 'PENDING_APPROVAL';
+      const hasAnyMajorItem = activeIssue?.handover?.items?.some(item => item.name.includes('[MAJOR]'));
+      const hasUnrepairedMajor = activeIssue?.handover?.items?.some(item => item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
+      const hasUnrepairedMinor = activeIssue?.handover?.items?.some(item => !item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
 
       // Cek apakah user ini berhak melakukan verifikasi perbaikan
       const isReporter = String(activeIssue?.handover?.userId) === String(userId);
@@ -77,8 +80,18 @@ export default function ScannerScreen({ route, navigation }) {
       const isAmt2 = activeIssue?.handover?.amt2 && user?.name && activeIssue.handover.amt2.trim().toLowerCase() === user.name.trim().toLowerCase();
       const canRepair = isUnderRepair ? (isAmt1 || isAmt2 || (isReporter && !isAdminOrPengawas) || userRole === 'SUPER_ADMIN') : false;
 
-      // === STEP 2: Handle kendaraan dengan issue Major (DIBLOKIR) ===
-      if (isUnderRepair && hasMajorIssue) {
+      // === STEP 1.5: Handle kendaraan yang sedang menunggu respon/persetujuan dari Admin ===
+      if (isUnderRepair && isPendingApproval) {
+        if (hasAnyMajorItem) {
+          // Kerusakan major telah dilaporkan selesai diperbaiki, sekarang MENUNGGU RESPON ADMIN
+          setScanResult('pending_approval');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // === STEP 2: Handle kendaraan dengan issue Major yang belum diperbaiki (DIBLOKIR) ===
+      if (isUnderRepair && hasUnrepairedMajor) {
         if (!canRepair) {
           setErrorMessage('Kendaraan ini sedang dalam perbaikan (Kerusakan Major). Hanya AMT 1 dan AMT 2 yang bertugas yang dapat mengirim laporan perbaikan.');
           setScanResult('error');
@@ -155,8 +168,8 @@ export default function ScannerScreen({ route, navigation }) {
         finalResult = 'success';
       }
 
-      // === STEP 7: Handle issue Minor (masih bisa lanjut kerja) ===
-      if (isUnderRepair && !hasMajorIssue && canRepair) {
+      // === STEP 7: Handle issue Minor yang belum diperbaiki (masih bisa lanjut kerja) ===
+      if (isUnderRepair && hasUnrepairedMinor && canRepair) {
         setNextScanResult(finalResult);
         setScanResult('repair_minor');
       } else {
@@ -299,6 +312,53 @@ export default function ScannerScreen({ route, navigation }) {
       {scanResult === 'recap' && renderRecapModal()}
       {scanResult === 'success' && renderSuccessModal()}
 
+
+      {scanResult === 'pending_approval' && (
+        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-amber-300 relative`}>
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+              onPress={() => setScanResult(null)}
+            >
+              <Ionicons name="close" size={24} color="#4B5563" />
+            </TouchableOpacity>
+
+            <View style={tw`w-24 h-24 bg-amber-50 rounded-full items-center justify-center mb-5 shadow-lg shadow-amber-200 border-4 border-amber-100`}>
+              <Ionicons name="hourglass" size={48} color="#D97706" />
+            </View>
+
+            <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-3`}>
+              <Text style={tw`text-amber-800 font-bold text-[11px] uppercase tracking-wider`}>MENUNGGU PERSETUJUAN</Text>
+            </View>
+
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Menunggu Respon{"\n"}Admin</Text>
+            
+            <Text style={tw`text-gray-500 text-center mb-6 font-medium text-sm leading-5`}>
+              Laporan perbaikan untuk truk ini telah dikirimkan dan saat ini sedang menunggu respon serta persetujuan dari Admin / Pengawas.
+            </Text>
+
+            <View style={tw`w-full bg-amber-50/80 rounded-2xl p-4 border border-amber-200/60 mb-6`}>
+              <View style={tw`flex-row justify-between items-center mb-2`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
+                <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+              </View>
+              <View style={tw`flex-row justify-between items-center`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Status:</Text>
+                <View style={tw`bg-amber-200/80 px-2 py-0.5 rounded-md`}>
+                  <Text style={tw`text-amber-900 font-bold text-[11px]`}>Menunggu Evaluasi Admin</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/20`}
+              onPress={() => { setScanResult(null); navigation.goBack(); }}
+            >
+              <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Beranda</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {scanResult === 'repair' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>

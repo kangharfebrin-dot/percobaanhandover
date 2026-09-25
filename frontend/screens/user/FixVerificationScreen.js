@@ -1,6 +1,6 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, ActivityIndicator, Image, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, ActivityIndicator, Image, Modal, Platform } from 'react-native';
 import { API_URL } from '../../config';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -126,7 +126,7 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   const takePicture = async () => {
     if (cameraRef.current && activeItemId) {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
       const index = brokenItems.findIndex(i => i.id === activeItemId);
       if (index !== -1) {
         const newItems = [...brokenItems];
@@ -139,33 +139,38 @@ export default function FixVerificationScreen({ route, navigation }) {
   };
 
   const submitVerification = async () => {
+    if (submitting) return;
+
     // Validate
     const itemsToRepair = brokenItems.filter(i => i.repairStatus === 'BAIK');
     if (itemsToRepair.length === 0) {
       Toast.show({
         type: 'info',
-        text1: `Peringatan`,
-        text2: `Tidak ada item yang diverifikasi sebagai BAIK.`
+        text1: 'Peringatan',
+        text2: 'Tidak ada item yang diverifikasi sebagai BAIK.'
       });
       return;
     }
 
     // Check if notes and photos are provided for BAIK items
     for (const item of itemsToRepair) {
+      const isCategoryB = item.category === 'B' || item.name.toLowerCase().includes('buku saku');
       if (!item.repairNote.trim()) {
         Toast.show({
-        type: 'info',
-        text1: `Peringatan`,
-        text2: `Catatan perbaikan untuk ${item.name} wajib diisi.`
-      });
+          type: 'info',
+          text1: 'Peringatan',
+          text2: isCategoryB 
+            ? `Catatan kelengkapan untuk ${item.name} wajib diisi.`
+            : `Catatan perbaikan untuk ${item.name} wajib diisi.`
+        });
         return;
       }
-      if (!item.photo) {
+      if (!isCategoryB && !item.photo) {
         Toast.show({
-        type: 'info',
-        text1: `Peringatan`,
-        text2: `Bukti foto untuk perbaikan ${item.name} wajib dilampirkan.`
-      });
+          type: 'info',
+          text1: 'Peringatan',
+          text2: `Bukti foto untuk perbaikan ${item.name} wajib dilampirkan.`
+        });
         return;
       }
     }
@@ -182,10 +187,19 @@ export default function FixVerificationScreen({ route, navigation }) {
       // Append photos
       itemsToRepair.forEach(item => {
         if (item.photo) {
-          const filename = item.photo.uri.split('/').pop();
-          const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : `image`;
-          formData.append(`photo_${item.id}`, { uri: item.photo.uri, name: filename, type });
+          const rawFilename = item.photo.uri.split('/').pop() || `photo_${item.id}.jpg`;
+          const match = /\.(\w+)$/.exec(rawFilename);
+          const ext = match ? match[1].toLowerCase() : 'jpg';
+          const type = ext === 'png' ? 'image/png' : 'image/jpeg';
+          const filename = rawFilename.endsWith('.jpg') || rawFilename.endsWith('.jpeg') || rawFilename.endsWith('.png')
+            ? rawFilename
+            : `${rawFilename}.jpg`;
+
+          formData.append(`photo_${item.id}`, {
+            uri: Platform.OS === 'android' ? item.photo.uri : item.photo.uri.replace('file://', ''),
+            name: filename,
+            type
+          });
         }
       });
 
@@ -195,15 +209,16 @@ export default function FixVerificationScreen({ route, navigation }) {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
         },
+        timeout: 45000,
       });
 
       setShowSuccessModal(true);
     } catch (error) {
-      console.error(error);
+      console.error('Submit verification error:', error?.response?.data || error.message);
       Toast.show({
         type: 'error',
-        text1: `Error`,
-        text2: `Gagal mengirim verifikasi perbaikan.`
+        text1: 'Gagal Mengirim',
+        text2: error?.response?.data?.error || 'Gagal mengirim verifikasi perbaikan. Periksa koneksi internet.'
       });
     } finally {
       setSubmitting(false);
@@ -239,81 +254,104 @@ export default function FixVerificationScreen({ route, navigation }) {
               <Ionicons name="time-outline" size={60} color="#0055A5" />
             </View>
             <Text style={tw`text-xl font-bold text-gray-800 mb-2`}>Sedang Ditinjau</Text>
-            <Text style={tw`text-gray-500 text-center font-medium px-4 leading-6`}>
-              Bukti perbaikan Anda telah dikirim dan saat ini sedang ditinjau oleh Admin.
+            <Text style={tw`text-gray-500 text-center font-medium px-4 leading-6 mb-6`}>
+              Bukti perbaikan Anda telah dikirim dan saat ini sedang ditinjau oleh Admin / Pengawas.
             </Text>
+            <TouchableOpacity 
+              style={tw`bg-[#0055A5] px-6 py-3 rounded-xl items-center shadow-md`}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={tw`text-white font-bold`}>Kembali ke Beranda</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          brokenItems.map((item, index) => (
-            <View key={item.id} style={tw`bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100`}>
-              <View style={tw`flex-row justify-between items-start mb-3`}>
-                <View style={tw`flex-1 mr-4`}>
-                  <Text style={tw`font-bold text-gray-800 text-base mb-1`}>{item.name}</Text>
-                  <Text style={tw`text-xs text-red-500 font-bold bg-red-50 self-start px-2 py-1 rounded`}>STATUS SEBELUMNYA: RUSAK</Text>
-                  {item.adminRejectionNote ? (
-                    <View style={tw`bg-red-100 p-3 rounded-lg mt-3 border border-red-200`}>
-                      <Text style={tw`text-xs font-bold text-red-800 mb-1`}>DITOLAK ADMIN:</Text>
-                      <Text style={tw`text-sm text-red-700`}>{item.adminRejectionNote}</Text>
-                    </View>
-                  ) : null}
+          brokenItems.map((item, index) => {
+            const isCategoryB = item.category === 'B' || item.name.toLowerCase().includes('buku saku');
+            const statusPrevLabel = isCategoryB ? 'STATUS SEBELUMNYA: TIDAK ADA' : 'STATUS SEBELUMNYA: RUSAK';
+            const btnDoneLabel = isCategoryB ? 'SUDAH ADA' : 'SUDAH DIPERBAIKI';
+            const btnNotDoneLabel = isCategoryB ? 'BELUM ADA' : 'BELUM DIPERBAIKI';
+            const noteLabel = isCategoryB ? 'Catatan Kelengkapan' : 'Catatan Perbaikan';
+            const notePlaceholder = isCategoryB ? 'Contoh: Buku saku AMT sudah dibawa dan lengkap...' : 'Contoh: Komponen sudah diganti/diperbaiki...';
+            const photoLabel = isCategoryB ? 'Bukti Foto (Opsional)' : 'Bukti Foto';
+
+            return (
+              <View key={item.id} style={tw`bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100`}>
+                <View style={tw`flex-row justify-between items-start mb-3`}>
+                  <View style={tw`flex-1 mr-4`}>
+                    <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-wider mb-1`}>
+                      {isCategoryB ? 'B. PERLENGKAPAN AMT' : 'A. PERLENGKAPAN TANGKI'}
+                    </Text>
+                    <Text style={tw`font-bold text-gray-800 text-base mb-1`}>{item.name}</Text>
+                    <Text style={tw`text-xs ${isCategoryB ? 'text-amber-600 bg-amber-50' : 'text-red-500 bg-red-50'} font-bold self-start px-2 py-1 rounded`}>
+                      {statusPrevLabel}
+                    </Text>
+                    {item.adminRejectionNote ? (
+                      <View style={tw`bg-red-100 p-3 rounded-lg mt-3 border border-red-200`}>
+                        <Text style={tw`text-xs font-bold text-red-800 mb-1`}>DITOLAK ADMIN:</Text>
+                        <Text style={tw`text-sm text-red-700`}>{item.adminRejectionNote}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
 
-              <View style={tw`flex-row bg-gray-100 p-1 rounded-xl mb-4`}>
-                <TouchableOpacity
-                  style={tw`flex-1 py-2 rounded-lg items-center ${item.repairStatus === 'BAIK' ? 'bg-green-500 shadow' : 'bg-transparent'}`}
-                  onPress={() => setItemStatus(index, 'BAIK')}
-                >
-                  <Text style={tw`font-bold text-xs ${item.repairStatus === 'BAIK' ? 'text-white' : 'text-gray-500'}`}>SUDAH DIPERBAIKI</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={tw`flex-1 py-2 rounded-lg items-center ${item.repairStatus === 'RUSAK' ? 'bg-red-500 shadow' : 'bg-transparent'}`}
-                  onPress={() => setItemStatus(index, 'RUSAK')}
-                >
-                  <Text style={tw`font-bold text-xs ${item.repairStatus === 'RUSAK' ? 'text-white' : 'text-gray-500'}`}>BELUM DIPERBAIKI</Text>
-                </TouchableOpacity>
-              </View>
+                <View style={tw`flex-row bg-gray-100 p-1 rounded-xl mb-4`}>
+                  <TouchableOpacity
+                    style={tw`flex-1 py-2 rounded-lg items-center ${item.repairStatus === 'BAIK' ? 'bg-green-500 shadow' : 'bg-transparent'}`}
+                    onPress={() => setItemStatus(index, 'BAIK')}
+                  >
+                    <Text style={tw`font-bold text-xs ${item.repairStatus === 'BAIK' ? 'text-white' : 'text-gray-500'}`}>{btnDoneLabel}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={tw`flex-1 py-2 rounded-lg items-center ${item.repairStatus === 'RUSAK' ? 'bg-red-500 shadow' : 'bg-transparent'}`}
+                    onPress={() => setItemStatus(index, 'RUSAK')}
+                  >
+                    <Text style={tw`font-bold text-xs ${item.repairStatus === 'RUSAK' ? 'text-white' : 'text-gray-500'}`}>{btnNotDoneLabel}</Text>
+                  </TouchableOpacity>
+                </View>
 
-              {item.repairStatus === 'BAIK' && (
-                <View style={tw`mt-2 border-t border-gray-100 pt-3`}>
-                  <Text style={tw`text-gray-700 font-semibold mb-2 text-sm`}>Catatan Perbaikan <Text style={tw`text-red-500`}>*</Text></Text>
-                  <TextInput
-                    style={tw`bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 text-sm text-gray-700 min-h-[80px]`}
-                    placeholder="Contoh: Ban sudah diganti dengan yang baru..."
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    value={item.repairNote}
-                    onChangeText={(text) => updateItemNote(index, text)}
-                  />
+                {item.repairStatus === 'BAIK' && (
+                  <View style={tw`mt-2 border-t border-gray-100 pt-3`}>
+                    <Text style={tw`text-gray-700 font-semibold mb-2 text-sm`}>{noteLabel} <Text style={tw`text-red-500`}>*</Text></Text>
+                    <TextInput
+                      style={tw`bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 text-sm text-gray-700 min-h-[80px]`}
+                      placeholder={notePlaceholder}
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      value={item.repairNote}
+                      onChangeText={(text) => updateItemNote(index, text)}
+                    />
 
-                  <Text style={tw`text-gray-700 font-semibold mb-2 text-sm`}>Bukti Foto <Text style={tw`text-red-500`}>*</Text></Text>
-                  {item.photo ? (
-                    <View style={tw`relative mb-2`}>
-                      <Image source={{ uri: item.photo.uri }} style={tw`w-full h-40 rounded-xl`} />
+                    <Text style={tw`text-gray-700 font-semibold mb-2 text-sm`}>
+                      {photoLabel} {!isCategoryB && <Text style={tw`text-red-500`}>*</Text>}
+                    </Text>
+                    {item.photo ? (
+                      <View style={tw`relative mb-2`}>
+                        <Image source={{ uri: item.photo.uri }} style={tw`w-full h-40 rounded-xl`} />
+                        <TouchableOpacity 
+                          style={tw`absolute top-2 right-2 bg-red-500 p-2 rounded-full`}
+                          onPress={() => {
+                            const newItems = [...brokenItems];
+                            newItems[index].photo = null;
+                            setBrokenItems(newItems);
+                          }}
+                        >
+                          <Ionicons name="trash" size={16} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
                       <TouchableOpacity 
-                        style={tw`absolute top-2 right-2 bg-red-500 p-2 rounded-full`}
-                        onPress={() => {
-                          const newItems = [...brokenItems];
-                          newItems[index].photo = null;
-                          setBrokenItems(newItems);
-                        }}
+                        style={tw`bg-blue-50 border border-blue-200 border-dashed rounded-xl p-6 items-center justify-center mb-2`}
+                        onPress={() => openCamera(item.id)}
                       >
-                        <Ionicons name="trash" size={16} color="white" />
+                        <Ionicons name="camera" size={32} color="#0055A5" />
+                        <Text style={tw`text-blue-700 font-semibold mt-2`}>Ambil Foto Bukti</Text>
                       </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity 
-                      style={tw`bg-blue-50 border border-blue-200 border-dashed rounded-xl p-6 items-center justify-center mb-2`}
-                      onPress={() => openCamera(item.id)}
-                    >
-                      <Ionicons name="camera" size={32} color="#0055A5" />
-                      <Text style={tw`text-blue-700 font-semibold mt-2`}>Ambil Foto Bukti</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </View>
-          ))
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })
         )}
 
         {brokenItems.length > 0 && (

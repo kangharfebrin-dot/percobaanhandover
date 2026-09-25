@@ -693,10 +693,10 @@ export default function AdminDashboardScreen({ navigation }) {
                   <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
                   {unreadNotificationsCount > 0 && (
-                    <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-5 min-h-5 items-center justify-center border-2 border-white px-1`}>
-                      <Text style={tw`text-white text-[10px] font-bold`}>{unreadMessages}</Text>
-                    </View>
-                  )}
+                      <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}>
+                        <Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text>
+                      </View>
+                    )}
                 </View>
               </TouchableOpacity>
             )}

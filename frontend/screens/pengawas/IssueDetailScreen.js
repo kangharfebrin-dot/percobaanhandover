@@ -106,7 +106,7 @@ export default function IssueDetailScreen({ route, navigation }) {
       }));
 
       await axios.post(`${API_URL}/api/issues/${issueId}/evaluate-repair`, { evaluations: evalArray });
-      Toast.show({ type: 'success', text1: 'Sukses', text2: 'Evaluasi perbaikan berhasil dikirim.' });
+      Toast.show({ type: 'success', text1: 'Sukses', text2: 'Verifikasi perbaikan berhasil dikirim.' });
       setConfirmModalVisible(false);
       setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
@@ -149,7 +149,7 @@ export default function IssueDetailScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={24} color="#ED1C24" />
           </TouchableOpacity>
           <View>
-            <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Evaluasi Perbaikan</Text>
+            <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Verifikasi Perbaikan</Text>
             <Text style={tw`text-sm font-bold text-gray-500`}>{issue.handover.noPolisi}</Text>
           </View>
         </View>
@@ -174,11 +174,11 @@ export default function IssueDetailScreen({ route, navigation }) {
             return (
               <View key={item.id} style={tw`bg-white p-5 rounded-2xl mb-6 shadow-md border ${isApproved ? 'border-green-300' : isRejected ? 'border-red-300' : 'border-gray-200'}`}>
                 <View style={tw`flex-row items-center mb-3`}>
-                  <View style={tw`w-10 h-10 rounded-full bg-red-100 items-center justify-center mr-3`}>
-                    <Ionicons name="construct" size={20} color="#ED1C24" />
+                  <View style={tw`w-10 h-10 rounded-full ${item.category === "B" ? "bg-blue-100" : "bg-red-100"} items-center justify-center mr-3`}>
+                    <Ionicons name={item.category === "B" ? "person" : "construct"} size={20} color={item.category === "B" ? "#0055A5" : "#ED1C24"} />
                   </View>
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-wider`}>{item.category}</Text>
+                    <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-wider`}>{item.category === "B" ? "B. PERLENGKAPAN AMT" : "A. PERLENGKAPAN TANGKI"}</Text>
                     <Text style={tw`text-lg font-black text-gray-800`}>{item.name}</Text>
                   </View>
                 </View>
@@ -186,7 +186,7 @@ export default function IssueDetailScreen({ route, navigation }) {
                 {/* Info AMT */}
                 {item.repairNote ? (
                   <View style={tw`bg-blue-50 p-3 rounded-xl mb-4 border border-blue-100`}>
-                    <Text style={tw`text-xs font-bold text-blue-800 mb-1`}>Catatan Perbaikan (AMT):</Text>
+                    <Text style={tw`text-xs font-bold text-blue-800 mb-1`}>{item.category === "B" ? "Catatan Kelengkapan (AMT):" : "Catatan Perbaikan (AMT):"}</Text>
                     <Text style={tw`text-sm text-gray-700`}>{item.repairNote}</Text>
                   </View>
                 ) : (
@@ -195,7 +195,7 @@ export default function IssueDetailScreen({ route, navigation }) {
 
                 {item.repairPhotoUrl && (
                   <View style={tw`mb-4`}>
-                    <Text style={tw`text-xs font-bold text-gray-500 mb-2`}>Foto Bukti Perbaikan:</Text>
+                    <Text style={tw`text-xs font-bold text-gray-500 mb-2`}>{item.category === "B" ? "Foto Bukti Kelengkapan:" : "Foto Bukti Perbaikan:"}</Text>
                     <Image 
                       source={{ uri: `${API_URL}/${item.repairPhotoUrl}` }} 
                       style={tw`w-full h-48 rounded-xl bg-gray-100`} 
@@ -255,15 +255,18 @@ export default function IssueDetailScreen({ route, navigation }) {
               {isSubmitting ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={tw`text-white font-black text-lg`}>Kirim Evaluasi</Text>
+                <Text style={tw`text-white font-black text-lg`}>Kirim Verifikasi</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
         <ConfirmModal
           visible={confirmModalVisible}
-          title="Konfirmasi Evaluasi"
-          message="Kirim hasil evaluasi ini?"
+          title="Konfirmasi Verifikasi"
+          message="Apakah Anda yakin ingin mengirim hasil verifikasi perbaikan ini?"
+          confirmText="Ya, Verifikasi"
+          confirmColor="#0055A5"
+          icon="check-circle"
           onConfirm={confirmEvaluate}
           onCancel={() => setConfirmModalVisible(false)}
         />
