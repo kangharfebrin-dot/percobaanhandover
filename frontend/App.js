@@ -53,6 +53,7 @@ import UserDashboardScreen from './screens/user/UserDashboardScreen';
 import ScannerScreen from './screens/user/ScannerScreen';
 import HandoverFormScreen from './screens/user/HandoverFormScreen';
 import FixVerificationScreen from './screens/user/FixVerificationScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -155,6 +156,7 @@ export default function App() {
         <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
         <Stack.Screen name="WorkerList" component={WorkerListScreen} />
         <Stack.Screen name="PengawasList" component={PengawasListScreen} />
+
       </Stack.Navigator>
       <Toast config={toastConfig} position="top" topOffset={50} />
     </NavigationContainer>

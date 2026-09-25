@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ScannerScreen({ route, navigation }) {
   const { type } = route?.params || { type: 'mulai' };
@@ -16,6 +17,7 @@ export default function ScannerScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [lastHandover, setLastHandover] = useState(null);
   const [scannedNoPolisi, setScannedNoPolisi] = useState('');
+  const [nextScanResult, setNextScanResult] = useState(null);
   const isFocused = useIsFocused();
 
   if (!permission) return <View />;
@@ -43,8 +45,13 @@ export default function ScannerScreen({ route, navigation }) {
     const scannedText = cleanedData;
 
     try {
+      // Ambil userId dari AsyncStorage
+      const userStr = await AsyncStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user ? user.id : '';
+
       // CEK STATUS MAINTENANCE KE BACKEND (Penting!)
-      const fetchPromise = axios.get(`${API_URL}/api/vehicles/scan/${scannedText}`);
+      const fetchPromise = axios.get(`${API_URL}/api/vehicles/scan/${scannedText}?userId=${userId}`);
       const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`);
       const ongoingIssues = issueRes.data || [];
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000));
@@ -53,9 +60,27 @@ export default function ScannerScreen({ route, navigation }) {
 
       if (res && res.data && res.data.success && res.data.vehicle) {
         setScannedNoPolisi(res.data.vehicle.noPolisi);
-        const isUnderRepair = ongoingIssues.some(issue => issue.handover && issue.handover.noPolisi === res.data.vehicle.noPolisi);
+        const activeIssue = ongoingIssues.find(issue => issue.handover && issue.handover.noPolisi === res.data.vehicle.noPolisi);
+        const hasMajorIssue = activeIssue?.handover?.items?.some(item => item.severity === 'Major' && !item.isGood);
+        const isUnderRepair = !!activeIssue;
 
-        if (isUnderRepair) {
+        const userRole = user ? user.role : 'USER';
+        const isAdminOrPengawas = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'PENGAWAS';
+
+        const isReporter = activeIssue?.handover?.userId === userId;
+        const isAmt1 = activeIssue?.handover?.amt1 && user?.name && activeIssue.handover.amt1.trim().toLowerCase() === user.name.trim().toLowerCase();
+        const isAmt2 = activeIssue?.handover?.amt2 && user?.name && activeIssue.handover.amt2.trim().toLowerCase() === user.name.trim().toLowerCase();
+
+        const canRepair = isUnderRepair ? (isAdminOrPengawas || isReporter || isAmt1 || isAmt2) : false;
+
+        if (isUnderRepair && hasMajorIssue) {
+          // Hanya pelapor kerusakan atau Admin/Pengawas yang boleh mengisi FixVerification
+          if (!canRepair) {
+            setErrorMessage('Kendaraan ini sedang dalam perbaikan (Kerusakan Major). Hanya petugas pelapor atau Admin/Pengawas yang dapat mengirim laporan perbaikan.');
+            setScanResult('error');
+            setLoading(false);
+            return;
+          }
           setScanResult('repair');
           setLoading(false);
           return;
@@ -66,34 +91,60 @@ export default function ScannerScreen({ route, navigation }) {
           setLoading(false);
           return;
         }
+        // CEK APAKAH USER SEDANG AKTIF DI MOBIL LAIN (Kecuali Admin/Pengawas)
+        if (!isAdminOrPengawas && res.data.activeUserHandover) {
+          const activePolisi = res.data.activeUserHandover.noPolisi;
+          if (activePolisi !== res.data.vehicle.noPolisi) {
+             setErrorMessage(`Anda sedang aktif di pekerjaan kendaraan ${activePolisi}. Selesaikan (Akhiri) pekerjaan tersebut terlebih dahulu.`);
+             setLoading(false);
+             setScanResult('error');
+             return;
+          }
+        }
+
         // Jika lolos (Active), gunakan Nomor Polisi aslinya!
         setScannedNoPolisi(res.data.vehicle.noPolisi);
+
+        let finalResult = 'success';
 
         if (res.data.lastHandover) {
           const lastType = res.data.lastHandover.type;
 
-          if (type === 'mulai' && lastType === 'mulai') {
-            setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
-            setLoading(false);
-            setScanResult('error');
-            return;
-          } else if (type === 'akhiri' && lastType !== 'mulai') {
-            setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
-            setLoading(false);
-            setScanResult('error');
-            return;
+          if (!isAdminOrPengawas) {
+            if (type === 'mulai' && lastType === 'mulai') {
+              // Pengecualian: jika handover terakhir "mulai" tapi punya issue (kerusakan), 
+              // berarti mobil itu sempat rusak. Setelah diperbaiki admin, AMT boleh "mulai" lagi.
+              if (!res.data.lastHandover.issue) {
+                setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
+                setLoading(false);
+                setScanResult('error');
+                return;
+              }
+            } else if (type === 'akhiri' && lastType !== 'mulai') {
+              setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
+              setLoading(false);
+              setScanResult('error');
+              return;
+            }
           }
 
           setLastHandover(res.data.lastHandover);
-          setScanResult('recap');
+          finalResult = 'recap';
         } else {
-          if (type === 'akhiri') {
+          if (type === 'akhiri' && !isAdminOrPengawas) {
             setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
             setLoading(false);
             setScanResult('error');
             return;
           }
-          setScanResult('success');
+          finalResult = 'success';
+        }
+
+        if (isUnderRepair && !hasMajorIssue && canRepair) {
+          setNextScanResult(finalResult);
+          setScanResult('repair_minor');
+        } else {
+          setScanResult(finalResult);
         }
         setLoading(false);
       } else {
@@ -243,7 +294,7 @@ export default function ScannerScreen({ route, navigation }) {
               <Ionicons name="construct" size={50} color="#ED1C24" />
             </View>
             <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Truk Dalam{"\n"}Perbaikan!</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam masa perbaikan (Isu aktif belum diselesaikan admin). Tidak dapat melanjutkan perjalanan.</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan.</Text>
 
             <TouchableOpacity
               style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
@@ -257,6 +308,41 @@ export default function ScannerScreen({ route, navigation }) {
               onPress={() => { setScanResult(null); navigation.goBack(); }}
             >
               <Text style={tw`text-red-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {scanResult === 'repair_minor' && (
+        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-yellow-400`}>
+            <View style={tw`w-24 h-24 bg-yellow-100 rounded-full items-center justify-center mb-6 shadow-lg shadow-yellow-200`}>
+              <Ionicons name="warning" size={50} color="#F59E0B" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Kerusakan Minor</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini memiliki catatan kerusakan minor, namun masih bisa digunakan.</Text>
+
+            <TouchableOpacity
+              style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
+              onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi }); }}
+            >
+              <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={tw`w-full bg-green-500 p-4 rounded-2xl items-center shadow-lg mb-3`}
+              onPress={() => {
+                setScanResult(nextScanResult);
+              }}
+            >
+              <Text style={tw`text-white font-bold text-[15px]`}>Lanjut Pekerjaan</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={tw`w-full bg-gray-100 p-4 rounded-2xl items-center border border-gray-200`}
+              onPress={() => { setScanResult(null); navigation.goBack(); }}
+            >
+              <Text style={tw`text-gray-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
             </TouchableOpacity>
           </View>
         </View>

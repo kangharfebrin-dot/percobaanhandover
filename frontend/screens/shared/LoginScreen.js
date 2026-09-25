@@ -87,10 +87,13 @@ export default function LoginScreen({ navigation }) {
     }
     
     try {
-      await axios.post(`${API_URL}/api/auth/forgot-password`, { username });
+      await axios.post(`${API_URL}/api/password-reset/request`, { 
+        email: username, 
+        reason: 'Lupa password dari aplikasi' 
+      });
       alert(`Permintaan reset password untuk '${username}' telah dikirim ke Admin.`);
     } catch (error) {
-      alert("Gagal mengirim notifikasi ke Admin.");
+      alert(error.response?.data?.message || "Gagal mengirim permintaan reset password.");
     } finally {
       setShowForgotPasswordModal(false);
     }
@@ -263,9 +266,7 @@ export default function LoginScreen({ navigation }) {
                     setErrorMessage('Silakan isi Username terlebih dahulu agar admin tahu akun siapa yang lupa password.');
                     return;
                   }
-                  const waNumber = '6287795078087';
-                  const message = `Halo Admin, saya ${username.trim()}, minta tolong reset password saya.`;
-                  Linking.openURL(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`);
+                  setShowForgotPasswordModal(true);
                 }}
               >
                 <Text style={tw`text-[#ED1C24] font-bold text-sm tracking-wide`}>Lupa Password?</Text>

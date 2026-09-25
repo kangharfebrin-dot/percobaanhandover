@@ -10,6 +10,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFindingReportEmail } from '../../hooks/useFindingReportEmail';
 
 const DEFAULT_ITEMS = [
   { id: 'A1', category: 'A', name: 'Kondisi Rem', severity: 'Major' },
@@ -82,6 +83,8 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const cameraRef = useRef(null);
+
+  const { sendFindingReportWithEmail } = useFindingReportEmail();
 
   const showValidationError = (title, message) => {
     setValidationTitle(title);
@@ -383,9 +386,16 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
-      await axios.post(`${API_URL}/api/handovers`, formData, {
+      const response = await axios.post(`${API_URL}/api/handovers`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      const issueItems = finalItems.filter(i => !i.isGood);
+      if (issueItems.length > 0 && response.data.handover) {
+        // Panggil hook untuk ngirim notifikasi email tentang temuan ini
+        // Kita juga bisa kirim photoUrl (misal gambar kerusakan pertama), tapi ini contoh
+        await sendFindingReportWithEmail(response.data.handover.id, issueItems, noPolisi, null);
+      }
 
       setLoading(false);
 

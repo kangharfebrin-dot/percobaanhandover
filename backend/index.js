@@ -33,6 +33,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const errorHandler = require('./src/middleware/errorHandler');
 const { loginSchema } = require('./src/validators/schemas');
+const passwordResetRoutes = require('./src/routes/passwordReset');
+const { sendFindingReportEmail } = require('./src/services/emailService');
 
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_rahasia_negara_pertamina_123';
 
@@ -154,31 +156,58 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
       }
     }
 
-    let info = await transporter.sendMail({
-      from: user,
-      to: process.env.ADMIN_EMAIL || "admin@amt.local",
-      subject: subject,
-      text: textBody,
-    });
-
-    console.log("Email terkirim: %s", info.messageId);
-    if (!process.env.SMTP_USER) {
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-    }
+    // Remove the mock transporter.sendMail and rely on sendFindingReportEmail for emails,
+    // or keep FCM push notifications here. We will keep FCM here.
+    
+    // We do not send email here anymore because the frontend will call /api/notifications/send-finding-email
+    // Or we could send it here, but the instruction asks to use the hook.
   } catch (error) {
-    console.error("Gagal mengirim email simulasi:", error);
+    console.error("Gagal mengirim notifikasi:", error);
   }
 }
+
+// 0. API Endpoint untuk mengirim email notifikasi temuan (dipanggil oleh hook frontend)
+app.post('/api/notifications/send-finding-email', authenticateToken, async (req, res) => {
+  try {
+    const { handoverId, items, photoUrl, noPolisi } = req.body;
+    
+    // Get reporter info
+    const reporter = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@amt.local";
+    
+    const description = `Terdapat laporan kerusakan pada kendaraan ${noPolisi}:\n` + items.map(i => `- ${i.name}`).join('\n');
+    
+    const finding = {
+      reporterName: reporter?.name || req.user.username,
+      reporterEmail: reporter?.username || 'Tidak ada',
+      reporterPhone: reporter?.jabatan || 'Tidak ada',
+      location: 'Depo',
+      category: 'Laporan Kerusakan',
+      description: description,
+      severity: 'HIGH',
+      createdAt: new Date(),
+      handoverId: handoverId
+    };
+    
+    await sendFindingReportEmail(adminEmail, finding, photoUrl);
+    
+    res.json({ success: true, message: 'Email notifikasi berhasil dikirim' });
+  } catch (error) {
+    console.error('Error sending finding email:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengirim email' });
+  }
+});
 
 // --- API ROUTES ---
 
 // 0. API Scan Barcode Kendaraan
 app.get('/api/vehicles/scan/:barcode', async (req, res) => {
   try {
+    const userId = req.query.userId;
     const vehicle = await prisma.vehicle.findUnique({ where: { barcode: req.params.barcode } });
     if (!vehicle) return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
 
-    // Cari riwayat terakhir
+    // Cari riwayat terakhir kendaraan
     const lastHandover = await prisma.handover.findFirst({
       where: { noPolisi: vehicle.noPolisi },
       orderBy: { timestamp: 'desc' },
@@ -188,7 +217,21 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
       }
     });
 
-    res.json({ success: true, vehicle, lastHandover });
+    // Cek apakah user sedang memiliki pekerjaan "mulai" yang belum diakhiri dan tidak ada isu/kerusakan
+    let activeUserHandover = null;
+    if (userId) {
+      const userLastHandover = await prisma.handover.findFirst({
+        where: { userId: userId },
+        orderBy: { timestamp: 'desc' },
+        include: { issue: true }
+      });
+
+      if (userLastHandover && userLastHandover.type === 'mulai' && !userLastHandover.issue) {
+        activeUserHandover = userLastHandover;
+      }
+    }
+
+    res.json({ success: true, vehicle, lastHandover, activeUserHandover });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -291,27 +334,12 @@ app.post('/api/auth/fcm-token', authenticateToken, async (req, res, next) => {
   }
 });
 
-// 1b. Auth Forgot Password
-app.post('/api/auth/forgot-password', async (req, res) => {
-  const { username } = req.body;
-  try {
-    await prisma.notification.create({
-      data: {
-        title: 'Permintaan Reset Password',
-        message: `User '${username}' meminta reset password.`,
-        type: 'WARNING',
-        targetRole: 'ADMIN'
-      }
-    });
-    res.json({ success: true, message: 'Notifikasi berhasil dikirim ke Admin' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// 1b. Auth Forgot Password (Diganti dengan modul baru)
+app.use('/api/password-reset', passwordResetRoutes);
 
 // Protect all /api routes except public endpoints
 app.use('/api', (req, res, next) => {
-  if (req.path === '/auth/login' || req.path === '/auth/forgot-password' || req.path.startsWith('/reports/')) return next();
+  if (req.path === '/auth/login' || req.path === '/password-reset/request' || req.path.startsWith('/reports/')) return next();
   authenticateToken(req, res, next);
 });
 
@@ -405,6 +433,8 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
         shift,
         type: type || 'mulai',
         status,
+        amt1: amt1 || null,
+        amt2: amt2 || null,
         locationLat: locationLat ? parseFloat(locationLat) : null,
         locationLng: locationLng ? parseFloat(locationLng) : null,
         items: {
@@ -1018,15 +1048,16 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
 app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
     const role = req.user.role;
-    
     let targetRoles = [];
-    if (role === 'USER') {
-      targetRoles = ['USER', 'ALL'];
+    if (role === 'AMT' || role === 'USER') {
+      targetRoles = ['USER', 'AMT', 'ALL'];
+    } else if (role === 'PENGAWAS') {
+      targetRoles = ['PENGAWAS', 'ALL'];
     } else {
-      // ADMIN, SUPER_ADMIN, PENGAWAS
-      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'ALL'];
+      // ADMIN, SUPER_ADMIN
+      // Menampilkan semua notifikasi untuk Admin dan Super Admin
+      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'USER', 'AMT', 'ALL'];
     }
-
     const notifications = await prisma.notification.findMany({
       where: { targetRole: { in: targetRoles } },
       orderBy: { createdAt: 'desc' }

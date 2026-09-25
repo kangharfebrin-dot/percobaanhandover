@@ -484,25 +484,26 @@ export default function AdminDashboardScreen({ navigation }) {
               </>
             )}
 
-            
-                {/* Daftar Pengawas Full Width Card */}
-                <TouchableOpacity
-                  style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
-                  onPress={() => navigation.navigate('PengawasList')}
-                >
-                  <View style={tw`flex-row items-center flex-1`}>
-                    <View style={tw`w-14 h-14 bg-orange-100 rounded-full items-center justify-center mr-4`}>
-                      <Feather name="shield" size={26} color="#F59E0B" />
-                    </View>
-                    <View>
-                      <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pengawas</Text>
-                      <Text style={tw`text-xs text-orange-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
-                    </View>
-                  </View>
-                  <View style={tw`w-10 h-10 bg-orange-50 rounded-full items-center justify-center`}>
-                    <Feather name="chevron-right" size={20} color="#F59E0B" />
-                  </View>
-                </TouchableOpacity>
+            {/* Daftar Pengawas Full Width Card */}
+            <TouchableOpacity
+              style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
+              onPress={() => navigation.navigate('PengawasList')}
+            >
+              <View style={tw`flex-row items-center flex-1`}>
+                <View style={tw`w-14 h-14 bg-orange-100 rounded-full items-center justify-center mr-4`}>
+                  <Feather name="shield" size={26} color="#F59E0B" />
+                </View>
+                <View>
+                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pengawas</Text>
+                  <Text style={tw`text-xs text-orange-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                </View>
+              </View>
+              <View style={tw`w-10 h-10 bg-orange-50 rounded-full items-center justify-center`}>
+                <Feather name="chevron-right" size={20} color="#F59E0B" />
+              </View>
+            </TouchableOpacity>
+
+
 
             {/* Action Card */}
             {canSeeActions && (
