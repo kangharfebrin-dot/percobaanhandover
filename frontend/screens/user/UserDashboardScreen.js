@@ -690,8 +690,13 @@ export default function UserDashboardScreen({ navigation }) {
                       setShowNotificationsModal(false);
                       if (notif.actionType === 'SCAN_REPAIR' && notif.actionId) {
                         navigation.navigate('FixVerification', { noPolisi: notif.actionId });
-                      } else if (notif.actionType === 'VIEW_ISSUE' && notif.actionId) {
-                        navigation.navigate('IssueDetail', { issueId: notif.actionId });
+                      } else if (notif.actionType === 'VIEW_ISSUE' && (notif.actionId || notif.noPolisi)) {
+                        navigation.navigate('IssueDetail', { 
+                          issueId: notif.actionId,
+                          handoverId: notif.actionId,
+                          actionId: notif.actionId,
+                          noPolisi: notif.noPolisi
+                        });
                       }
                     }}
                   >

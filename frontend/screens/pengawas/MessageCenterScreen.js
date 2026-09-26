@@ -134,9 +134,14 @@ export default function MessageCenterScreen({ navigation }) {
 
     switch (item.actionType) {
       case 'VIEW_ISSUE':
-        // Admin/Pengawas → buka IssueDetail jika ada actionId, atau IssueList
-        if (item.actionId) {
-          navigation.navigate('IssueDetail', { issueId: item.actionId });
+        // Admin/Pengawas → buka IssueDetail jika ada actionId atau noPolisi, atau IssueList
+        if (item.actionId || item.noPolisi) {
+          navigation.navigate('IssueDetail', { 
+            issueId: item.actionId,
+            handoverId: item.actionId,
+            actionId: item.actionId,
+            noPolisi: item.noPolisi
+          });
         } else {
           navigation.navigate('IssueList');
         }

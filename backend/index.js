@@ -132,10 +132,17 @@ async function sendNotification(handoverId, noPolisi, issueItems, isBlocked = fa
     const notificationTitle = isResolved ? `Isu Selesai: ${noPolisi}` : (isBlocked ? `Kendaraan Diblokir: ${noPolisi}` : `Isu Baru: ${noPolisi}`);
     const notificationType = isResolved ? 'SUCCESS' : (isBlocked ? 'ERROR' : 'WARNING');
     const actionType = isResolved ? 'VIEW_HANDOVER' : 'VIEW_ISSUE';
+
+    let targetActionId = handoverId;
+    if (actionType === 'VIEW_ISSUE') {
+      const relatedIssue = await prisma.issue.findFirst({ where: { handoverId } });
+      if (relatedIssue) targetActionId = relatedIssue.id;
+    }
+
     await prisma.notification.createMany({
       data: [
-        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'ADMIN', actionType, actionId: handoverId, noPolisi },
-        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: handoverId, noPolisi }
+        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'ADMIN', actionType, actionId: targetActionId, noPolisi },
+        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: targetActionId, noPolisi }
       ]
     });
 
@@ -942,13 +949,93 @@ app.get('/api/issues', async (req, res) => {
   }
 });
 
-// PUT Resolve Issue
+// GET Single Issue Detail by Issue ID, Handover ID, or No Polisi
+app.get('/api/issues/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let issue = await prisma.issue.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { handoverId: id }
+        ]
+      },
+      include: {
+        handover: {
+          include: { user: true, items: true, photos: true }
+        }
+      }
+    });
+
+    if (!issue) {
+      const cleanPlate = id.replace(/\s+/g, '').toUpperCase();
+      const allVehicles = await prisma.vehicle.findMany();
+      const matchedVeh = allVehicles.find(v => v.noPolisi.replace(/\s+/g, '').toUpperCase() === cleanPlate);
+      if (matchedVeh) {
+        issue = await prisma.issue.findFirst({
+          where: {
+            handover: {
+              noPolisi: matchedVeh.noPolisi
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            handover: {
+              include: { user: true, items: true, photos: true }
+            }
+          }
+        });
+      }
+    }
+
+    if (!issue) {
+      return res.status(404).json({ error: 'Isu tidak ditemukan' });
+    }
+    res.json(issue);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT Resolve Issue (by Issue ID or Handover ID)
 app.put('/api/issues/:id/resolve', async (req, res) => {
   try {
-    const updatedIssue = await prisma.issue.update({
-      where: { id: req.params.id },
-      data: { status: 'RESOLVED', resolvedAt: new Date() }
+    const target = await prisma.issue.findFirst({
+      where: {
+        OR: [
+          { id: req.params.id },
+          { handoverId: req.params.id }
+        ]
+      },
+      include: { handover: true }
     });
+    if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
+
+    const updatedIssue = await prisma.issue.update({
+      where: { id: target.id },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+        resolvedBy: req.user ? req.user.name : 'ADMIN'
+      }
+    });
+
+    if (target.handover?.noPolisi) {
+      const otherOngoing = await prisma.issue.findFirst({
+        where: {
+          id: { not: target.id },
+          status: { in: ['ONGOING', 'PENDING_APPROVAL'] },
+          handover: { noPolisi: target.handover.noPolisi }
+        }
+      });
+      if (!otherOngoing) {
+        await prisma.vehicle.update({
+          where: { noPolisi: target.handover.noPolisi },
+          data: { status: 'READY_TO_START' }
+        });
+      }
+    }
+
     res.json({ success: true, issue: updatedIssue });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -958,7 +1045,16 @@ app.put('/api/issues/:id/resolve', async (req, res) => {
 // POST Verify Repair
 app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (req, res) => {
   try {
-    const issueId = req.params.id;
+    const target = await prisma.issue.findFirst({
+      where: {
+        OR: [
+          { id: req.params.id },
+          { handoverId: req.params.id }
+        ]
+      }
+    });
+    if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
+    const issueId = target.id;
     const { itemsData } = req.body;
     const items = JSON.parse(itemsData || '[]');
 
@@ -1031,7 +1127,17 @@ app.post('/api/issues/:id/verify-repair', upload.any(), optimizeImages, async (r
 // POST Evaluate Repair (Admin/Pengawas)
 app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
   try {
-    const issueId = req.params.id;
+    const target = await prisma.issue.findFirst({
+      where: {
+        OR: [
+          { id: req.params.id },
+          { handoverId: req.params.id }
+        ]
+      },
+      include: { handover: true }
+    });
+    if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
+    const issueId = target.id;
     const { evaluations } = req.body; // Array of { itemId, approved, reason }
 
     let allApproved = true;
