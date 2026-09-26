@@ -4,3 +4,4 @@ uploads/
 .vscode/
 *.db
 *.db-journal
+logs/

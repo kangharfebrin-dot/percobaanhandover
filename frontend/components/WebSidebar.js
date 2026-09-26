@@ -30,7 +30,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
 
   return (
     <View style={[
-      tw`w-72 my-6 ml-6 rounded-[40px] border border-white/50 overflow-hidden`,
+      tw`w-72 my-6 ml-6 rounded-[40px] border border-white/50 overflow-hidden flex-col`,
       {
         backgroundColor: GLASS_BG,
         ...glassStyle,
@@ -41,21 +41,23 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
         maxHeight: Platform.OS === 'web' ? 'calc(100vh - 48px)' : undefined,
       }
     ]}>
+      {/* Profile Card - Fixed Header (Informasi admin tetap terlihat) */}
+      <View style={tw`pt-8 px-6 pb-5 items-center border-b border-gray-100/80`}>
+        <View style={tw`w-20 h-20 bg-blue-600 rounded-[26px] items-center justify-center mb-3 shadow-xl shadow-blue-500/30 rotate-3`}>
+          <Text style={tw`text-2xl font-black text-white -rotate-3`}>{getInitials()}</Text>
+        </View>
+        <Text style={tw`text-xl font-black text-gray-800 text-center tracking-tight`}>{user.name}</Text>
+        <View style={tw`bg-blue-100 mt-2 px-3 py-1 rounded-full`}>
+          <Text style={tw`text-[11px] text-[#0055A5] font-black uppercase tracking-widest`}>{getRoleLabel()}</Text>
+        </View>
+      </View>
+
+      {/* Menu Navigasi - Scrollable (Hanya area di bawah badge role yang bisa di-scroll) */}
       <ScrollView
         style={tw`flex-1`}
-        contentContainerStyle={tw`p-6 pb-8`}
+        contentContainerStyle={tw`p-6 pt-4 pb-8`}
         showsVerticalScrollIndicator={true}
       >
-        {/* Profile Card */}
-        <View style={tw`items-center mb-8`}>
-          <View style={tw`w-20 h-20 bg-blue-600 rounded-[26px] items-center justify-center mb-4 shadow-xl shadow-blue-500/30 rotate-3`}>
-            <Text style={tw`text-2xl font-black text-white -rotate-3`}>{getInitials()}</Text>
-          </View>
-          <Text style={tw`text-xl font-black text-gray-800 text-center tracking-tight`}>{user.name}</Text>
-          <View style={tw`bg-blue-100 mt-2 px-3 py-1 rounded-full`}>
-            <Text style={tw`text-[11px] text-[#0055A5] font-black uppercase tracking-widest`}>{getRoleLabel()}</Text>
-          </View>
-        </View>
 
         {/* 1. Beranda */}
         <TouchableOpacity

@@ -33,11 +33,11 @@ export default function HistoryScreen({ route, navigation }) {
   const [selectedYear, setSelectedYear] = useState('Semua');
   const defaultDateObj = new Date();
   const defaultDate = `${defaultDateObj.getFullYear()}-${String(defaultDateObj.getMonth() + 1).padStart(2, '0')}-${String(defaultDateObj.getDate()).padStart(2, '0')}`;
-  const [startDate, setStartDate] = useState(defaultDate);
-  const [endDate, setEndDate] = useState(defaultDate);
-  const [tempStartDate, setTempStartDate] = useState(defaultDate);
-  const [tempEndDate, setTempEndDate] = useState(defaultDate);
-  const [tempQuickSelect, setTempQuickSelect] = useState('Hari Ini');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [tempStartDate, setTempStartDate] = useState('');
+  const [tempEndDate, setTempEndDate] = useState('');
+  const [tempQuickSelect, setTempQuickSelect] = useState('Semua');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
   // Temp filter states (inside modal, only applied on TERAPKAN)
@@ -81,6 +81,7 @@ export default function HistoryScreen({ route, navigation }) {
     if (selectedDate) {
       const s = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       setTempStartDate(s);
+      setTempQuickSelect(null);
     }
   };
 
@@ -89,6 +90,7 @@ export default function HistoryScreen({ route, navigation }) {
     if (selectedDate) {
       const e = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       setTempEndDate(e);
+      setTempQuickSelect(null);
     }
   };
 
@@ -171,7 +173,12 @@ export default function HistoryScreen({ route, navigation }) {
       let data = res.data.data || res.data; // fallback jika API lama
 
       if (userData && (userData.role === 'AMT' || userData.role === 'USER')) {
-        data = data.filter(h => h.userId === userData.id || (h.user && h.user.id === userData.id));
+        data = data.filter(h => 
+          h.userId === userData.id || 
+          (h.user && h.user.id === userData.id) ||
+          (h.amt1 && userData.name && h.amt1.trim().toLowerCase() === userData.name.trim().toLowerCase()) ||
+          (h.amt2 && userData.name && h.amt2.trim().toLowerCase() === userData.name.trim().toLowerCase())
+        );
       }
 
       if (pageNum === 1) {
@@ -313,7 +320,14 @@ export default function HistoryScreen({ route, navigation }) {
     return BULAN_LIST[d.getMonth()];
   }))].sort((a, b) => BULAN_LIST.indexOf(a) - BULAN_LIST.indexOf(b));
 
-  const activeFilterCount = [selectedStatus, selectedShift, selectedMonth, selectedYear].filter(v => v !== 'Semua').length;
+  const hasDateFilter = !!(startDate && endDate);
+  const activeFilterCount = [
+    selectedStatus !== 'Semua',
+    selectedShift !== 'Semua',
+    selectedMonth !== 'Semua',
+    selectedYear !== 'Semua',
+    hasDateFilter
+  ].filter(Boolean).length;
 
   const openFilterModal = () => {
     // Sync temp states from current applied states
@@ -333,7 +347,9 @@ export default function HistoryScreen({ route, navigation }) {
     const dEnd = new Date(dObj.getFullYear(), dObj.getMonth() + 1, 0);
     const monthEnd = `${dEnd.getFullYear()}-${String(dEnd.getMonth() + 1).padStart(2, '0')}-${String(dEnd.getDate()).padStart(2, '0')}`;
 
-    if (startDate === defaultDate && endDate === defaultDate) {
+    if (!startDate && !endDate) {
+      setTempQuickSelect('Semua');
+    } else if (startDate === defaultDate && endDate === defaultDate) {
       setTempQuickSelect('Hari Ini');
     } else if (startDate === last7 && endDate === defaultDate) {
       setTempQuickSelect('7 Hari Terakhir');
@@ -361,11 +377,9 @@ export default function HistoryScreen({ route, navigation }) {
     setTempShift('Semua');
     setTempMonth('Semua');
     setTempYear('Semua');
-    const dObj = new Date();
-    const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
-    setTempStartDate(defaultDate);
-    setTempEndDate(defaultDate);
-    setTempQuickSelect('Hari Ini');
+    setTempStartDate('');
+    setTempEndDate('');
+    setTempQuickSelect('Semua');
   };
 
   const resetAllFilters = () => {
@@ -373,14 +387,15 @@ export default function HistoryScreen({ route, navigation }) {
     setSelectedShift('Semua');
     setSelectedMonth('Semua');
     setSelectedYear('Semua');
-    const dObj = new Date();
-    const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
-    setStartDate(defaultDate);
-    setEndDate(defaultDate);
+    setStartDate('');
+    setEndDate('');
     setSearchQuery('');
   };
 
   const filteredHandovers = handovers.filter((item) => {
+    // Abaikan sesi dummy NOT_STARTED jika ada
+    if (item.status === 'NOT_STARTED') return false;
+
     // Search bar (untuk cari Nopol, Nama AMT, Tanggal)
     let matchesSearch = true;
     if (searchQuery.trim() !== '') {
@@ -389,6 +404,8 @@ export default function HistoryScreen({ route, navigation }) {
       matchesSearch =
         item.noPolisi.toLowerCase().includes(q) ||
         (item.user && item.user.name.toLowerCase().includes(q)) ||
+        (item.amt1 && item.amt1.toLowerCase().includes(q)) ||
+        (item.amt2 && item.amt2.toLowerCase().includes(q)) ||
         dateStr.toLowerCase().includes(q);
     }
 
@@ -430,19 +447,36 @@ export default function HistoryScreen({ route, navigation }) {
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => navigation.navigate('HandoverDetail', { handover: item })}
-        style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? "border-green-100" : (isResolved ? "border-blue-200" : "border-red-200")}`}
+        style={[
+          tw`bg-white p-5 rounded-2xl mb-4 shadow-md border ${isNormal ? "border-green-100" : (isResolved ? "border-blue-200" : "border-red-200")}`,
+          isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
+        ]}
       >
         <View style={tw`flex-row justify-between items-start mb-3`}>
-          <View style={tw`flex-row items-center`}>
-            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`}>
+          <View style={[tw`flex-row items-center flex-1 mr-3`, { minWidth: 0 }]}>
+            <View style={[tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`, { flexShrink: 0 }]}>
               <Ionicons name={isNormal ? "checkmark-circle" : (isResolved ? "checkmark-done-circle" : "warning")} size={28} color={isNormal ? "#00A651" : (isResolved ? "#0055A5" : "#ED1C24")} />
             </View>
-            <View>
-              <Text style={tw`text-xl font-bold text-gray-800`}>{item.noPolisi}</Text>
-              <Text style={tw`text-sm text-gray-500`}>{item.shift} • {item.user.name} {item.user.jabatan ? `(${item.user.jabatan})` : ''}</Text>
+            <View style={[tw`flex-1`, { minWidth: 0 }]}>
+              <Text style={tw`text-xl font-black text-gray-800`}>{item.noPolisi}</Text>
+              <View style={tw`flex-row items-center flex-wrap gap-1.5 mt-0.5`}>
+                <Text style={tw`text-sm font-semibold text-gray-600`}>Shift {item.shift}</Text>
+                {item.type ? (
+                  <View style={tw`px-2 py-0.5 rounded-full ${item.type === 'mulai' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'}`}>
+                    <Text style={tw`text-[10px] font-bold ${item.type === 'mulai' ? 'text-[#0055A5]' : 'text-purple-700'}`}>
+                      {item.type === 'mulai' ? 'Mulai' : 'Akhiri'}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={tw`text-xs text-gray-500 mt-1`} numberOfLines={1} ellipsizeMode="tail">
+                {item.amt1 
+                  ? `AMT: ${item.amt1}${item.amt2 ? ` & ${item.amt2}` : ''}` 
+                  : (item.user ? `${item.user.name}${item.user.jabatan ? ` (${item.user.jabatan})` : ''}` : '-')}
+              </Text>
             </View>
           </View>
-          <View style={tw`px-4 py-1.5 rounded-full border ${isNormal ? 'bg-[#E8F8F0] border-[#00A651]' : (isResolved ? 'bg-[#EBF3FA] border-[#0055A5]' : 'bg-[#FDE8E9] border-[#ED1C24]')}`}>
+          <View style={[tw`px-3 py-1.5 rounded-full border ${isNormal ? 'bg-[#E8F8F0] border-[#00A651]' : (isResolved ? 'bg-[#EBF3FA] border-[#0055A5]' : 'bg-[#FDE8E9] border-[#ED1C24]')}`, { flexShrink: 0 }]}>
             <Text style={tw`text-xs font-bold ${isNormal ? 'text-[#00A651]' : (isResolved ? 'text-[#0055A5]' : 'text-[#ED1C24]')}`}>
               {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
             </Text>
@@ -496,7 +530,7 @@ export default function HistoryScreen({ route, navigation }) {
         )}
 
         {/* MAIN CONTENT AREA */}
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
         {/* STICKY NAVBAR (Floating Modern Style) */}
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
           {/* Faint Logo Watermark with Clip */}
@@ -508,7 +542,7 @@ export default function HistoryScreen({ route, navigation }) {
           <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Riwayat Handover</Text>
         </View>
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           {/* Modern Search & Filter Button (Moved closer to navbar) */}
           <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
             <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mr-3`}>
@@ -658,6 +692,7 @@ export default function HistoryScreen({ route, navigation }) {
                   </Text>
                   <View style={tw`flex-row flex-wrap mb-5`}>
                     {[
+                      { label: 'Semua', getRange: () => ['', ''] },
                       { label: 'Hari Ini', getRange: () => { const d = new Date(); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return [s, s] } },
                       { label: '7 Hari Terakhir', getRange: () => { const d = new Date(); const e = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; d.setDate(d.getDate() - 7); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return [s, e] } },
                       { label: 'Bulan Ini', getRange: () => { const d = new Date(); const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; const dEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0); const e = `${dEnd.getFullYear()}-${String(dEnd.getMonth() + 1).padStart(2, '0')}-${String(dEnd.getDate()).padStart(2, '0')}`; return [s, e] } },
@@ -689,8 +724,11 @@ export default function HistoryScreen({ route, navigation }) {
                       {Platform.OS === 'web' ? (
                         <input
                           type="date"
-                          value={tempStartDate}
-                          onChange={(e) => setTempStartDate(e.target.value)}
+                          value={tempStartDate || ''}
+                          onChange={(e) => {
+                            setTempStartDate(e.target.value);
+                            setTempQuickSelect(null);
+                          }}
                           onClick={(e) => e.target.showPicker && e.target.showPicker()}
                           style={{ padding: 12, borderRadius: 16, border: '1px solid #E5E7EB', width: '100%', outline: 'none', fontFamily: 'inherit', backgroundColor: '#F9FAFB', fontWeight: 'bold', color: '#1F2937', cursor: 'pointer' }}
                         />
@@ -700,12 +738,12 @@ export default function HistoryScreen({ route, navigation }) {
                             onPress={() => setShowStartPicker(true)}
                             style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
                           >
-                            <Text style={tw`text-gray-800 font-bold`}>{tempStartDate}</Text>
+                            <Text style={tw`${tempStartDate ? 'text-gray-800 font-bold' : 'text-gray-400 font-medium'}`}>{tempStartDate || 'Pilih tanggal'}</Text>
                             <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
                           </TouchableOpacity>
                           {showStartPicker && (
                             <DateTimePicker
-                              value={new Date(tempStartDate)}
+                              value={tempStartDate ? new Date(tempStartDate) : new Date()}
                               mode="date"
                               display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                               onValueChange={(event, date) => onChangeStart(event, date)} onDismiss={() => setShowStartPicker(false)}
@@ -722,8 +760,11 @@ export default function HistoryScreen({ route, navigation }) {
                       {Platform.OS === 'web' ? (
                         <input
                           type="date"
-                          value={tempEndDate}
-                          onChange={(e) => setTempEndDate(e.target.value)}
+                          value={tempEndDate || ''}
+                          onChange={(e) => {
+                            setTempEndDate(e.target.value);
+                            setTempQuickSelect(null);
+                          }}
                           onClick={(e) => e.target.showPicker && e.target.showPicker()}
                           style={{ padding: 12, borderRadius: 16, border: '1px solid #E5E7EB', width: '100%', outline: 'none', fontFamily: 'inherit', backgroundColor: '#F9FAFB', fontWeight: 'bold', color: '#1F2937', cursor: 'pointer' }}
                         />
@@ -733,12 +774,12 @@ export default function HistoryScreen({ route, navigation }) {
                             onPress={() => setShowEndPicker(true)}
                             style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
                           >
-                            <Text style={tw`text-gray-800 font-bold`}>{tempEndDate}</Text>
+                            <Text style={tw`${tempEndDate ? 'text-gray-800 font-bold' : 'text-gray-400 font-medium'}`}>{tempEndDate || 'Pilih tanggal'}</Text>
                             <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
                           </TouchableOpacity>
                           {showEndPicker && (
                             <DateTimePicker
-                              value={new Date(tempEndDate)}
+                              value={tempEndDate ? new Date(tempEndDate) : new Date()}
                               mode="date"
                               display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                               onValueChange={(event, date) => onChangeEnd(event, date)} onDismiss={() => setShowEndPicker(false)}
@@ -774,10 +815,16 @@ export default function HistoryScreen({ route, navigation }) {
             </View>
           ) : (
             <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+              style={tw`flex-1`}
               contentContainerStyle={tw`p-6 pb-32 w-full max-w-7xl mx-auto`}
               data={filteredHandovers}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id.toString()}
               renderItem={renderItem}
+              initialNumToRender={Platform.OS === 'web' ? 50 : 15}
+              maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 15}
+              windowSize={Platform.OS === 'web' ? 30 : 10}
+              removeClippedSubviews={false}
+              showsVerticalScrollIndicator={true}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
               ListFooterComponent={

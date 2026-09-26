@@ -134,23 +134,28 @@ export default function IssueListScreen({ navigation }) {
   const renderItem = ({ item }) => {
     return (
       <TouchableOpacity 
-        style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-500 bg-red-50`}
+        style={[
+          tw`bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-300 bg-red-50/50`,
+          isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
+        ]}
         onPress={() => { if (user?.role === 'SUPER_ADMIN' || user?.role === 'PENGAWAS' || user?.role === 'ADMIN') navigation.navigate('IssueDetail', { issueId: item.issueId }); }}
         activeOpacity={0.7}
       >
-        <View style={tw`flex-row justify-between items-start mb-3`}>
-          <View style={tw`flex-row items-center`}>
-            <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 bg-red-200`}>
-              <Ionicons name="build" size={28} color="#991B1B" />
+        <View style={tw`flex-row justify-between items-start mb-3 gap-2`}>
+          <View style={[tw`flex-row items-center flex-1 mr-2`, { minWidth: 0 }]}>
+            <View style={[tw`w-12 h-12 rounded-full items-center justify-center mr-3 bg-red-200`, { flexShrink: 0 }]}>
+              <Ionicons name="build" size={26} color="#991B1B" />
             </View>
-            <View>
-              <Text style={tw`text-xl font-black text-red-900`}>{item.noPolisi}</Text>
-              <Text style={tw`text-sm font-bold text-gray-500`}>Pelapor: {item.user?.name}</Text>
+            <View style={[tw`flex-1`, { minWidth: 0 }]}>
+              <Text style={tw`text-xl font-black text-red-900 tracking-tight`}>{item.noPolisi}</Text>
+              <Text style={tw`text-xs font-bold text-gray-500 mt-0.5`} numberOfLines={1} ellipsizeMode="tail">
+                Pelapor: {item.user?.name || '-'}
+              </Text>
             </View>
           </View>
-          <View style={tw`px-3 py-1 rounded-full ${item.issueStatus === 'PENDING_APPROVAL' ? 'bg-orange-500' : 'bg-red-600'}`}>
-            <Text style={tw`text-xs font-bold text-white`}>
-              {item.issueStatus === 'PENDING_APPROVAL' ? 'BUTUH PERSETUJUAN' : 'SEDANG DIPERBAIKI'}
+          <View style={[tw`px-2.5 py-1 rounded-full ${item.issueStatus === 'PENDING_APPROVAL' ? 'bg-orange-500' : 'bg-red-600'}`, { flexShrink: 0 }]}>
+            <Text style={tw`text-[11px] font-bold text-white tracking-wide`}>
+              {item.issueStatus === 'PENDING_APPROVAL' ? 'PERSETUJUAN' : 'SEDANG DIPERBAIKI'}
             </Text>
           </View>
         </View>
@@ -186,7 +191,7 @@ export default function IssueListScreen({ navigation }) {
           />
         )}
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-6 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
@@ -196,10 +201,16 @@ export default function IssueListScreen({ navigation }) {
         </View>
 
         <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+          style={tw`flex-1`}
           contentContainerStyle={tw`p-6 pb-20 w-full max-w-7xl mx-auto`}
           data={issues}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
+          initialNumToRender={Platform.OS === 'web' ? 100 : 20}
+          maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 20}
+          windowSize={Platform.OS === 'web' ? 30 : 10}
+          removeClippedSubviews={false}
+          showsVerticalScrollIndicator={true}
           ListEmptyComponent={
             <View style={tw`items-center mt-20`}>
               <Ionicons name="checkmark-circle-outline" size={60} color="#CBD5E1" />

@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 const API_BASE = `${API_URL}/api`;
@@ -36,6 +36,15 @@ export default function VehicleListScreen({ navigation }) {
   const [selectedMonth, setSelectedMonth] = useState('Semua');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [user, setUser] = useState(null);
+  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const handleLogout = () => setIsLogoutVisible(true);
+  const handleCancelLogout = () => setIsLogoutVisible(false);
+  const confirmLogout = async () => {
+    setIsLogoutVisible(false);
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
+    navigation.replace('Login');
+  };
 
   // Modal Manage Vehicle (Detail/Edit/Delete)
   const [manageModalVisible, setManageModalVisible] = useState(false);
@@ -211,7 +220,7 @@ export default function VehicleListScreen({ navigation }) {
       showSuccessModal('Kendaraan berhasil dihapus!');
     } catch (error) {
       console.error(error);
-      showErrorModal('Gagal menghapus kendaraan');
+      showWarningModal('Gagal', 'Gagal menghapus kendaraan');
       setConfirmModalVisible(false);
     }
   };
@@ -278,7 +287,10 @@ export default function VehicleListScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isMaintenance ? 'border-red-100' : 'border-gray-100'} flex-row justify-between items-center`}
+        style={[
+          tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isMaintenance ? 'border-red-100' : 'border-gray-100'} flex-row justify-between items-center`,
+          isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
+        ]}
         onPress={() => openManageModal(item)}
         activeOpacity={0.7}
       >
@@ -327,7 +339,7 @@ export default function VehicleListScreen({ navigation }) {
           />
         )}
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
 
@@ -337,7 +349,7 @@ export default function VehicleListScreen({ navigation }) {
           <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Kendaraan</Text>
         </View>
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
             <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mr-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
@@ -354,10 +366,16 @@ export default function VehicleListScreen({ navigation }) {
           </View>
 
           <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+            style={tw`flex-1`}
             contentContainerStyle={tw`p-6 pb-30 w-full max-w-7xl mx-auto`}
             data={filteredVehicles}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderItem}
+            initialNumToRender={Platform.OS === 'web' ? 100 : 20}
+            maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 20}
+            windowSize={Platform.OS === 'web' ? 30 : 10}
+            removeClippedSubviews={false}
+            showsVerticalScrollIndicator={true}
             ListEmptyComponent={
               !loading && (
                 <View style={tw`items-center mt-20`}>
@@ -693,6 +711,40 @@ export default function VehicleListScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* LOGOUT CONFIRMATION MODAL */}
+      <Modal
+        visible={isLogoutVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelLogout}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-2xl relative overflow-hidden`}>
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-10`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
+            <View style={tw`w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4`}>
+              <Feather name="log-out" size={32} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Konfirmasi Keluar</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 px-4`}>
+              Apakah Anda yakin ingin keluar dari akun ini?
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 p-4 rounded-xl mr-2 items-center`}
+                onPress={handleCancelLogout}
+              >
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#ED1C24] p-4 rounded-xl ml-2 items-center shadow-lg shadow-red-500/30`}
+                onPress={confirmLogout}
+              >
+                <Text style={tw`font-bold text-white`}>Ya, Keluar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

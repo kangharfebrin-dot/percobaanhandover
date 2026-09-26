@@ -308,20 +308,35 @@ export default function HandoverDetailScreen({ route, navigation }) {
           {/* Header Card */}
           <View style={tw`bg-white p-6 rounded-3xl mb-5 shadow-md border border-gray-100`}>
             <View style={tw`flex-row justify-between items-start mb-4`}>
-              <View style={tw`flex-row items-center flex-1`}>
-                <View style={tw`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`}>
+              <View style={[tw`flex-row items-center flex-1 mr-3`, { minWidth: 0 }]}>
+                <View style={[tw`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`, { flexShrink: 0 }]}>
                   <Ionicons
                     name={isNormal ? 'checkmark-circle' : (isResolved ? 'checkmark-done-circle' : 'warning')}
                     size={32}
                     color={isNormal ? '#00A651' : (isResolved ? '#0055A5' : '#ED1C24')}
                   />
                 </View>
-                <View style={tw`flex-1`}>
+                <View style={[tw`flex-1`, { minWidth: 0 }]}>
                   <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>{handover.noPolisi}</Text>
-                  <Text style={tw`text-sm text-gray-500 font-medium mt-1`}>{handover.shift} • {handover.user?.name || '-'}</Text>
+                  <View style={tw`flex-row items-center flex-wrap gap-2 mt-1.5`}>
+                    <Text style={tw`text-sm text-gray-600 font-bold`}>Shift {handover.shift}</Text>
+                    {handover.type ? (
+                      <View style={tw`px-2.5 py-0.5 rounded-full ${handover.type === 'mulai' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'} flex-row items-center`}>
+                        <Ionicons 
+                          name={handover.type === 'mulai' ? 'play-circle' : 'checkmark-done-circle'} 
+                          size={13} 
+                          color={handover.type === 'mulai' ? '#0055A5' : '#7C3AED'} 
+                          style={tw`mr-1`} 
+                        />
+                        <Text style={tw`text-xs font-bold ${handover.type === 'mulai' ? 'text-[#0055A5]' : 'text-purple-700'}`}>
+                          {handover.type === 'mulai' ? 'Mulai Perjalanan' : 'Akhiri Perjalanan'}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               </View>
-              <View style={tw`px-4 py-2 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`}>
+              <View style={[tw`px-4 py-2 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`, { flexShrink: 0 }]}>
                 <Text style={tw`text-xs font-black ${isNormal ? 'text-green-700' : (isResolved ? 'text-blue-700' : 'text-white')}`}>
                   {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
                 </Text>
@@ -340,7 +355,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </View>
 
               {handover.locationLat && handover.locationLng && (
-                <View style={tw`flex-row items-center`}>
+                <View style={tw`flex-row items-center mb-3`}>
                   <View style={tw`bg-green-100 p-2 rounded-xl mr-3`}>
                     <Ionicons name="location" size={18} color="#00A651" />
                   </View>
@@ -350,6 +365,49 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   </View>
                 </View>
               )}
+
+              {/* Awak Mobil Tangki (AMT) & Pelapor */}
+              <View style={tw`mt-2 pt-3 border-t border-gray-200/70`}>
+                <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider mb-2.5`}>Awak Mobil Tangki (AMT)</Text>
+                <View style={tw`flex-row flex-wrap gap-2.5`}>
+                  {handover.amt1 ? (
+                    <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
+                      <View style={tw`w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-2.5`}>
+                        <Ionicons name="person" size={16} color="#0055A5" />
+                      </View>
+                      <View>
+                        <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 1 (Driver Utama)</Text>
+                        <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt1}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {handover.amt2 ? (
+                    <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
+                      <View style={tw`w-8 h-8 rounded-full bg-indigo-100 items-center justify-center mr-2.5`}>
+                        <Ionicons name="person" size={16} color="#4F46E5" />
+                      </View>
+                      <View>
+                        <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 2 (Driver Pendamping)</Text>
+                        <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt2}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* Diinput Oleh */}
+                  <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mb-1`}>
+                    <View style={tw`w-8 h-8 rounded-full bg-emerald-100 items-center justify-center mr-2.5`}>
+                      <Ionicons name="create-outline" size={16} color="#059669" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>Diinput Oleh</Text>
+                      <Text style={tw`text-xs font-black text-gray-800`}>
+                        {handover.user?.name || '-'} {handover.user?.jabatan ? `(${handover.user.jabatan})` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </View>
           </View>
 

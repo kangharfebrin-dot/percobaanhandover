@@ -207,7 +207,10 @@ export default function PengawasListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     return (
-      <View style={tw`${isLargeScreen ? "flex-1 min-w-[30%] mx-2" : "w-full"} bg-white p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 flex-row justify-between items-center`}>
+      <View style={[
+        tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 flex-row justify-between items-center`,
+        isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
+      ]}>
         <View style={tw`flex-row items-center flex-1`}>
           <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 bg-blue-100`}>
             <Feather name="user" size={24} color="#0055A5" />
@@ -249,7 +252,7 @@ export default function PengawasListScreen({ navigation }) {
           />
         )}
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
 
@@ -259,7 +262,7 @@ export default function PengawasListScreen({ navigation }) {
           <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pengawas</Text>
         </View>
 
-        <View style={tw`flex-1 relative`}>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           <View style={tw`px-6 pt-2`}>
             <View style={tw`flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
@@ -285,10 +288,16 @@ export default function PengawasListScreen({ navigation }) {
           </View>
 
           <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+            style={tw`flex-1`}
             contentContainerStyle={tw`p-6 pb-30 w-full max-w-7xl mx-auto`}
             data={filteredPengawass}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={renderItem}
+            initialNumToRender={Platform.OS === 'web' ? 100 : 20}
+            maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 20}
+            windowSize={Platform.OS === 'web' ? 30 : 10}
+            removeClippedSubviews={false}
+            showsVerticalScrollIndicator={true}
             ListEmptyComponent={
               <View style={tw`items-center mt-20`}>
                 <Feather name="users" size={60} color="#CBD5E1" />
