@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
+import WebSidebar from '../../components/WebSidebar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -481,8 +482,21 @@ export default function HistoryScreen({ route, navigation }) {
         <LinearGradient colors={['#ED1C24', '#B30000']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
+      <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
 
+        
+        {isLargeScreen && (
+          <WebSidebar 
+            user={user} 
+            activeMenu={'History'} 
+            navigation={navigation} 
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
+            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          />
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <View style={tw`flex-1 relative`}>
         {/* STICKY NAVBAR (Floating Modern Style) */}
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
           {/* Faint Logo Watermark with Clip */}
@@ -804,7 +818,9 @@ export default function HistoryScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
+                  </View>
+
+        {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
           {!isLargeScreen && user && (
             <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace(getDashboardRoute())}>
@@ -819,17 +835,21 @@ export default function HistoryScreen({ route, navigation }) {
 
               {user && (user.role === 'AMT' || user.role === 'USER') && (
                 <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <Feather name="file-text" size={26} color="#1F2937" />
+                  {activeMenu === 'History' && !isLogoutVisible && (
+                    <>
+                      <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                        <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                          <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                        </Animated.View>
+                      </View>
+                      <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                        <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                          <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                        </Animated.View>
+                      </View>
+                    </>
+                  )}
+                  <Feather name="file-text" size={26} color={activeMenu === 'History' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
                 </TouchableOpacity>
               )}
 
@@ -841,8 +861,22 @@ export default function HistoryScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
-                <Feather name="log-out" size={26} color="#9CA3AF" />
-              </TouchableOpacity>
+              {activeMenu === 'Logout' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                </>
+              )}
+              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+            </TouchableOpacity>
             </View>
           )}
 

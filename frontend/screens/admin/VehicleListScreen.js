@@ -1,3 +1,5 @@
+import WebSidebar from '../../components/WebSidebar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -315,10 +317,21 @@ export default function VehicleListScreen({ navigation }) {
         <LinearGradient colors={['#ED1C24', '#B30000']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
+      <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && (
+          <WebSidebar
+            user={user}
+            activeMenu={'VehicleList'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+
+        <View style={tw`flex-1 relative`}>
+
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
 
-          <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+          <TouchableOpacity onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('AdminDashboard'); }} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#0055A5" />
           </TouchableOpacity>
           <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Kendaraan</Text>
@@ -366,6 +379,8 @@ export default function VehicleListScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
+      
+        </View>
       </SafeAreaView>
 
       {/* FILTER MODAL */}

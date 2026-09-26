@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WebSidebar from '../../components/WebSidebar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
+const activeMenu = 'History';
 export default function HandoverDetailScreen({ route, navigation }) {
   const initialHandover = route.params?.handover || null;
   const handoverId = route.params?.handoverId || route.params?.id || initialHandover?.id;

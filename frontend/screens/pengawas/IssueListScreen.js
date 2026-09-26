@@ -1,3 +1,4 @@
+import WebSidebar from '../../components/WebSidebar';
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
@@ -34,6 +35,16 @@ export default function IssueListScreen({ navigation }) {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [user, setUser] = useState(null);
+  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const handleLogout = () => setIsLogoutVisible(true);
+  const handleCancelLogout = () => setIsLogoutVisible(false);
+  const confirmLogout = async () => {
+    setIsLogoutVisible(false);
+    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
+    navigation.replace('Login');
+  };
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -165,7 +176,18 @@ export default function IssueListScreen({ navigation }) {
         <LinearGradient colors={['#991B1B', '#7F1D1D']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
+      <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && (
+          <WebSidebar
+            user={user}
+            activeMenu={'IssueList'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+
+        <View style={tw`flex-1 relative`}>
+
         <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-6 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#ED1C24" />
@@ -185,6 +207,8 @@ export default function IssueListScreen({ navigation }) {
             </View>
           }
         />
+      
+        </View>
       </SafeAreaView>
 
       {/* MANAGE VEHICLE MODAL */}

@@ -2,13 +2,14 @@ import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
-import { View, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, Easing, Dimensions } from 'react-native';
+import { View, Animated, Easing, Text, FlatList, TouchableOpacity, Platform, TextInput, Modal, Alert, Dimensions } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import WebSidebar from '../../components/WebSidebar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -47,7 +48,39 @@ export default function ChecklistManagerScreen({ navigation }) {
   };
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
+  const [activeMenu, setActiveMenu] = useState('Checklist');
+  const [previousMenu, setPreviousMenu] = useState('Checklist');
+  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(slideAnim, { toValue: 1, duration: 1500, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 1500, easing: Easing.linear, useNativeDriver: true })
+      ])
+    ).start();
+  }, [slideAnim]);
+
+  const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
+
+  const handleLogout = () => {
+    setPreviousMenu(activeMenu);
+    setActiveMenu('Logout');
+    setIsLogoutVisible(true);
+  };
+  
+  const handleCancelLogout = () => {
+    setIsLogoutVisible(false);
+    setActiveMenu(previousMenu);
+  };
+
+  const confirmLogout = () => {
+    setIsLogoutVisible(false);
+    navigation.replace('Login');
+  };
+const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
   const [newName, setNewName] = useState('');
@@ -211,7 +244,20 @@ export default function ChecklistManagerScreen({ navigation }) {
         <LinearGradient colors={['#00A651', '#0055A5']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
+      <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        
+        {isLargeScreen && (
+          <WebSidebar 
+            user={user} 
+            activeMenu={'Checklist'} 
+            navigation={navigation} 
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
+            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          />
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <View style={tw`flex-1 relative`}>
         <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
           <View style={tw`flex-row items-center`}>
             <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
@@ -236,6 +282,7 @@ export default function ChecklistManagerScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
         />
+      </View>
       </SafeAreaView>
 
       {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
@@ -248,16 +295,16 @@ export default function ChecklistManagerScreen({ navigation }) {
           {user.role === 'SUPER_ADMIN' && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
               <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                <Animated.View style={[tw`h-full w-[64px]`]}>
+                {!isLogoutVisible && (<Animated.View style={[tw`h-full w-[64px]`]}>
                   <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                </Animated.View>
+                </Animated.View>)}
               </View>
               <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                <Animated.View style={[tw`h-full w-[64px]`]}>
+                {!isLogoutVisible && (<Animated.View style={[tw`h-full w-[64px]`]}>
                   <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                </Animated.View>
+                </Animated.View>)}
               </View>
-              <Feather name="check-square" size={26} color="#1F2937" />
+              <Feather name="check-square" size={26} color={!isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
             </TouchableOpacity>
           )}
 
@@ -274,9 +321,23 @@ export default function ChecklistManagerScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
-            <Feather name="log-out" size={26} color="#9CA3AF" />
-          </TouchableOpacity>
+          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
+              {activeMenu === 'Logout' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                </>
+              )}
+              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+            </TouchableOpacity>
         </View>
       )}
 
@@ -360,6 +421,40 @@ export default function ChecklistManagerScreen({ navigation }) {
         </View>
       </Modal>
 
-    </View>
+    
+      {/* Logout Modal */}
+      <Modal
+        visible={isLogoutVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelLogout}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-2xl relative overflow-hidden`}>
+            <View style={tw`w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4`}>
+              <Feather name="log-out" size={32} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Konfirmasi Keluar</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 px-4`}>
+              Apakah Anda yakin ingin keluar dari akun ini?
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 p-4 rounded-xl mr-2 items-center`}
+                onPress={handleCancelLogout}
+              >
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#ED1C24] p-4 rounded-xl ml-2 items-center shadow-lg shadow-red-500/30`}
+                onPress={confirmLogout}
+              >
+                <Text style={tw`font-bold text-white`}>Ya, Keluar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+</View>
   );
 }

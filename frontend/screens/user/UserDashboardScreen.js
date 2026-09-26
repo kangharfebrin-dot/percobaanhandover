@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
+import WebSidebar from '../../components/WebSidebar';
 
 const PERTAMINA_BLUE = ['#003366', '#0055A5'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -293,6 +294,16 @@ export default function UserDashboardScreen({ navigation }) {
 
       <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
 
+        
+        {isLargeScreen && (
+          <WebSidebar 
+            user={user} 
+            activeMenu={'Home'} 
+            navigation={navigation} 
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
+            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          />
+        )}
         {/* ULTRA PREMIUM SIDEBAR */}
         {isLargeScreen && (
           <View style={[tw`w-72 m-6 rounded-[40px] border border-white/50 overflow-hidden`, { backgroundColor: GLASS_BG, ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 30 }]}>
@@ -314,7 +325,7 @@ export default function UserDashboardScreen({ navigation }) {
                     style={tw`flex-row items-center p-5 mb-4 rounded-3xl ${activeMenu === 'Home' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
                     onPress={() => setActiveMenu('Home')}
                   >
-                    <Feather name="grid" size={22} color={activeMenu === 'Home' ? 'white' : '#6B7280'} />
+                    <Feather name="grid" size={22} color={activeMenu === 'Home' && !isLogoutVisible ? 'white' : '#6B7280'} />
                     <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'Home' ? 'text-white' : 'text-gray-500'}`}>Beranda</Text>
                   </TouchableOpacity>
 
@@ -326,7 +337,7 @@ export default function UserDashboardScreen({ navigation }) {
                       setTimeout(() => setActiveMenu('Home'), 500);
                     }}
                   >
-                    <Feather name="file-text" size={22} color={activeMenu === 'History' ? 'white' : '#6B7280'} />
+                    <Feather name="file-text" size={22} color={activeMenu === 'History' && !isLogoutVisible ? 'white' : '#6B7280'} />
                     <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-500'}`}>Log Riwayat</Text>
                   </TouchableOpacity>
                 </View>
@@ -545,7 +556,7 @@ export default function UserDashboardScreen({ navigation }) {
           <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
 
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('UserDashboard')}>
-              {activeMenu === 'Home' && (
+              {activeMenu === 'Home' && !isLogoutVisible && (
                 <>
                   <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                     <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
@@ -559,12 +570,12 @@ export default function UserDashboardScreen({ navigation }) {
                   </View>
                 </>
               )}
-              <Feather name="grid" size={26} color={activeMenu === 'Home' ? '#1F2937' : '#9CA3AF'} />
+              <Feather name="grid" size={26} color={activeMenu === 'Home' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
             </TouchableOpacity>
 
             {isSuperAdmin && (
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
-                {activeMenu === 'Checklist' && (
+                {activeMenu === 'Checklist' && !isLogoutVisible && (
                   <>
                     <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                       <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
@@ -578,13 +589,13 @@ export default function UserDashboardScreen({ navigation }) {
                     </View>
                   </>
                 )}
-                <Feather name="check-square" size={26} color={activeMenu === 'Checklist' ? '#1F2937' : '#9CA3AF'} />
+                <Feather name="check-square" size={26} color={activeMenu === 'Checklist' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
               </TouchableOpacity>
             )}
 
             {isAMT && (
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
-                {activeMenu === 'History' && (
+                {activeMenu === 'History' && !isLogoutVisible && (
                   <>
                     <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                       <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
@@ -598,13 +609,13 @@ export default function UserDashboardScreen({ navigation }) {
                     </View>
                   </>
                 )}
-                <Feather name="file-text" size={26} color={activeMenu === 'History' ? '#1F2937' : '#9CA3AF'} />
+                <Feather name="file-text" size={26} color={activeMenu === 'History' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
               </TouchableOpacity>
             )}
 
             {/* Message Center Nav Icon - Available for ALL */}
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
-              {activeMenu === 'Messages' && (
+              {activeMenu === 'Messages' && !isLogoutVisible && (
                 <>
                   <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                       <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
@@ -619,7 +630,7 @@ export default function UserDashboardScreen({ navigation }) {
                   </>
                 )}
                 <View style={tw`relative`}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' ? '#1F2937' : '#9CA3AF'} />
+                  <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
                   {/* RED DOT BADGE */}
                   {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}
                 </View>
@@ -629,12 +640,12 @@ export default function UserDashboardScreen({ navigation }) {
               {activeMenu === 'Logout' && (
                 <>
                   <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
                       <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                     </Animated.View>
                   </View>
                   <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
                       <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                     </Animated.View>
                   </View>

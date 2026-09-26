@@ -7,14 +7,18 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '../../config';
+import WebSidebar from '../../components/WebSidebar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 export default function MessageCenterScreen({ navigation }) {
   const [messages, setMessages] = useState([]);
+  const unreadNotificationsCount = 0;
   const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [user, setUser] = useState(null);
+  const [activeMenu, setActiveMenu] = useState('Messages');
+  const [previousMenu, setPreviousMenu] = useState('Messages');
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const isLargeScreen = screenWidth > 768;
@@ -91,11 +95,19 @@ export default function MessageCenterScreen({ navigation }) {
 
   const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
-  const handleLogout = () => setIsLogoutVisible(true);
-  const handleCancelLogout = () => setIsLogoutVisible(false);
+  const handleLogout = () => {
+    setPreviousMenu(activeMenu);
+    setActiveMenu('Logout');
+    setIsLogoutVisible(true);
+  };
+  const handleCancelLogout = () => {
+    setIsLogoutVisible(false);
+    setActiveMenu(previousMenu);
+  };
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['user', 'token']);
+    delete axios.defaults.headers.common['Authorization'];
     navigation.replace('Login');
   };
 
@@ -247,7 +259,20 @@ export default function MessageCenterScreen({ navigation }) {
         <LinearGradient colors={['#60A5FA', '#2563EB']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
+      <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        
+        {isLargeScreen && (
+          <WebSidebar 
+            user={user} 
+            activeMenu={'Messages'} 
+            navigation={navigation} 
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
+            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          />
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <View style={tw`flex-1 relative`}>
         <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-6 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#3B82F6', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
           <View style={tw`flex-row items-center`}>
             <TouchableOpacity onPress={() => {
@@ -349,6 +374,7 @@ export default function MessageCenterScreen({ navigation }) {
           </View>
         </Modal>
         
+      </View>
       </SafeAreaView>
 
       {/* BOTTOM NAVBAR */}
@@ -382,18 +408,22 @@ export default function MessageCenterScreen({ navigation }) {
           )}
 
           <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
-            <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-              <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-              </Animated.View>
-            </View>
-            <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-              <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-              </Animated.View>
-            </View>
+            {activeMenu === 'Messages' && !isLogoutVisible && (
+              <>
+                <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                  </Animated.View>
+                </View>
+                <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
+                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                  </Animated.View>
+                </View>
+              </>
+            )}
             <View style={tw`relative`}>
-              <Ionicons name="chatbubble-ellipses-outline" size={26} color="#1F2937" />
+              <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
               {messages.some(m => !m.read) && (
                 <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
               )}
@@ -401,8 +431,22 @@ export default function MessageCenterScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
-            <Feather name="log-out" size={26} color="#9CA3AF" />
-          </TouchableOpacity>
+              {activeMenu === 'Logout' && (
+                <>
+                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                    </Animated.View>
+                  </View>
+                </>
+              )}
+              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+            </TouchableOpacity>
         </View>
       )}
 
