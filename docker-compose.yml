@@ -1,29 +1,22 @@
 version: '3.8'
 
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
-    container_name: pertamina_handover_backend
+  mysql:
+    image: mysql:8.0
+    container_name: pertamina_handover_mysql
     restart: always
-    ports:
-      - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - REFRESH_SECRET=${REFRESH_SECRET}
-      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
-      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
-    depends_on:
-      redis:
-        condition: service_healthy
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: handover_pertamina
+    ports:
+      - "3306:3306"
     volumes:
-      - ./backend/barcodes:/app/barcodes
-      - ./backend/logs:/app/logs
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -39,5 +32,30 @@ services:
       timeout: 5s
       retries: 3
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: pertamina_handover_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=mysql://root:rootpassword@mysql:3306/handover_pertamina
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=super_secret_jwt_key_pertamina_2026
+      - REFRESH_SECRET=super_secret_refresh_jwt_key_2026
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/barcodes:/app/barcodes
+      - ./backend/logs:/app/logs
+
 volumes:
+  mysql_data:
   redis_data:

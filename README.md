@@ -209,6 +209,47 @@ HandoverApp/
 
 ---
 
+---
+
+### 4. Menjalankan via Docker Compose (Full Stack)
+
+Jika ingin menjalankan seluruh infrastruktur (MySQL, Redis, dan Backend) dalam container:
+```bash
+docker compose up -d
+```
+Container akan otomatis menginisialisasi database MySQL di port `3306`, Redis di port `6379`, dan Backend di port `3000`.
+
+---
+
+## 🧪 Menjalankan Pengujian (Testing)
+
+Proyek ini telah dilengkapi dengan pengujian otomatis:
+
+```bash
+# Menjalankan pengujian unit backend (Jest)
+cd backend
+npm test
+
+# Menjalankan pengujian frontend
+cd frontend
+npm test
+```
+
+Pipeline otomatis pengujian dijalankan pada setiap push ke branch `main` melalui **GitHub Actions** (`.github/workflows/ci.yml`).
+
+---
+
+## 📚 Dokumentasi Teknis Lengkap
+
+Dokumentasi arsitektur dan spesifikasi API mendalam tersedia di folder `docs/`:
+
+* 🏛️ **[Arsitektur & Diagram Sistem](docs/ARCHITECTURE.md)**: Diagram komponen arsitektur, sequence diagram serah terima & perbaikan, serta matriks RBAC.
+* 📖 **[Spesifikasi API (OpenAPI / Swagger)](docs/openapi.yaml)**: Definisi lengkap seluruh REST endpoint, skema payload, dan respon.
+* 🛠️ **[Panduan Pengembang (Developer Guide)](docs/DEVELOPER_GUIDE.md)**: Tata cara penyiapan, alur migrasi database Prisma, dan konvensi commit.
+* 🔒 **[Keamanan & Kinerja (Security & Performance)](docs/SECURITY_AND_PERFORMANCE.md)**: Implementasi proteksi HTTP, enkripsi data, Sharp image compression, dan Redis caching.
+
+---
+
 ## 🔑 Akun Uji Coba Default
 
 | Role | Username | Password Default | Keterangan |
