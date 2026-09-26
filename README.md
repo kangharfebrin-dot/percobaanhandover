@@ -1,26 +1,224 @@
-# HandoverApp - Pertamina Patra Niaga
+# 🚛 Pertamina HandoverApp
 
-## 🎯 Tujuan Aplikasi
-HandoverApp adalah aplikasi mobile inspeksi dan serah terima (handover) truk tangki yang dirancang khusus untuk mendigitalisasi proses operasional logistik darat. Aplikasi ini menggantikan pencatatan kertas manual untuk mempercepat pelaporan kerusakan, melacak riwayat kondisi fisik armada sebelum berangkat, dan memastikan standar keselamatan operasional kendaraan terpenuhi secara terpusat dan *real-time*.
+<p align="center">
+  <img src="frontend/assets/logo.png" alt="Pertamina HandoverApp Logo" width="160" />
+</p>
 
-## 👥 Pengguna Aplikasi
-Aplikasi ini digunakan oleh 3 peran utama (Role):
-1. **AMT (Awak Mobil Tangki) / Supir**: Pekerja di lapangan yang menggunakan truk. Mereka bertugas mengisi formulir inspeksi harian, melaporkan kerusakan (wajib menyertakan bukti foto), dan mengirim bukti perbaikan jika ditugaskan membenahi kerusakan tersebut.
-2. **Pengawas**: Staf operasional / Supervisor yang bertugas memantau status kelayakan seluruh truk melalui dashboard. Pengawas memiliki kendali penuh untuk menyetujui (Approve) atau menolak (Reject) hasil perbaikan dari AMT.
-3. **Super Admin**: Pihak manajemen atau administrator IT yang mengelola keseluruhan sistem, termasuk pendaftaran dan pengaturan akun baru untuk seluruh pekerja (Pengawas dan AMT).
+<p align="center">
+  <strong>Sistem Digitalisasi Handover & Inspeksi Armada Truk Tangki BBM</strong><br />
+  <em>Integrated Safety & Operational Fleet Management System — PT Pertamina Patra Niaga</em>
+</p>
 
-## 📋 Fitur Utama yang Sudah Ada
-*   **QR Code Scanner**: Pengguna memindai kode QR plat nomor kendaraan untuk langsung masuk ke formulir, mencegah salah lapor truk.
-*   **Formulir Checklist Interaktif**: Sistem form pengecekan kendaraan per kategori (Ban, Mesin, Kaca, dll). Jika ada bagian yang dilaporkan **Rusak**, sistem akan mewajibkan pengguna mengambil foto bukti kerusakannya.
-*   **Evaluasi Perbaikan Berlapis**: 
-    *   Jika truk rusak, truk masuk ke dalam Daftar Isu.
-    *   AMT yang menindaklanjuti wajib mengunggah foto perbaikan.
-    *   Pengawas mengevaluasi perbaikan tersebut per bagian (*item*). Jika perbaikan belum layak, Pengawas **menolak** dan memberikan alasan (catatan penolakan). AMT akan diminta memperbaiki ulang berlandaskan catatan tersebut. Jika lulus, isu ditutup.
-*   **Dashboard & Riwayat (History)**: Menampilkan rekapitulasi data armada yang layak operasi, butuh persetujuan, dan bermasalah. Selain itu, seluruh rekam jejak handover dan waktu pemeriksaannya disimpan selamanya.
-*   **Multi-Role Auth**: Membedakan tampilan aplikasi (*User Interface*) dan otorisasi akses menu secara otomatis tergantung pada siapa yang *login*.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-0055A5?style=flat-square&logo=react" alt="Platform" />
+  <img src="https://img.shields.io/badge/Frontend-React%20Native%20(Expo)-00A651?style=flat-square&logo=expo" alt="Frontend" />
+  <img src="https://img.shields.io/badge/Backend-Node.js%20%26%20Express-339933?style=flat-square&logo=node.js" alt="Backend" />
+  <img src="https://img.shields.io/badge/ORM-Prisma-2D3748?style=flat-square&logo=prisma" alt="Prisma" />
+  <img src="https://img.shields.io/badge/Database-MySQL-00758F?style=flat-square&logo=mysql" alt="Database" />
+  <img src="https://img.shields.io/badge/Styling-Tailwind%20CSS%20(twrnc)-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/Status-Active%20Production-ED1C24?style=flat-square" alt="Status" />
+</p>
 
-## ⚠️ Masalah / Challenge Saat Ini
-1.  **Kurangnya Notifikasi Real-Time (Push Notifications)**: Pengguna belum menerima peringatan langsung pada HP mereka (pop-up notifikasi luar) jika bukti perbaikan ditolak oleh Pengawas atau jika ada laporan kerusakan mendesak yang baru masuk.
-2.  **Optimasi Media (Penyimpanan Foto Membengkak)**: Aplikasi belum menerapkan kompresi / *resizing* kualitas gambar di sisi *frontend* (HP) sebelum dikirim ke server. Akibatnya, memori/hardisk server (*storage*) akan berisiko sangat cepat penuh jika aplikasi diproduksi massal.
-3.  **Tidak Ada Ekspor Laporan**: Pengawas di lapangan tidak bisa mengubah riwayat kerusakan maupun *handover* ke dalam bentuk dokumen (Cetak PDF / Excel) untuk bahan rapat maupun rekapitulasi bulanan resmi.
-4.  **Skalabilitas & Produksi**: Kode *backend* masih perlu dipersiapkan untuk dipublikasi (*Deployment*). Perlu pemindahan sistem database lokal (*Development*) menjadi database awan (*Production Level*) yang lebih kuat serta menerapkan keamanan tingkat tinggi pada sesi akun login pengguna (*Refresh Tokens / Auto-Logout*).
+---
+
+## 📌 Tentang Aplikasi
+
+**HandoverApp** adalah platform enterprise terintegrasi yang dirancang khusus untuk mendigitalisasi proses serah terima (*handover*) dan pemeriksaan fisik armada Mobil Tangki (MT) di lingkungan Fuel Terminal **PT Pertamina Patra Niaga**.
+
+Aplikasi ini menggantikan formulir kertas (*paper-based inspection*) konvensional dengan sistem digital *real-time* berbasis QR Code scanner, checklist interaktif kepatuhan HSSE (*Health, Safety, Security, and Environment*), verifikasi foto bukti kerusakan/perbaikan, serta pelaporan otomatis format Excel dan PDF.
+
+---
+
+## 👥 Hak Akses & Peran Pengguna (Role Matrix)
+
+Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesuai peran yang login:
+
+| Role | Tanggung Jawab Utama | Fitur Utama |
+| :--- | :--- | :--- |
+| **AMT (Awak Mobil Tangki)** | Pengemudi & kru lapangan truk tangki | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
+| **Pengawas (Supervisor)** | Pemantauan kelayakan armada & operasional | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
+| **Super Admin / Admin** | Pengelolaan master data & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist, rekapitulasi audit |
+
+---
+
+## ✨ Fitur-Fitur Utama
+
+### 1. 🔍 Pemindaian QR Barcode Presisi
+* Setiap mobil tangki dilengkapi kode QR unik berbasis plat nomor.
+* AMT memindai QR code sebelum pemeriksaan untuk mencegah salah lapor unit dan memastikan keberadaan fisik di dekat kendaraan.
+
+### 2. 📋 Checklist Inspeksi Keselamatan Terperinci
+* Pengecekan terstruktur sesuai kategori:
+  * **Kategori A (Kritis / Safety Utama)**: Sistem Rem, Kemudi, Ban & Baut Roda, Sistem Kelistrikan & Lampu, Mesin, APAR, Kebocoran BBM.
+  * **Kategori B (Kelengkapan Pendukung)**: Spion, Wiper, Klakson, Perlengkapan Darurat, Kotak P3K, Kebersihan Kabin.
+* **Wajib Foto Bukti**: Jika ada item yang dilaporkan *Rusak / Tidak Baik*, aplikasi otomatis mewajibkan pengambilan foto bukti kerusakan dari kamera.
+
+### 3. 🔄 Siklus Perbaikan & Verifikasi Bertingkat (*Issue Resolution*)
+* Kendaraan dengan kendala langsung masuk ke tab **Daftar Isu**.
+* AMT yang menindaklanjuti perbaikan mengambil foto bukti setelah penanganan.
+* **Evaluasi Pengawas**: Pengawas memeriksa foto dan deskripsi perbaikan per item:
+  * ✅ **Disetujui (Approve)**: Status isu selesai, unit dinyatakan aman dan siap operasi.
+  * ❌ **Ditolak (Reject)**: Pengawas menyertakan catatan alasan penolakan, dan AMT wajib memperbaiki ulang hingga memenuhi standar.
+
+### 4. 📊 Dashboard Monitoring Real-Time & Analitik
+* Ringkasan armada:
+  * 🟢 **Siap Operasi (Normal)**
+  * 🟡 **Dalam Perbaikan / Menunggu Verifikasi**
+  * 🔴 **Kritis / Bermasalah**
+* Indikator status terintegrasi dan live notifikasi.
+
+### 5. 📑 Ekspor Laporan Resmi (Excel & PDF)
+* Format laporan ekspor disesuaikan dengan template resmi operasional Pertamina Patra Niaga:
+  * **Ekspor Excel (.xlsx)**: Rekapitulasi shift, nopol, kru AMT, status kondisi, dan rincian kerusakan.
+  * **Ekspor PDF (.pdf)**: Dokumen berita acara serah terima siap cetak dengan layout formal.
+* Filter laporan dinamis berdasarkan rentang tanggal, shift, bulan, tahun, dan status kondisi armada.
+
+### 6. 💬 Pusat Pesan Operasional (Message Center)
+* Pengawas dapat mengirimkan instruksi cepat, pengumuman keselamatan (*Safety Talk*), atau peringatan armada langsung ke dashboard AMT.
+
+### 7. 💻 Desain Responsif & Premium (Web & Mobile)
+* **Mobile (Android/iOS)**: Desain ergonomis dengan tombol navigasi melayang (*floating bottom bar*), scanner kamera cepat, dan performa ringan.
+* **Desktop / Web Browser**: Antarmuka modern bergaya *Glassmorphism* dengan sidebar terstruktur, tata letak grid kartu responsif, dan scrolling penuh (*infinite scroll*) yang dioptimalkan untuk ratusan data pekerja & armada.
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend (Mobile & Web)
+* **Framework**: [React Native](https://reactnative.dev/) via [Expo](https://expo.dev/) (SDK 57)
+* **Web Engine**: React Native Web (dukungan penuh browser desktop Chrome, Edge, Safari, Firefox)
+* **Styling**: [Tailwind CSS](https://tailwindcss.com/) via [`twrnc`](https://github.com/drake-smith/twrnc)
+* **Icons**: `@expo/vector-icons` (Ionicons, Feather)
+* **Camera & Media**: `expo-camera`, `expo-image-picker`
+
+### Backend (API Services)
+* **Runtime**: [Node.js](https://nodejs.org/) (v18+)
+* **Framework**: [Express.js](https://expressjs.com/)
+* **ORM**: [Prisma ORM](https://www.prisma.io/)
+* **Database**: [MySQL](https://www.mysql.com/) / MariaDB
+* **Logging**: Winston logger dengan audit rotasi harian
+* **Authentication**: JWT (JSON Web Token) & bcrypt password hashing
+* **Export Engines**: `exceljs` (Excel generator) & `pdfkit` (PDF report builder)
+
+---
+
+## 📂 Struktur Repositori
+
+```plaintext
+HandoverApp/
+├── backend/                  # Server Node.js & Express API
+│   ├── barcodes/             # Asset QR barcode armada mobil tangki (83 unit)
+│   ├── prisma/
+│   │   └── schema.prisma     # Skema database relasional Prisma
+│   ├── src/
+│   │   ├── config/           # Konfigurasi logger, storage, database
+│   │   ├── controllers/      # Logika analitik, laporan, autentikasi
+│   │   ├── middleware/       # Auth JWT, image optimizer, validator
+│   │   ├── routes/           # Routing API endpoint
+│   │   └── services/         # Layanan ekspor Excel/PDF, email service
+│   ├── index.js              # Entrypoint server Express
+│   └── package.json
+│
+├── frontend/                 # Client React Native (Expo)
+│   ├── assets/               # Logo, ikon, background, suara notifikasi
+│   ├── components/           # Komponen UI (WebSidebar, TextLogo, Modals)
+│   ├── screens/
+│   │   ├── admin/            # Layar Admin (Dashboard, WorkerList, VehicleList, Checklist)
+│   │   ├── pengawas/         # Layar Pengawas (Dashboard, IssueList, IssueDetail, MessageCenter)
+│   │   ├── shared/           # Layar Bersama (Login, History, HandoverDetail)
+│   │   └── user/             # Layar AMT (Dashboard, Scanner, HandoverForm, FixVerification)
+│   ├── App.js                # Navigasi & state aplikasi
+│   ├── config.js             # Auto-detection IP & server endpoint
+│   └── package.json
+│
+├── HandoverApp_Improvements/ # Dokumentasi arsitektur & panduan sistem
+├── docker-compose.yml        # Konfigurasi containerization
+├── .gitignore                # Aturan ignore git bersih
+└── README.md                 # Dokumentasi utama repositori
+```
+
+---
+
+## 🚀 Panduan Memulai (Quick Start)
+
+### 1. Prasyarat Sistem
+* [Node.js](https://nodejs.org/) (versi 18.x atau lebih baru)
+* [MySQL](https://www.mysql.com/) (XAMPP / MySQL Workbench / Docker MySQL)
+* [Git](https://git-scm.com/)
+
+---
+
+### 2. Setup Backend
+
+1. Buka terminal dan masuk ke folder `backend`:
+   ```bash
+   cd backend
+   ```
+
+2. Pasang dependensi:
+   ```bash
+   npm install
+   ```
+
+3. Buat file `.env` berdasarkan template:
+   ```bash
+   cp .env.example .env
+   ```
+   Sesuaikan konfigurasi database Anda di file `.env`:
+   ```env
+   DATABASE_URL="mysql://root:password@localhost:3306/handover_pertamina"
+   PORT=3000
+   ```
+
+4. Sinkronisasikan skema Prisma ke database MySQL:
+   ```bash
+   npx prisma db push
+   ```
+
+5. Jalankan server backend:
+   ```bash
+   npm run dev
+   ```
+   Server backend akan aktif di `http://localhost:3000`.
+
+---
+
+### 3. Setup Frontend
+
+1. Buka terminal baru dan masuk ke folder `frontend`:
+   ```bash
+   cd frontend
+   ```
+
+2. Pasang dependensi:
+   ```bash
+   npm install
+   ```
+
+3. Jalankan aplikasi frontend:
+   * **Untuk Tampilan Web (Browser)**:
+     ```bash
+     npx expo start --web
+     ```
+     Buka browser di `http://localhost:8081`.
+   * **Untuk Tampilan Mobile (Android / Expo Go)**:
+     ```bash
+     npx expo start
+     ```
+     Pindai QR code menggunakan aplikasi **Expo Go** di ponsel Anda (pastikan ponsel dan komputer berada di jaringan Wi-Fi yang sama).
+
+---
+
+## 🔑 Akun Uji Coba Default
+
+| Role | Username | Password Default | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin` | `admin123` | Akses penuh seluruh sistem & master data |
+| **Pengawas** | `pengawas` | `pengawas123` | Akses evaluasi perbaikan, laporan, pesan |
+| **AMT** | Sesuai NIP Pekerja | `123456` | Terdaftar 334 AMT aktif di database |
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dikembangkan untuk kebutuhan operasional inspeksi armada Fuel Terminal Pertamina Patra Niaga. Hak Cipta dilindungi.
