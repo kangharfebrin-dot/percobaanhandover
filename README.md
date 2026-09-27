@@ -33,11 +33,11 @@ Aplikasi ini menggantikan formulir kertas (*paper-based inspection*) konvensiona
 
 Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesuai peran yang login:
 
-| Role | Tanggung Jawab Utama | Fitur Utama |
-| :--- | :--- | :--- |
-| **AMT (Awak Mobil Tangki)** | Pengemudi & kru lapangan truk tangki | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
-| **Pengawas (Supervisor)** | Pemantauan kelayakan armada & operasional | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
-| **Super Admin / Admin** | Pengelolaan master data & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist, rekapitulasi audit |
+| Role | Jabatan Operasional Pertamina | Tanggung Jawab Utama | Fitur Utama |
+| :--- | :--- | :--- | :--- |
+| **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
+| **Pengawas** | **Pengawas Lapangan / Fleet Dispatcher** | Pemantauan kelayakan armada & operasional harian | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
+| **Super Admin** | **Supervisor Distribusi / Fleet Supervisor** | Pengelolaan master data, regulasi & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist HSSE, otorisasi Force Release, rekapitulasi audit |
 
 ---
 
@@ -123,8 +123,8 @@ HandoverApp/
 │   ├── assets/               # Logo, ikon, background, suara notifikasi
 │   ├── components/           # Komponen UI (WebSidebar, TextLogo, Modals)
 │   ├── screens/
-│   │   ├── admin/            # Layar Admin (Dashboard, WorkerList, VehicleList, Checklist)
-│   │   ├── pengawas/         # Layar Pengawas (Dashboard, IssueList, IssueDetail, MessageCenter)
+│   │   ├── admin/            # Layar Supervisor / Super Admin (Dashboard, WorkerList, VehicleList, Checklist)
+│   │   ├── pengawas/         # Layar Pengawas Lapangan (Dashboard, IssueList, IssueDetail, MessageCenter)
 │   │   ├── shared/           # Layar Bersama (Login, History, HandoverDetail)
 │   │   └── user/             # Layar AMT (Dashboard, Scanner, HandoverForm, FixVerification)
 │   ├── App.js                # Navigasi & state aplikasi
