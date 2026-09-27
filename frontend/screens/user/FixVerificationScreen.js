@@ -12,7 +12,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function FixVerificationScreen({ route, navigation }) {
-  const { noPolisi } = route.params;
+  const { noPolisi, issueId, handoverId } = route.params || {};
   const [issue, setIssue] = useState(null);
   const [brokenItems, setBrokenItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,14 +60,37 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   const fetchIssue = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/issues/ongoing`);
-      const ongoingIssues = res.data || [];
-      const activeIssue = ongoingIssues.find(iss => iss.handover && iss.handover.noPolisi === noPolisi);
+      let activeIssue = null;
+      const targetId = issueId || (noPolisi && !noPolisi.includes(' ') && noPolisi.length > 15 ? noPolisi : null);
+
+      // 1. Coba fetch langsung via endpoint /api/issues/:id jika ada targetId
+      if (targetId) {
+        try {
+          const detailRes = await axios.get(`${API_URL}/api/issues/${targetId}`);
+          if (detailRes.data && (detailRes.data.handover || detailRes.data.id)) {
+            activeIssue = detailRes.data;
+          }
+        } catch (e) {
+          console.log('Direct issue lookup by id fallback:', e.message);
+        }
+      }
+
+      // 2. Fallback ke /api/issues/ongoing
+      if (!activeIssue) {
+        const res = await axios.get(`${API_URL}/api/issues/ongoing`);
+        const ongoingIssues = res.data || [];
+        activeIssue = ongoingIssues.find(iss => 
+          (targetId && (iss.id === targetId || iss.handoverId === targetId)) ||
+          (issueId && iss.id === issueId) ||
+          (handoverId && iss.handoverId === handoverId) ||
+          (noPolisi && (iss.handover?.noPolisi === noPolisi || iss.id === noPolisi || iss.handoverId === noPolisi))
+        );
+      }
       
-      if (activeIssue) {
+      if (activeIssue && activeIssue.handover) {
         setIssue(activeIssue);
         // Only get items that are not good and not yet repaired
-        const items = activeIssue.handover.items.filter(i => !i.isGood && !i.isRepaired).map(i => ({
+        const items = (activeIssue.handover.items || []).filter(i => !i.isGood && !i.isRepaired).map(i => ({
           ...i,
           repairStatus: 'RUSAK', // initial status
           repairNote: '',
@@ -76,18 +99,18 @@ export default function FixVerificationScreen({ route, navigation }) {
         setBrokenItems(items);
       } else {
         Toast.show({
-        type: 'info',
-        text1: `Info`,
-        text2: `Tidak ada isu aktif untuk kendaraan ini.`
-      });
+          type: 'info',
+          text1: 'Info',
+          text2: 'Tidak ada isu aktif untuk kendaraan ini.'
+        });
         navigation.goBack();
       }
     } catch (error) {
       console.error(error);
       Toast.show({
         type: 'error',
-        text1: `Error`,
-        text2: `Gagal memuat data isu.`
+        text1: 'Error',
+        text2: 'Gagal memuat data isu.'
       });
     } finally {
       setLoading(false);
@@ -244,7 +267,7 @@ export default function FixVerificationScreen({ route, navigation }) {
           <Text style={tw`text-white text-xl font-bold`}>Verifikasi Perbaikan</Text>
           <View style={tw`w-10`} />
         </View>
-        <Text style={tw`text-white/80 text-center mt-2 font-medium`}>Truk: {noPolisi}</Text>
+        <Text style={tw`text-white/80 text-center mt-2 font-medium`}>Truk: {issue?.handover?.noPolisi || noPolisi}</Text>
       </LinearGradient>
 
       <ScrollView style={tw`flex-1 px-4 py-6`} showsVerticalScrollIndicator={false}>

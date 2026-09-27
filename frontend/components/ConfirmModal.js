@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Platform } from 'react-native';
 import tw from 'twrnc';
 import { Feather, Ionicons } from '@expo/vector-icons';
 
@@ -27,7 +27,10 @@ export default function ConfirmModal({
 
   return (
     <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={onCancel}>
-      <View style={tw`flex-1 justify-center items-center bg-black/40 px-6`}>
+      <View style={[
+        tw`flex-1 justify-center items-center bg-black/40 px-6`,
+        Platform.OS === 'web' ? { zIndex: 99999, elevation: 99999 } : {}
+      ]}>
         <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl relative overflow-hidden`}>
           
           {/* Subtle glow effect */}

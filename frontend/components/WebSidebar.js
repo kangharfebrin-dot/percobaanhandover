@@ -52,117 +52,198 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
         </View>
       </View>
 
-      {/* Menu Navigasi - Scrollable (Hanya area di bawah badge role yang bisa di-scroll) */}
-      <ScrollView
-        style={tw`flex-1`}
-        contentContainerStyle={tw`p-6 pt-4 pb-8`}
-        showsVerticalScrollIndicator={true}
-      >
-
-        {/* 1. Beranda */}
-        <TouchableOpacity
-          style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'Home' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-          onPress={() => {
-            if (user.role === 'SUPER_ADMIN') navigation.replace('AdminDashboard');
-            else if (user.role === 'PENGAWAS' || user.role === 'ADMIN') navigation.replace('PengawasDashboard');
-            else navigation.replace('UserDashboard');
-          }}
+      {/* Menu Navigasi - Scrollable Container */}
+      <View style={tw`flex-1 bg-slate-50/20`}>
+        <ScrollView
+          style={[
+            tw`flex-1`,
+            Platform.OS === 'web' ? {
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#CBD5E1 transparent',
+            } : {}
+          ]}
+          contentContainerStyle={tw`p-4 pt-3 pb-8`}
+          showsVerticalScrollIndicator={true}
         >
-          <Feather name="grid" size={22} color={activeMenu === 'Home' ? 'white' : '#6B7280'} />
-          <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'Home' ? 'text-white' : 'text-gray-500'}`}>Beranda</Text>
-        </TouchableOpacity>
-
-        {/* 2. Log Riwayat */}
-        <TouchableOpacity
-          style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'History' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-          onPress={() => navigation.replace('History')}
-        >
-          <Feather name="file-text" size={22} color={activeMenu === 'History' ? 'white' : '#6B7280'} />
-          <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-500'}`}>Log Riwayat</Text>
-        </TouchableOpacity>
-
-        {/* 3. Manajer Checklist (isSuperAdmin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'Checklist' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-            onPress={() => navigation.replace('ChecklistManager')}
-          >
-            <Feather name="check-square" size={22} color={activeMenu === 'Checklist' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'Checklist' ? 'text-white' : 'text-gray-500'}`}>Manajer Checklist</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 4. Daftar Kendaraan (isSuperAdmin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'VehicleList' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-            onPress={() => navigation.replace('VehicleList')}
-          >
-            <Feather name="truck" size={22} color={activeMenu === 'VehicleList' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'VehicleList' ? 'text-white' : 'text-gray-500'}`}>Daftar Kendaraan</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 5. Daftar Kendala (isSuperAdmin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'IssueList' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-            onPress={() => navigation.replace('IssueList')}
-          >
-            <Feather name="alert-triangle" size={22} color={activeMenu === 'IssueList' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'IssueList' ? 'text-white' : 'text-gray-500'}`}>Daftar Kendala</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 6. Daftar Pekerja (isSuperAdmin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'WorkerList' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-            onPress={() => navigation.replace('WorkerList')}
-          >
-            <Feather name="users" size={22} color={activeMenu === 'WorkerList' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'WorkerList' ? 'text-white' : 'text-gray-500'}`}>Daftar Pekerja</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 7. Daftar Pengawas (isSuperAdmin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={tw`flex-row items-center p-4 mb-3 rounded-2xl ${activeMenu === 'PengawasList' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-            onPress={() => navigation.replace('PengawasList')}
-          >
-            <Feather name="shield" size={22} color={activeMenu === 'PengawasList' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'PengawasList' ? 'text-white' : 'text-gray-500'}`}>Daftar Pengawas</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 8. Pesan (Semua Pengguna: Super Admin, Pengawas, AMT/User) */}
-        <TouchableOpacity
-          style={tw`flex-row items-center justify-between p-4 mb-3 rounded-2xl ${activeMenu === 'Messages' ? 'bg-[#0055A5] shadow-lg shadow-blue-500/40' : 'bg-transparent'}`}
-          onPress={() => navigation.replace('MessageCenter')}
-        >
-          <View style={tw`flex-row items-center`}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color={activeMenu === 'Messages' ? 'white' : '#6B7280'} />
-            <Text style={tw`ml-4 font-bold text-[15px] ${activeMenu === 'Messages' ? 'text-white' : 'text-gray-500'}`}>Pesan</Text>
+          {/* Section: Menu Utama */}
+          <View style={tw`flex-row items-center mb-2.5 px-2`}>
+            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
+            <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Menu Utama</Text>
+            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
           </View>
-          {unreadNotificationsCount > 0 && (
-            <View style={tw`bg-red-500 px-2 py-0.5 rounded-full`}>
-              <Text style={tw`text-white text-xs font-bold`}>{unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
 
-        {/* 9. Sign Out Button */}
-        <View style={tw`mt-4 pt-4 border-t border-gray-100`}>
+          {/* 1. Beranda */}
           <TouchableOpacity
-            style={tw`flex-row items-center p-4 rounded-2xl bg-red-50 border border-red-100`}
-            onPress={handleLogout || (() => {})}
+            style={[
+              tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                activeMenu === 'Home'
+                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                  : 'bg-white/70 border-gray-200/80 shadow-sm'
+              }`,
+              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+            ]}
+            onPress={() => {
+              if (user.role === 'SUPER_ADMIN') navigation.replace('AdminDashboard');
+              else if (user.role === 'PENGAWAS' || user.role === 'ADMIN') navigation.replace('PengawasDashboard');
+              else navigation.replace('UserDashboard');
+            }}
           >
-            <Feather name="log-out" size={22} color="#ED1C24" />
-            <Text style={tw`ml-4 font-bold text-[15px] text-[#ED1C24]`}>Sign Out</Text>
+            <Feather name="grid" size={20} color={activeMenu === 'Home' ? 'white' : '#0055A5'} />
+            <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Home' ? 'text-white' : 'text-gray-700'}`}>Beranda</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+
+          {/* 2. Log Riwayat */}
+          <TouchableOpacity
+            style={[
+              tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                activeMenu === 'History'
+                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                  : 'bg-white/70 border-gray-200/80 shadow-sm'
+              }`,
+              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+            ]}
+            onPress={() => navigation.replace('History')}
+          >
+            <Feather name="file-text" size={20} color={activeMenu === 'History' ? 'white' : '#4B5563'} />
+            <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-700'}`}>Log Riwayat</Text>
+          </TouchableOpacity>
+
+          {/* Section: Manajemen (isSuperAdmin) */}
+          {isSuperAdmin && (
+            <>
+              <View style={tw`flex-row items-center mt-3 mb-2.5 px-2`}>
+                <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
+                <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Manajemen</Text>
+                <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
+              </View>
+
+              {/* 3. Manajer Checklist */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'Checklist'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('ChecklistManager')}
+              >
+                <Feather name="check-square" size={20} color={activeMenu === 'Checklist' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Checklist' ? 'text-white' : 'text-gray-700'}`}>Manajer Checklist</Text>
+              </TouchableOpacity>
+
+              {/* 4. Daftar Kendaraan */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'VehicleList'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('VehicleList')}
+              >
+                <Feather name="truck" size={20} color={activeMenu === 'VehicleList' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'VehicleList' ? 'text-white' : 'text-gray-700'}`}>Daftar Kendaraan</Text>
+              </TouchableOpacity>
+
+              {/* 5. Daftar Kendala */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'IssueList'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('IssueList')}
+              >
+                <Feather name="alert-triangle" size={20} color={activeMenu === 'IssueList' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'IssueList' ? 'text-white' : 'text-gray-700'}`}>Daftar Kendala</Text>
+              </TouchableOpacity>
+
+              {/* 6. Daftar Pekerja */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'WorkerList'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('WorkerList')}
+              >
+                <Feather name="users" size={20} color={activeMenu === 'WorkerList' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'WorkerList' ? 'text-white' : 'text-gray-700'}`}>Daftar Pekerja</Text>
+              </TouchableOpacity>
+
+              {/* 7. Daftar Pengawas */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'PengawasList'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('PengawasList')}
+              >
+                <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'PengawasList' ? 'text-white' : 'text-gray-700'}`}>Daftar Pengawas</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Section: Komunikasi */}
+          <View style={tw`flex-row items-center mt-3 mb-2.5 px-2`}>
+            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
+            <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Komunikasi</Text>
+            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
+          </View>
+
+          {/* 8. Pesan */}
+          <TouchableOpacity
+            style={[
+              tw`flex-row items-center justify-between p-3.5 mb-2 rounded-2xl border ${
+                activeMenu === 'Messages'
+                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                  : 'bg-white/70 border-gray-200/80 shadow-sm'
+              }`,
+              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+            ]}
+            onPress={() => navigation.replace('MessageCenter')}
+          >
+            <View style={tw`flex-row items-center`}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={activeMenu === 'Messages' ? 'white' : '#4B5563'} />
+              <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Messages' ? 'text-white' : 'text-gray-700'}`}>Pesan</Text>
+            </View>
+            {unreadNotificationsCount > 0 && (
+              <View style={tw`bg-red-500 px-2 py-0.5 rounded-full`}>
+                <Text style={tw`text-white text-xs font-bold`}>{unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Section: Sesi & Logout */}
+          <View style={tw`mt-3 pt-3 border-t border-gray-200/80`}>
+            <TouchableOpacity
+              style={[
+                tw`flex-row items-center p-3.5 rounded-2xl bg-red-50/80 border border-red-200/70 shadow-sm`,
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={handleLogout || (() => {})}
+            >
+              <Feather name="log-out" size={20} color="#ED1C24" />
+              <Text style={tw`ml-3.5 font-bold text-[14px] text-[#ED1C24]`}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }

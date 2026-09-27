@@ -688,8 +688,12 @@ export default function UserDashboardScreen({ navigation }) {
                     onPress={() => {
                       if (!notif.isRead) handleReadNotification(notif.id);
                       setShowNotificationsModal(false);
-                      if (notif.actionType === 'SCAN_REPAIR' && notif.actionId) {
-                        navigation.navigate('FixVerification', { noPolisi: notif.actionId });
+                      if (notif.actionType === 'SCAN_REPAIR') {
+                        navigation.navigate('FixVerification', { 
+                          noPolisi: notif.noPolisi || notif.actionId,
+                          issueId: notif.actionId,
+                          handoverId: notif.actionId
+                        });
                       } else if (notif.actionType === 'VIEW_ISSUE' && (notif.actionId || notif.noPolisi)) {
                         navigation.navigate('IssueDetail', { 
                           issueId: notif.actionId,

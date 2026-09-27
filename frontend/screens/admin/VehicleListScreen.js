@@ -62,6 +62,11 @@ export default function VehicleListScreen({ navigation }) {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState(null);
 
+  // Force Release Modal
+  const [forceReleaseModalVisible, setForceReleaseModalVisible] = useState(false);
+  const [vehicleToForceRelease, setVehicleToForceRelease] = useState(null);
+  const [isForceReleasing, setIsForceReleasing] = useState(false);
+
   // Custom Success Notification Modal
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -205,9 +210,48 @@ export default function VehicleListScreen({ navigation }) {
     setAddModalVisible(true);
   };
 
+  const handleForceReleaseShift = (vehicle) => {
+    setVehicleToForceRelease(vehicle);
+    setManageModalVisible(false);
+    setForceReleaseModalVisible(true);
+  };
+
+  const handleCancelForceRelease = () => {
+    setForceReleaseModalVisible(false);
+    setManageModalVisible(true);
+  };
+
+  const confirmForceRelease = async () => {
+    if (!vehicleToForceRelease) return;
+    setIsForceReleasing(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await axios.post(
+        `${API_BASE}/handovers/force-release`,
+        { noPolisi: vehicleToForceRelease.noPolisi, reason: 'Force Release oleh Pengawas/Admin dari Daftar Kendaraan' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setForceReleaseModalVisible(false);
+      setManageModalVisible(false);
+      showSuccessModal(res.data.message || `Shift untuk kendaraan ${vehicleToForceRelease.noPolisi} berhasil ditutup paksa.`);
+      fetchVehicles();
+    } catch (err) {
+      setForceReleaseModalVisible(false);
+      showWarningModal('Gagal Force Release', err.response?.data?.error || 'Gagal melakukan force release.');
+    } finally {
+      setIsForceReleasing(false);
+    }
+  };
+
   const handleDeleteVehicle = (vehicle) => {
     setVehicleToDelete(vehicle);
+    setManageModalVisible(false);
     setConfirmModalVisible(true);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmModalVisible(false);
+    setManageModalVisible(true);
   };
 
   const confirmDelete = async () => {
@@ -512,6 +556,14 @@ export default function VehicleListScreen({ navigation }) {
                     </View>
 
                     <TouchableOpacity
+                      style={tw`w-full bg-amber-50 p-4 rounded-2xl border border-amber-200 flex-row justify-center items-center mb-3`}
+                      onPress={() => handleForceReleaseShift(selectedVehicle)}
+                    >
+                      <Feather name="refresh-cw" size={18} color="#D97706" />
+                      <Text style={tw`text-amber-800 font-bold ml-2 text-base`}>Tutup Paksa Shift (Force Release)</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={tw`w-full bg-[#0055A5] p-5 rounded-2xl flex-row justify-center items-center shadow-lg shadow-blue-500/40`}
                       onPress={() => { setManageModalVisible(false); navigation.navigate('History', { noPolisi: selectedVehicle.noPolisi }); }}
                     >
@@ -558,6 +610,14 @@ export default function VehicleListScreen({ navigation }) {
                       <Text style={tw`text-[8px] text-gray-400 mt-1 text-center font-bold`}>TAP UNTUK PERBESAR</Text>
                     </TouchableOpacity>
                   </View>
+
+                  <TouchableOpacity
+                    style={tw`w-full bg-amber-50 p-3.5 rounded-xl border border-amber-200 flex-row justify-center items-center mb-3`}
+                    onPress={() => handleForceReleaseShift(selectedVehicle)}
+                  >
+                    <Feather name="refresh-cw" size={16} color="#D97706" />
+                    <Text style={tw`text-amber-800 font-bold ml-2 text-sm`}>Tutup Paksa Shift (Force Release)</Text>
+                  </TouchableOpacity>
 
                   <View style={tw`flex-row justify-between`}>
                     <TouchableOpacity
@@ -649,7 +709,76 @@ export default function VehicleListScreen({ navigation }) {
         </Modal>
       )}
 
-      <ConfirmModal visible={confirmModalVisible} title="Hapus Kendaraan" message={vehicleToDelete ? `Yakin ingin menghapus ${vehicleToDelete.noPolisi}? Semua data barcode terkait juga akan dihapus.` : ''} onConfirm={confirmDelete} onCancel={() => setConfirmModalVisible(false)} />
+      <ConfirmModal visible={confirmModalVisible} title="Hapus Kendaraan" message={vehicleToDelete ? `Yakin ingin menghapus ${vehicleToDelete.noPolisi}? Semua data barcode terkait juga akan dihapus.` : ''} onConfirm={confirmDelete} onCancel={handleCancelDelete} />
+
+      {/* FORCE RELEASE CONFIRMATION MODAL */}
+      <Modal visible={forceReleaseModalVisible} transparent={true} animationType="fade" onRequestClose={handleCancelForceRelease}>
+        <View style={[
+          tw`flex-1 justify-center items-center bg-black/60 px-6`,
+          Platform.OS === 'web' ? { zIndex: 99999, elevation: 99999 } : {}
+        ]}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[32px] p-7 items-center shadow-2xl border border-amber-100 relative overflow-hidden`}>
+            {/* Background Decorative Accents */}
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-amber-50 rounded-full`} />
+            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-5`, { width: 220, height: 220, top: -40, right: -40 }]} resizeMode="contain" />
+
+            <View style={tw`bg-amber-100 px-3.5 py-1 rounded-full mb-3 z-10`}>
+              <Text style={tw`text-amber-800 font-black text-[10px] uppercase tracking-wider`}>FORCE RELEASE SHIFT</Text>
+            </View>
+
+            <View style={tw`w-20 h-20 bg-amber-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-amber-200 border-2 border-amber-200 z-10`}>
+              <Feather name="refresh-cw" size={32} color="#D97706" />
+            </View>
+
+            <Text style={tw`text-xl font-black text-gray-800 mb-2 tracking-tight text-center z-10`}>Konfirmasi Force Release</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-4 text-xs leading-5 z-10 px-2`}>
+              Tutup paksa shift gantung untuk kendaraan <Text style={tw`font-bold text-gray-800`}>{vehicleToForceRelease?.noPolisi}</Text>? Status mobil akan diselesaikan dan siap untuk Mulai Pekerjaan baru.
+            </Text>
+
+            <View style={tw`w-full bg-amber-50/80 rounded-2xl p-3.5 border border-amber-200/70 mb-6 z-10`}>
+              <View style={tw`flex-row justify-between items-center mb-1.5`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Kendaraan:</Text>
+                <Text style={tw`text-xs text-amber-900 font-extrabold`}>{vehicleToForceRelease?.noPolisi}</Text>
+              </View>
+              <View style={tw`flex-row justify-between items-center`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Tindakan:</Text>
+                <Text style={tw`text-xs text-amber-800 font-bold`}>Selesaikan Shift Secara Paksa</Text>
+              </View>
+            </View>
+
+            <View style={tw`flex-row justify-between w-full z-10`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 py-3.5 rounded-2xl items-center mr-2 border border-gray-200`}
+                onPress={handleCancelForceRelease}
+                disabled={isForceReleasing}
+              >
+                <Text style={tw`text-gray-700 font-bold text-sm`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#D97706] py-3.5 rounded-2xl items-center ml-2 shadow-lg shadow-amber-500/30 flex-row justify-center`}
+                onPress={confirmForceRelease}
+                disabled={isForceReleasing}
+              >
+                {isForceReleasing ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={tw`text-white font-black text-sm tracking-wide`}>Ya, Tutup Shift</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={tw`flex-row items-center justify-center mt-4 z-10`}>
+              <View style={tw`flex-row items-center mr-2`}>
+                <View style={tw`w-1 h-3.5 rounded-full bg-[#ED1C24] mr-0.5`} />
+                <View style={tw`w-1 h-3.5 rounded-full bg-[#2ECC71] mr-0.5`} />
+                <View style={tw`w-1 h-3.5 rounded-full bg-[#0055A5]`} />
+              </View>
+              <Text style={tw`text-[10px] font-bold text-gray-400 uppercase tracking-widest`}>DigiHandover</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* SUCCESS NOTIFICATION MODAL */}
       <Modal visible={successModalVisible} transparent={true} animationType="fade">

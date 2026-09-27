@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { API_URL } from '../../config';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import tw from 'twrnc';
@@ -55,6 +55,21 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [selectedHour, setSelectedHour] = useState(currentHour);
   const [selectedMinute, setSelectedMinute] = useState(currentMinute);
   const [odoMeter, setOdoMeter] = useState('');
+
+  // Deteksi angka odometer dari handover sebelumnya jika tersedia
+  const previousOdometer = useMemo(() => {
+    if (lastHandover && lastHandover.items) {
+      const odoItem = lastHandover.items.find(i => i.name && i.name.toLowerCase().includes('odo'));
+      if (odoItem) {
+        const match = odoItem.name.match(/\d[\d.,]*/);
+        if (match) {
+          const num = parseInt(match[0].replace(/[.,]/g, ''), 10);
+          return isNaN(num) ? null : num;
+        }
+      }
+    }
+    return null;
+  }, [lastHandover]);
   const [amt1, setAmt1] = useState('');
   const [amt2, setAmt2] = useState('');
   const [isAmt1Locked, setIsAmt1Locked] = useState(false);
@@ -320,9 +335,23 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
-    // 1. Validasi Info Dasar
+    // 1. Validasi Info Dasar & Odometer
     if (!noPolisi || !odoMeter || !shift) {
       showValidationError("Perhatian", "Informasi perjalanan (Plat, Shift, Odo Meter) tidak boleh kosong.");
+      return;
+    }
+
+    const currentOdoNum = parseInt(odoMeter.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(currentOdoNum) || currentOdoNum <= 0) {
+      showValidationError("Odometer Tidak Valid", "Harap masukkan angka odometer yang valid (hanya angka positif).");
+      return;
+    }
+
+    if (type === 'akhiri' && previousOdometer && currentOdoNum < previousOdometer) {
+      showValidationError(
+        "Peringatan Odometer",
+        `Odometer Akhir (${currentOdoNum.toLocaleString('id-ID')} km) tidak boleh lebih kecil dari Odometer Awal (${previousOdometer.toLocaleString('id-ID')} km). Harap periksa kembali angka odometer fisik kendaraan.`
+      );
       return;
     }
 
@@ -379,9 +408,25 @@ export default function HandoverFormScreen({ route, navigation }) {
       finalItems.push({ category: 'C', name: `Odo Meter: ${odoMeter}`, isGood: true });
       formData.append('items', JSON.stringify(finalItems));
 
-      if (location) {
-        formData.append('locationLat', location.latitude);
-        formData.append('locationLng', location.longitude);
+      let currentLoc = location;
+      if (!currentLoc) {
+        try {
+          const { status: locPerm } = await Location.requestForegroundPermissionsAsync();
+          if (locPerm === 'granted') {
+            const freshLoc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+              timeout: 4000
+            });
+            currentLoc = freshLoc.coords;
+          }
+        } catch (locErr) {
+          console.log('Location retry on submit failed:', locErr.message);
+        }
+      }
+
+      if (currentLoc) {
+        formData.append('locationLat', currentLoc.latitude);
+        formData.append('locationLng', currentLoc.longitude);
       }
 
       Object.keys(photos).forEach(key => {
@@ -579,11 +624,19 @@ export default function HandoverFormScreen({ route, navigation }) {
       <ScrollView style={tw`flex-1`} contentContainerStyle={tw`w-full px-4 pt-8 pb-10`} showsVerticalScrollIndicator={false}>
         {/* Info Perjalanan */}
         <View style={tw`bg-white p-6 rounded-3xl mb-8 shadow-md border border-gray-100`}>
-          <View style={tw`flex-row items-center mb-6`}>
-            <View style={tw`bg-blue-50 p-2 rounded-xl mr-3`}>
-              <Ionicons name="car-sport" size={24} color="#0055A5" />
+          <View style={tw`flex-row items-center justify-between mb-6`}>
+            <View style={tw`flex-row items-center`}>
+              <View style={tw`bg-blue-50 p-2 rounded-xl mr-3`}>
+                <Ionicons name="car-sport" size={24} color="#0055A5" />
+              </View>
+              <Text style={tw`text-gray-800 font-extrabold text-xl tracking-tight`}>Info Perjalanan</Text>
             </View>
-            <Text style={tw`text-gray-800 font-extrabold text-xl tracking-tight`}>Info Perjalanan</Text>
+            <View style={tw`flex-row items-center px-2.5 py-1 rounded-full ${location ? 'bg-green-100 border border-green-200' : 'bg-amber-100 border border-amber-200'}`}>
+              <Ionicons name={location ? "location" : "location-outline"} size={13} color={location ? "#00A651" : "#D97706"} />
+              <Text style={tw`text-[11px] font-bold ml-1 ${location ? 'text-green-800' : 'text-amber-800'}`}>
+                {location ? 'GPS Aktif' : 'GPS Mencari...'}
+              </Text>
+            </View>
           </View>
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>No Polisi Kendaraan</Text>
@@ -640,7 +693,12 @@ export default function HandoverFormScreen({ route, navigation }) {
             )}
           </View>
 
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>{type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'}</Text>
+          <View style={tw`flex-row justify-between items-center mb-2`}>
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider`}>{type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'}</Text>
+            {previousOdometer ? (
+              <Text style={tw`text-[11px] font-bold text-blue-600`}>Sebelumnya: {previousOdometer.toLocaleString('id-ID')} km</Text>
+            ) : null}
+          </View>
           <TextInput
             style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm`}
             placeholder="Misal: 150000"

@@ -160,8 +160,16 @@ export default function MessageCenterScreen({ navigation }) {
         }
         break;
       case 'SCAN_REPAIR':
-        // AMT → scan QR untuk verifikasi perbaikan
-        navigation.navigate('Scanner', { type: 'mulai' });
+        // Langsung arahkan ke Verifikasi Perbaikan jika data truk/isu ada, atau buka Scanner
+        if (item.noPolisi || item.actionId) {
+          navigation.navigate('FixVerification', { 
+            noPolisi: item.noPolisi || item.actionId,
+            issueId: item.actionId,
+            handoverId: item.actionId
+          });
+        } else {
+          navigation.navigate('Scanner', { type: 'mulai' });
+        }
         break;
       default:
         break;

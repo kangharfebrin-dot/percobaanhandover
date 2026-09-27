@@ -214,7 +214,18 @@ app.get('/api/vehicles/scan/:barcode', async (req, res) => {
       }
     }
 
-    res.json({ success: true, vehicle, lastHandover, activeUserHandover });
+    // Deteksi shift gantung (> 12 jam sejak mulai tanpa diakhiri)
+    let isHangingShift = false;
+    let elapsedHours = 0;
+    if (lastHandover && lastHandover.type === 'mulai' && !lastHandover.issue) {
+      const lastTime = new Date(lastHandover.timestamp || lastHandover.createdAt).getTime();
+      elapsedHours = Math.round(((Date.now() - lastTime) / (1000 * 60 * 60)) * 10) / 10;
+      if (elapsedHours > 12) {
+        isHangingShift = true;
+      }
+    }
+
+    res.json({ success: true, vehicle, lastHandover, activeUserHandover, isHangingShift, elapsedHours });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -511,6 +522,86 @@ app.post('/api/handovers', upload.any(), optimizeImages, async (req, res) => {
     res.status(201).json({ success: true, handover });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2.5 Force Release Shift Gantung (Untuk Admin, Pengawas, atau Driver Takeover)
+app.post('/api/handovers/force-release', authenticateToken, async (req, res) => {
+  try {
+    const { noPolisi, reason } = req.body;
+    if (!noPolisi) {
+      return res.status(400).json({ error: 'Nomor polisi kendaraan wajib diisi' });
+    }
+
+    const vehicle = await prisma.vehicle.findUnique({ where: { noPolisi } });
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    // Ambil riwayat handover terakhir
+    const lastHandover = await prisma.handover.findFirst({
+      where: { noPolisi },
+      orderBy: { timestamp: 'desc' },
+      include: { issue: true }
+    });
+
+    if (!lastHandover) {
+      return res.status(400).json({ error: 'Tidak ada riwayat serah terima untuk kendaraan ini' });
+    }
+
+    const releaseReason = reason || 'Shift gantung ditutup paksa agar mobil siap beroperasi kembali';
+
+    // Buat handover penutupan resmi (FORCE_RELEASED)
+    const forceClose = await prisma.handover.create({
+      data: {
+        userId: req.user ? req.user.id : lastHandover.userId,
+        noPolisi: noPolisi,
+        shift: lastHandover.shift || '1',
+        type: 'akhiri',
+        status: 'FORCE_RELEASED',
+        amt1: lastHandover.amt1 || 'Sistem',
+        amt2: lastHandover.amt2 || null,
+        items: {
+          create: [{
+            category: 'SYSTEM',
+            name: `Force Release: ${releaseReason}`,
+            isGood: true
+          }]
+        }
+      }
+    });
+
+    // Update status kendaraan menjadi READY_TO_START
+    await prisma.vehicle.update({
+      where: { noPolisi },
+      data: { status: 'READY_TO_START' }
+    });
+
+    // Catat ke Audit Log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user ? req.user.id : 'SYSTEM',
+          action: 'FORCE_RELEASE_SHIFT',
+          noPolisi: noPolisi,
+          details: `Shift gantung kendaraan ${noPolisi} ditutup paksa oleh ${req.user ? req.user.name : 'Pengawas'}. Alasan: ${releaseReason}`
+        }
+      });
+    } catch (auditErr) {
+      console.error('AuditLog error:', auditErr.message);
+    }
+
+    // Invalidate cache handovers
+    await CacheService.delPattern('handovers:page:*');
+
+    res.json({
+      success: true,
+      message: `Shift gantung untuk kendaraan ${noPolisi} berhasil ditutup. Kendaraan kini siap untuk Mulai Pekerjaan baru.`,
+      handover: forceClose
+    });
+  } catch (error) {
+    console.error('Force release error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1187,17 +1278,8 @@ app.post('/api/issues/:id/evaluate-repair', async (req, res) => {
         data: { status: 'READY_TO_START' }
       });
 
-      // 4. Buat/siapkan sesi pekerjaan baru dengan status NOT_STARTED
-      // Kita buat type = 'akhiri' agar scan selanjutnya diwajibkan 'mulai'
-      await prisma.handover.create({
-        data: {
-          userId: issue.handover.userId,
-          noPolisi: issue.handover.noPolisi,
-          shift: issue.handover.shift,
-          type: 'akhiri', 
-          status: 'NOT_STARTED',
-        }
-      });
+      // Catatan: Tidak membuat handover dummy 'akhiri'. Status READY_TO_START pada Vehicle
+      // sudah cukup untuk mengizinkan scan 'mulai' berikutnya secara bersih dan otentik.
 
       // Optionally create notification for AMT
       await prisma.notification.create({

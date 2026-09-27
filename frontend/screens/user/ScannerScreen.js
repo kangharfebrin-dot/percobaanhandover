@@ -9,16 +9,60 @@ import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const normalizeName = (name) => {
+  if (!name) return '';
+  return name.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const isNameMatch = (targetName, currentUserName) => {
+  if (!targetName || !currentUserName) return false;
+  const n1 = normalizeName(targetName);
+  const n2 = normalizeName(currentUserName);
+  if (n1 === n2) return true;
+  const parts1 = n1.split(' ').filter(p => p.length > 2);
+  const parts2 = n2.split(' ').filter(p => p.length > 2);
+  return parts1.some(p => parts2.includes(p));
+};
+
 export default function ScannerScreen({ route, navigation }) {
   const { type } = route?.params || { type: 'mulai' };
   const [permission, requestPermission] = useCameraPermissions();
   const [scanResult, setScanResult] = useState(null); // 'recap' | 'success' | 'error' | null
+  const [errorTitle, setErrorTitle] = useState('Scan Gagal');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastHandover, setLastHandover] = useState(null);
   const [scannedNoPolisi, setScannedNoPolisi] = useState('');
   const [nextScanResult, setNextScanResult] = useState(null);
+  const [hangingElapsedHours, setHangingElapsedHours] = useState(0);
   const isFocused = useIsFocused();
+
+  const handleForceReleaseAndStart = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('token');
+      await axios.post(
+        `${API_URL}/api/handovers/force-release`,
+        {
+          noPolisi: scannedNoPolisi,
+          reason: `Takeover shift gantung setelah ${Math.floor(hangingElapsedHours)} jam`
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setScanResult(null);
+      navigation.navigate('HandoverForm', {
+        noPolisi: scannedNoPolisi,
+        type: 'mulai'
+      });
+    } catch (e) {
+      console.warn('Force release error:', e.message);
+      Alert.alert('Gagal', e?.response?.data?.error || 'Gagal menutup shift gantung. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!permission) return <View />;
 
@@ -74,11 +118,11 @@ export default function ScannerScreen({ route, navigation }) {
       const hasUnrepairedMajor = activeIssue?.handover?.items?.some(item => item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
       const hasUnrepairedMinor = activeIssue?.handover?.items?.some(item => !item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
 
-      // Cek apakah user ini berhak melakukan verifikasi perbaikan
+      // Cek apakah user ini berhak melakukan verifikasi perbaikan (fuzzy match toleran typo/spasi & pengawas/admin)
       const isReporter = String(activeIssue?.handover?.userId) === String(userId);
-      const isAmt1 = activeIssue?.handover?.amt1 && user?.name && activeIssue.handover.amt1.trim().toLowerCase() === user.name.trim().toLowerCase();
-      const isAmt2 = activeIssue?.handover?.amt2 && user?.name && activeIssue.handover.amt2.trim().toLowerCase() === user.name.trim().toLowerCase();
-      const canRepair = isUnderRepair ? (isAmt1 || isAmt2 || (isReporter && !isAdminOrPengawas) || userRole === 'SUPER_ADMIN') : false;
+      const isAmt1 = isNameMatch(activeIssue?.handover?.amt1, user?.name);
+      const isAmt2 = isNameMatch(activeIssue?.handover?.amt2, user?.name);
+      const canRepair = isUnderRepair ? (isAmt1 || isAmt2 || isReporter || isAdminOrPengawas || userRole === 'SUPER_ADMIN') : false;
 
       // === STEP 1.5: Handle kendaraan yang sedang menunggu respon/persetujuan dari Admin ===
       if (isUnderRepair && isPendingApproval) {
@@ -125,23 +169,37 @@ export default function ScannerScreen({ route, navigation }) {
         }
       }
 
-      // === STEP 6: Validasi urutan Mulai → Akhiri ===
+      // === STEP 6: Validasi urutan Mulai → Akhiri & Penanganan Shift Gantung ===
       let finalResult = 'success';
 
       if (res.data.lastHandover) {
         const lastType = res.data.lastHandover.type;
         const lastHasIssue = !!res.data.lastHandover.issue;
+        const isIssueResolved = res.data.lastHandover.issue?.status === 'RESOLVED';
+        const isVehicleReady = res.data.vehicle?.status === 'READY_TO_START';
+
+        // Deteksi shift gantung (> 12 jam sejak mulai tanpa diakhiri)
+        const lastTimestamp = new Date(res.data.lastHandover.timestamp || res.data.lastHandover.createdAt).getTime();
+        const elapsedHours = (Date.now() - lastTimestamp) / (1000 * 60 * 60);
+        const shiftGantungDetected = res.data.isHangingShift || (lastType === 'mulai' && !lastHasIssue && elapsedHours > 12);
 
         if (!isAdminOrPengawas) {
           if (type === 'mulai' && lastType === 'mulai') {
-            // Boleh mulai lagi jika handover terakhir punya issue (mobil rusak, sudah diverifikasi/resolved)
-            if (!lastHasIssue) {
+            // Boleh mulai lagi jika kendaraan READY_TO_START atau issue sebelumnya sudah RESOLVED
+            if (!lastHasIssue && !isVehicleReady && !isIssueResolved) {
+              if (shiftGantungDetected) {
+                setHangingElapsedHours(elapsedHours);
+                setLastHandover(res.data.lastHandover);
+                setScanResult('shift_gantung');
+                setLoading(false);
+                return;
+              }
               setErrorMessage('Kendaraan ini belum menyelesaikan pekerjaannya (Belum Akhiri Pekerjaan).');
               setLoading(false);
               setScanResult('error');
               return;
             }
-          } else if (type === 'akhiri' && lastType !== 'mulai') {
+          } else if (type === 'akhiri' && lastType !== 'mulai' && !isVehicleReady) {
             setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
             setLoading(false);
             setScanResult('error');
@@ -178,10 +236,24 @@ export default function ScannerScreen({ route, navigation }) {
       setLoading(false);
 
     } catch (error) {
-      console.error(error);
-      setErrorMessage("Kendaraan tidak terdaftar di database atau masalah jaringan.");
       setLoading(false);
-      setScanResult('error');
+      if (error.response?.status === 404) {
+        setErrorTitle("Barcode Tidak Ditemukan");
+        setErrorMessage(
+          error.response?.data?.error ||
+          `Barcode "${scannedText}" belum terdaftar di database. Silakan periksa kembali barcode kendaraan atau hubungi Admin.`
+        );
+        setScanResult('error');
+      } else if (error.message === 'Network Timeout' || error.code === 'ECONNABORTED' || !error.response) {
+        setErrorTitle("Gangguan Jaringan");
+        setErrorMessage("Gagal terhubung ke server. Periksa koneksi internet Anda dan coba lagi.");
+        setScanResult('error');
+      } else {
+        console.warn('Scan error:', error.message);
+        setErrorTitle("Scan Gagal");
+        setErrorMessage(error.response?.data?.error || "Terjadi kesalahan saat memproses scan barcode.");
+        setScanResult('error');
+      }
     }
   };
 
@@ -457,10 +529,9 @@ export default function ScannerScreen({ route, navigation }) {
         </View>
       )}
 
-      {scanResult === 'error' && (
+      {scanResult === 'shift_gantung' && (
         <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl relative`}>
-            {/* Tombol Silang (X) */}
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-7 items-center shadow-2xl border-4 border-amber-300 relative`}>
             <TouchableOpacity 
               style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
               onPress={() => setScanResult(null)}
@@ -468,16 +539,92 @@ export default function ScannerScreen({ route, navigation }) {
               <Ionicons name="close" size={24} color="#4B5563" />
             </TouchableOpacity>
 
-            <View style={tw`w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-6`}>
-              <Ionicons name="close-circle" size={48} color="#ED1C24" />
+            <View style={tw`w-20 h-20 bg-amber-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-amber-200 border-2 border-amber-200`}>
+              <Ionicons name="time" size={44} color="#D97706" />
             </View>
-            <Text style={tw`text-2xl font-extrabold text-gray-800 mb-2`}>Scan Gagal</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-medium`}>{errorMessage || 'Kode QR tidak valid atau jaringan bermasalah.'}</Text>
+
+            <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-2`}>
+              <Text style={tw`text-amber-800 font-bold text-[10px] uppercase tracking-wider`}>SHIFT GANTUNG TERDETEKSI</Text>
+            </View>
+
+            <Text style={tw`text-xl font-black text-gray-800 mb-2 text-center`}>Shift Belum Diakhiri</Text>
+            
+            <Text style={tw`text-gray-500 text-center mb-4 font-medium text-xs leading-5`}>
+              Sesi pekerjaan sebelumnya dimulai lebih dari {Math.floor(hangingElapsedHours)} jam yang lalu dan belum diakhiri oleh supir sebelumnya.
+            </Text>
+
+            <View style={tw`w-full bg-amber-50 rounded-2xl p-3 border border-amber-200/80 mb-5`}>
+              <View style={tw`flex-row justify-between items-center mb-1.5`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
+                <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+              </View>
+              <View style={tw`flex-row justify-between items-center mb-1.5`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>AMT Terakhir:</Text>
+                <Text style={tw`text-xs text-amber-900 font-bold`}>{lastHandover?.amt1 || '-'}</Text>
+              </View>
+              <View style={tw`flex-row justify-between items-center`}>
+                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Durasi Gantung:</Text>
+                <Text style={tw`text-xs text-red-600 font-bold`}>± {Math.floor(hangingElapsedHours)} Jam Lalu</Text>
+              </View>
+            </View>
+
             <TouchableOpacity
-              style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
+              style={tw`w-full bg-[#00A651] p-4 rounded-2xl items-center shadow-lg shadow-green-500/30 mb-3`}
+              onPress={handleForceReleaseAndStart}
+            >
+              <Text style={tw`text-white font-extrabold text-[14px]`}>Tutup Shift Paksa & Mulai Baru</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200`}
+              onPress={() => { setScanResult(null); navigation.goBack(); }}
+            >
+              <Text style={tw`text-gray-600 font-bold text-[14px]`}>Batal / Kembali ke Beranda</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {scanResult === 'error' && (
+        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[32px] p-8 items-center shadow-2xl relative overflow-hidden border border-red-100`}>
+            {/* Background Decorative Accents */}
+            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
+            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+
+            {/* Tombol Silang (X) */}
+            <TouchableOpacity 
+              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
               onPress={() => setScanResult(null)}
             >
-              <Text style={tw`text-[#ED1C24] font-bold text-lg`}>Coba Lagi</Text>
+              <Ionicons name="close" size={22} color="#4B5563" />
+            </TouchableOpacity>
+
+            <View style={tw`w-20 h-20 bg-red-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-red-200 border-2 border-red-100 z-10`}>
+              <Ionicons name="alert-circle" size={44} color="#ED1C24" />
+            </View>
+
+            <View style={tw`bg-red-100 px-3.5 py-1 rounded-full mb-2.5 z-10`}>
+              <Text style={tw`text-red-800 font-black text-[10px] uppercase tracking-wider`}>PERINGATAN SISTEM</Text>
+            </View>
+
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center z-10`}>{errorTitle || 'Scan Gagal'}</Text>
+            <Text style={tw`text-gray-500 text-center mb-6 font-medium text-xs leading-5 z-10 px-2`}>
+              {errorMessage || 'Kode Barcode tidak valid atau data kendaraan tidak ditemukan.'}
+            </Text>
+
+            <TouchableOpacity
+              style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/30 z-10 mb-2.5`}
+              onPress={() => setScanResult(null)}
+            >
+              <Text style={tw`text-white font-bold text-base`}>Scan Ulang Barcode</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200 z-10`}
+              onPress={() => { setScanResult(null); navigation.goBack(); }}
+            >
+              <Text style={tw`text-gray-600 font-bold text-sm`}>Kembali ke Beranda</Text>
             </TouchableOpacity>
           </View>
         </View>
