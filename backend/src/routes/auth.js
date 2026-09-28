@@ -49,9 +49,9 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
     const payload = { id: user.id, username: user.username, role: user.role };
     
-    // Access token berdurasi 7 hari (7d) agar pekerja AMT tidak terputus saat shift operasional lapangan
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-    const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '30d' });
+    // Access token berdurasi 1 hari (1d / 24 jam)
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+    const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
 
     await prisma.user.update({
       where: { id: user.id },
@@ -92,7 +92,7 @@ router.post('/refresh', async (req, res, next) => {
       }
 
       const newPayload = { id: user.id, username: user.username, role: user.role };
-      const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '7d' });
+      const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '1d' });
 
       res.json({ token: newToken });
     });
