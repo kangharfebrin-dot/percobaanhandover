@@ -1,6 +1,6 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, ActivityIndicator, Image, Modal, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, ActivityIndicator, Image, Modal, Platform, Dimensions } from 'react-native';
 import { API_URL } from '../../config';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WebSidebar from '../../components/WebSidebar';
 
 export default function FixVerificationScreen({ route, navigation }) {
   const { noPolisi, issueId, handoverId } = route.params || {};
@@ -18,6 +19,27 @@ export default function FixVerificationScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isLargeScreen = screenWidth >= 768;
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const s = Dimensions.addEventListener('change', onChange);
+    return () => s?.remove();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem('user').then(str => {
+      if (str) setUser(JSON.parse(str));
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['user', 'token']);
+    navigation.replace('Login');
+  };
 
   // Camera & Location State
   const [permission, requestPermission] = useCameraPermissions();
@@ -252,27 +274,46 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
-        <ActivityIndicator size="large" color="#0055A5" />
-        <Text style={tw`mt-4 text-gray-500 font-medium`}>Memuat Data...</Text>
-      </View>
+      <SafeAreaView style={tw`flex-1 bg-gray-50 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && user && (
+          <WebSidebar
+            user={user}
+            activeMenu={'Home'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+        <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
+          <ActivityIndicator size="large" color="#0055A5" />
+          <Text style={tw`mt-4 text-gray-500 font-medium`}>Memuat Data...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-gray-50`}>
-      <LinearGradient colors={['#0055A5', '#003366']} style={tw`px-6 py-4 rounded-b-3xl shadow-lg z-10`}>
-        <View style={tw`flex-row items-center justify-between mt-2`}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={tw`bg-white/20 p-2 rounded-full`}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={tw`text-white text-xl font-bold`}>Verifikasi Perbaikan</Text>
-          <View style={tw`w-10`} />
-        </View>
-        <Text style={tw`text-white/80 text-center mt-2 font-medium`}>Truk: {issue?.handover?.noPolisi || noPolisi}</Text>
-      </LinearGradient>
+    <SafeAreaView style={tw`flex-1 bg-gray-50 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+      {isLargeScreen && user && (
+        <WebSidebar
+          user={user}
+          activeMenu={'Home'}
+          navigation={navigation}
+          handleLogout={handleLogout}
+        />
+      )}
+      <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+        <LinearGradient colors={['#0055A5', '#003366']} style={tw`px-6 py-4 rounded-b-3xl shadow-lg z-10`}>
+          <View style={tw`flex-row items-center justify-between mt-2`}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`bg-white/20 p-2 rounded-full`}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={tw`text-white text-xl font-bold`}>Verifikasi Perbaikan</Text>
+            <View style={tw`w-10`} />
+          </View>
+          <Text style={tw`text-white/80 text-center mt-2 font-medium`}>Truk: {issue?.handover?.noPolisi || noPolisi}</Text>
+        </LinearGradient>
 
-      <ScrollView style={tw`flex-1 px-4 py-6`} showsVerticalScrollIndicator={false}>
+        <ScrollView style={tw`flex-1 px-4 py-6 max-w-4xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
         {brokenItems.length === 0 ? (
           <View style={tw`items-center mt-20`}>
             <View style={tw`w-24 h-24 bg-blue-50 rounded-full items-center justify-center mb-4`}>
@@ -451,6 +492,7 @@ export default function FixVerificationScreen({ route, navigation }) {
           </TouchableOpacity>
         )}
       </ScrollView>
+      </View>
 
       {/* CAMERA MODAL */}
       <Modal 

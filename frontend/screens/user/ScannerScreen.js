@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import WebSidebar from '../../components/WebSidebar';
 
 const normalizeName = (name) => {
   if (!name) return '';
@@ -36,6 +38,27 @@ export default function ScannerScreen({ route, navigation }) {
   const [nextScanResult, setNextScanResult] = useState(null);
   const [hangingElapsedHours, setHangingElapsedHours] = useState(0);
   const isFocused = useIsFocused();
+
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isLargeScreen = screenWidth >= 768;
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const s = Dimensions.addEventListener('change', onChange);
+    return () => s?.remove();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem('user').then(str => {
+      if (str) setUser(JSON.parse(str));
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['user', 'token']);
+    navigation.replace('Login');
+  };
 
   const handleForceReleaseAndStart = async () => {
     try {
@@ -351,8 +374,17 @@ export default function ScannerScreen({ route, navigation }) {
   );
 
   return (
-    <View style={tw`flex-1 bg-black`}>
-      {isFocused && !scanResult && (
+    <SafeAreaView style={tw`flex-1 bg-black ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+      {isLargeScreen && user && (
+        <WebSidebar
+          user={user}
+          activeMenu={'Home'}
+          navigation={navigation}
+          handleLogout={handleLogout}
+        />
+      )}
+      <View style={[tw`flex-1 bg-black relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+        {isFocused && !scanResult && (
         <CameraView
           style={tw`absolute inset-0`}
           facing="back"
@@ -629,6 +661,7 @@ export default function ScannerScreen({ route, navigation }) {
           </View>
         </View>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }

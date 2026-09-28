@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import tw from 'twrnc';
 import TextLogo from '../../components/TextLogo';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WebSidebar from '../../components/WebSidebar';
 
 
 const DEFAULT_ITEMS = [
@@ -47,6 +48,28 @@ const PERTAMINA_GREEN = ['#2ECC71', '#00A651'];
 export default function HandoverFormScreen({ route, navigation }) {
   const { noPolisi: initialNoPolisi, type, lastHandover } = route?.params || {};
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
+
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isLargeScreen = screenWidth >= 768;
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const s = Dimensions.addEventListener('change', onChange);
+    return () => s?.remove();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem('user').then(str => {
+      if (str) setUser(JSON.parse(str));
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['user', 'token']);
+    navigation.replace('Login');
+  };
+
   const now = new Date();
   const currentHour = String(now.getHours()).padStart(2, '0');
   const currentMinute = String(now.getMinutes()).padStart(2, '0');
@@ -630,8 +653,18 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-slate-50`}>
-      <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
+    <SafeAreaView style={tw`flex-1 bg-slate-50 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+      {isLargeScreen && user && (
+        <WebSidebar
+          user={user}
+          activeMenu={'Home'}
+          navigation={navigation}
+          handleLogout={handleLogout}
+        />
+      )}
+
+      <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+        <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
         <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
           <View style={tw`w-full flex-row items-center justify-between`}>
             <View style={tw`flex-row items-center`}>
@@ -824,6 +857,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+      </View>
       </View>
 
       {/* MODAL LOADING */}

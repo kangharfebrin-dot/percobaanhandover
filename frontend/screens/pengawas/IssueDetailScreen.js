@@ -9,13 +9,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config';
-
-const { width } = Dimensions.get('window');
-const isLargeScreen = width >= 768;
+import WebSidebar from '../../components/WebSidebar';
 
 export default function IssueDetailScreen({ route, navigation }) {
   const targetId = route.params?.issueId || route.params?.handoverId || route.params?.actionId || route.params?.id;
   const targetNopol = route.params?.noPolisi;
+
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isLargeScreen = screenWidth >= 768;
+
+  useEffect(() => {
+    const onChange = ({ window }) => setScreenWidth(window.width);
+    const subscription = Dimensions.addEventListener('change', onChange);
+    return () => subscription?.remove();
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['user', 'token']);
+    navigation.replace('Login');
+  };
 
   const [issue, setIssue] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -238,48 +250,68 @@ export default function IssueDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={tw`flex-1 bg-[#F4F7FA] items-center justify-center`}>
-        <ActivityIndicator size="large" color="#ED1C24" />
-        <Text style={tw`text-gray-500 font-bold mt-4 text-sm`}>Memuat data isu kendaraan...</Text>
+      <SafeAreaView style={tw`flex-1 bg-[#F4F7FA] ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && currentUser && (
+          <WebSidebar
+            user={currentUser}
+            activeMenu={'IssueList'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+        <View style={tw`flex-1 items-center justify-center`}>
+          <ActivityIndicator size="large" color="#ED1C24" />
+          <Text style={tw`text-gray-500 font-bold mt-4 text-sm`}>Memuat data isu kendaraan...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   if (!issue) {
     return (
-      <SafeAreaView style={tw`flex-1 bg-[#F4F7FA]`}>
-        {/* Header */}
-        <View style={tw`flex-row items-center px-5 py-4 bg-white shadow-sm border-b border-gray-100`}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
-            <Ionicons name="arrow-back" size={24} color="#ED1C24" />
-          </TouchableOpacity>
-          <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
-        </View>
-
-        {/* Empty State Card */}
-        <View style={tw`flex-1 items-center justify-center p-6`}>
-          <View style={tw`w-24 h-24 bg-red-100 rounded-full items-center justify-center mb-5`}>
-            <Ionicons name="alert-circle-outline" size={54} color="#ED1C24" />
+      <SafeAreaView style={tw`flex-1 bg-[#F4F7FA] ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && currentUser && (
+          <WebSidebar
+            user={currentUser}
+            activeMenu={'IssueList'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+          {/* Header */}
+          <View style={tw`flex-row items-center px-5 py-4 bg-white shadow-sm border-b border-gray-100`}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
+              <Ionicons name="arrow-back" size={24} color="#ED1C24" />
+            </TouchableOpacity>
+            <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
           </View>
-          <Text style={tw`text-xl font-black text-gray-800 text-center mb-2`}>Isu Tidak Ditemukan</Text>
-          <Text style={tw`text-sm text-gray-500 text-center leading-relaxed mb-6 max-w-xs`}>
-            Isu untuk kendaraan ini mungkin telah diselesaikan, atau riwayat data telah diperbarui.
-          </Text>
-          <View style={tw`flex-row gap-3`}>
-            <TouchableOpacity 
-              style={tw`bg-[#0055A5] px-6 py-3.5 rounded-2xl flex-row items-center shadow-md`}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={18} color="white" style={tw`mr-2`} />
-              <Text style={tw`text-white font-bold text-sm`}>Kembali</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={tw`bg-gray-100 px-6 py-3.5 rounded-2xl flex-row items-center`}
-              onPress={fetchIssueDetail}
-            >
-              <Ionicons name="refresh" size={18} color="#4B5563" style={tw`mr-2`} />
-              <Text style={tw`text-gray-700 font-bold text-sm`}>Coba Lagi</Text>
-            </TouchableOpacity>
+
+          {/* Empty State Card */}
+          <View style={tw`flex-1 items-center justify-center p-6`}>
+            <View style={tw`w-24 h-24 bg-red-100 rounded-full items-center justify-center mb-5`}>
+              <Ionicons name="alert-circle-outline" size={54} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-xl font-black text-gray-800 text-center mb-2`}>Isu Tidak Ditemukan</Text>
+            <Text style={tw`text-sm text-gray-500 text-center leading-relaxed mb-6 max-w-xs`}>
+              Isu untuk kendaraan ini mungkin telah diselesaikan, atau riwayat data telah diperbarui.
+            </Text>
+            <View style={tw`flex-row gap-3`}>
+              <TouchableOpacity 
+                style={tw`bg-[#0055A5] px-6 py-3.5 rounded-2xl flex-row items-center shadow-md`}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="arrow-back" size={18} color="white" style={tw`mr-2`} />
+                <Text style={tw`text-white font-bold text-sm`}>Kembali</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={tw`bg-gray-100 px-6 py-3.5 rounded-2xl flex-row items-center`}
+                onPress={fetchIssueDetail}
+              >
+                <Ionicons name="refresh" size={18} color="#4B5563" style={tw`mr-2`} />
+                <Text style={tw`text-gray-700 font-bold text-sm`}>Coba Lagi</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -291,36 +323,46 @@ export default function IssueDetailScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView style={tw`flex-1 bg-[#F4F7FA]`} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={tw`flex-1`}>
-        {/* Header */}
-        <View style={tw`flex-row items-center justify-between px-5 py-4 bg-white shadow-sm z-20 border-b border-gray-100`}>
-          <View style={tw`flex-row items-center flex-1`}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
-              <Ionicons name="arrow-back" size={24} color="#ED1C24" />
-            </TouchableOpacity>
-            <View style={tw`flex-1`}>
-              <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
-              <Text style={tw`text-sm font-bold text-gray-500`}>{issue.handover?.noPolisi || 'Kendaraan'}</Text>
+      <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && currentUser && (
+          <WebSidebar
+            user={currentUser}
+            activeMenu={'IssueList'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+          {/* Header */}
+          <View style={tw`flex-row items-center justify-between px-5 py-4 bg-white shadow-sm z-20 border-b border-gray-100`}>
+            <View style={tw`flex-row items-center flex-1`}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
+                <Ionicons name="arrow-back" size={24} color="#ED1C24" />
+              </TouchableOpacity>
+              <View style={tw`flex-1`}>
+                <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
+                <Text style={tw`text-sm font-bold text-gray-500`}>{issue.handover?.noPolisi || 'Kendaraan'}</Text>
+              </View>
             </View>
+
+            {/* Quick link ke Handover Detail */}
+            {issue.handoverId && (
+              <TouchableOpacity 
+                style={tw`flex-row items-center bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100`}
+                onPress={() => navigation.navigate('HandoverDetail', { 
+                  handoverId: issue.handoverId, 
+                  handover: issue.handover,
+                  noPolisi: issue.handover?.noPolisi 
+                })}
+              >
+                <Feather name="file-text" size={14} color="#0055A5" />
+                <Text style={tw`text-xs font-bold text-[#0055A5] ml-1.5`}>Lihat Handover</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Quick link ke Handover Detail */}
-          {issue.handoverId && (
-            <TouchableOpacity 
-              style={tw`flex-row items-center bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100`}
-              onPress={() => navigation.navigate('HandoverDetail', { 
-                handoverId: issue.handoverId, 
-                handover: issue.handover,
-                noPolisi: issue.handover?.noPolisi 
-              })}
-            >
-              <Feather name="file-text" size={14} color="#0055A5" />
-              <Text style={tw`text-xs font-bold text-[#0055A5] ml-1.5`}>Lihat Handover</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <ScrollView contentContainerStyle={tw`p-5 pb-36`} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={tw`p-5 pb-36 max-w-5xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
           {/* Status Banner */}
           <View style={tw`mb-5`}>
             {issue.status === 'ONGOING' && (
@@ -631,6 +673,7 @@ export default function IssueDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         )}
+        </View>
 
         {/* Confirm Modal Evaluasi */}
         <ConfirmModal

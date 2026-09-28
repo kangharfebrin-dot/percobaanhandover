@@ -24,6 +24,8 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const floatAnim3 = React.useRef(new Animated.Value(0)).current;
 
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isLargeScreen = screenWidth > 768;
+  const [user, setUser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [photoRotation, setPhotoRotation] = useState(0);
 
@@ -32,6 +34,17 @@ export default function HandoverDetailScreen({ route, navigation }) {
     const subscription = Dimensions.addEventListener('change', onChange);
     return () => subscription?.remove();
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem('user').then(str => {
+      if (str) setUser(JSON.parse(str));
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['user', 'token']);
+    navigation.replace('Login');
+  };
 
   const fetchHandoverDetail = async () => {
     if (!handoverId) {
@@ -96,16 +109,26 @@ export default function HandoverDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={tw`flex-1 bg-[#F4F7FA]`}>
-        <SafeAreaView style={tw`flex-1 relative`}>
-          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-              <Ionicons name="arrow-back" size={24} color="#0055A5" />
-            </TouchableOpacity>
-            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
-          </View>
-          <View style={tw`flex-1 items-center justify-center p-6`}>
-            <ActivityIndicator size="large" color="#0055A5" />
-            <Text style={tw`mt-4 text-base font-bold text-gray-600`}>Memuat riwayat handover...</Text>
+        <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+          {isLargeScreen && user && (
+            <WebSidebar
+              user={user}
+              activeMenu={'History'}
+              navigation={navigation}
+              handleLogout={handleLogout}
+            />
+          )}
+          <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+            <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+              </TouchableOpacity>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
+            </View>
+            <View style={tw`flex-1 items-center justify-center p-6`}>
+              <ActivityIndicator size="large" color="#0055A5" />
+              <Text style={tw`mt-4 text-base font-bold text-gray-600`}>Memuat riwayat handover...</Text>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -115,33 +138,43 @@ export default function HandoverDetailScreen({ route, navigation }) {
   if (fetchError || !handover) {
     return (
       <View style={tw`flex-1 bg-[#F4F7FA]`}>
-        <SafeAreaView style={tw`flex-1 relative`}>
-          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-              <Ionicons name="arrow-back" size={24} color="#0055A5" />
-            </TouchableOpacity>
-            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
-          </View>
-          <View style={tw`flex-1 items-center justify-center p-6`}>
-            <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
-              <Ionicons name="alert-circle" size={36} color="#ED1C24" />
+        <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+          {isLargeScreen && user && (
+            <WebSidebar
+              user={user}
+              activeMenu={'History'}
+              navigation={navigation}
+              handleLogout={handleLogout}
+            />
+          )}
+          <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+            <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+              </TouchableOpacity>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
             </View>
-            <Text style={tw`text-lg font-bold text-gray-800 text-center mb-2`}>{fetchError || 'Data riwayat tidak ditemukan'}</Text>
-            {handoverId ? (
-              <TouchableOpacity
-                onPress={() => fetchHandoverDetail()}
-                style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
-              >
-                <Text style={tw`text-white font-bold`}>Coba Lagi</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('History')}
-                style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
-              >
-                <Text style={tw`text-white font-bold`}>Buka Semua Riwayat</Text>
-              </TouchableOpacity>
-            )}
+            <View style={tw`flex-1 items-center justify-center p-6`}>
+              <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
+                <Ionicons name="alert-circle" size={36} color="#ED1C24" />
+              </View>
+              <Text style={tw`text-lg font-bold text-gray-800 text-center mb-2`}>{fetchError || 'Data riwayat tidak ditemukan'}</Text>
+              {handoverId ? (
+                <TouchableOpacity
+                  onPress={() => fetchHandoverDetail()}
+                  style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
+                >
+                  <Text style={tw`text-white font-bold`}>Coba Lagi</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('History')}
+                  style={tw`mt-4 px-6 py-3 bg-[#0055A5] rounded-xl shadow-md`}
+                >
+                  <Text style={tw`text-white font-bold`}>Buka Semua Riwayat</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -295,9 +328,19 @@ export default function HandoverDetailScreen({ route, navigation }) {
         <LinearGradient colors={['#ED1C24', '#B30000']} style={tw`flex-1 rounded-full`} />
       </Animated.View>
 
-      <SafeAreaView style={tw`flex-1 relative`}>
-        {/* Navbar */}
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+      <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
+        {isLargeScreen && user && (
+          <WebSidebar
+            user={user}
+            activeMenu={'History'}
+            navigation={navigation}
+            handleLogout={handleLogout}
+          />
+        )}
+
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+          {/* Navbar */}
+          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
             <Ionicons name="arrow-back" size={24} color="#0055A5" />
           </TouchableOpacity>
@@ -542,6 +585,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
           )}
 
         </ScrollView>
+        </View>
       </SafeAreaView>
 
       {/* Modal Full Screen Image Viewer (Premium Theme) */}
