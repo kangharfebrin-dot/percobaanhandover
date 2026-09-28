@@ -1,0 +1,191 @@
+const express = require('express');
+const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const QRCode = require('qrcode');
+const prisma = require('../config/prisma');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
+const { vehicleSchema } = require('../validators/schemas');
+
+const barcodesDir = path.join(__dirname, '../../barcodes');
+if (!fs.existsSync(barcodesDir)) {
+  fs.mkdirSync(barcodesDir, { recursive: true });
+}
+
+// 0. API Scan Barcode Kendaraan (A5: Terproteksi otentikasi)
+router.get('/scan/:barcode', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.userId;
+    const vehicle = await prisma.vehicle.findUnique({ where: { barcode: req.params.barcode } });
+    if (!vehicle) return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+
+    // Cari riwayat terakhir kendaraan
+    const lastHandover = await prisma.handover.findFirst({
+      where: { noPolisi: vehicle.noPolisi },
+      orderBy: { timestamp: 'desc' },
+      include: {
+        items: true,
+        issue: true
+      }
+    });
+
+    // Cek apakah user sedang memiliki pekerjaan "mulai" yang belum diakhiri dan tidak ada isu/kerusakan
+    let activeUserHandover = null;
+    if (userId) {
+      const userLastHandover = await prisma.handover.findFirst({
+        where: { userId: userId },
+        orderBy: { timestamp: 'desc' },
+        include: { issue: true, items: true }
+      });
+
+      if (userLastHandover && userLastHandover.type === 'mulai' && !userLastHandover.issue) {
+        // Cek kerusakan Major
+        const hasMajorBlock = userLastHandover.items?.some(item => !item.isGood && item.name.includes('[MAJOR]'));
+        if (!hasMajorBlock) {
+          activeUserHandover = userLastHandover;
+        }
+      }
+    }
+
+    // Deteksi shift gantung (> 12 jam sejak mulai tanpa diakhiri)
+    let isHangingShift = false;
+    let elapsedHours = 0;
+    if (lastHandover && lastHandover.type === 'mulai' && !lastHandover.issue) {
+      const lastTime = new Date(lastHandover.timestamp || lastHandover.createdAt).getTime();
+      elapsedHours = Math.round(((Date.now() - lastTime) / (1000 * 60 * 60)) * 10) / 10;
+      if (elapsedHours > 12) {
+        isHangingShift = true;
+      }
+    }
+
+    res.json({ success: true, vehicle, lastHandover, activeUserHandover, isHangingShift, elapsedHours });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 1. GET All Vehicles (Untuk Pengawas / Admin / Seleksi)
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(vehicles);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. POST Vehicle (Tambah Truk Baru - A4: Khusus Admin)
+router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+  try {
+    const { error, value } = vehicleSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+    const { noPolisi, barcode, jenisKendaraan, brand, status } = value;
+
+    const existingVehicle = await prisma.vehicle.findFirst({
+      where: { OR: [{ noPolisi }, { barcode }] }
+    });
+    if (existingVehicle) {
+      return res.status(400).json({ error: 'Nomor Polisi atau Barcode sudah terdaftar' });
+    }
+
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        noPolisi,
+        barcode,
+        jenisKendaraan,
+        brand,
+        status: status || 'Active'
+      }
+    });
+
+    // Generate QR Code image in HD
+    const qrPath = path.join(barcodesDir, `${barcode}.png`);
+    await QRCode.toFile(qrPath, barcode, {
+      errorCorrectionLevel: 'H',
+      width: 1024,
+      margin: 4,
+      color: { dark: '#000000', light: '#FFFFFF' }
+    });
+
+    res.status(201).json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. PUT Vehicle (Ubah Data Truk - A4: Khusus Admin)
+router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+  try {
+    const { noPolisi, barcode, jenisKendaraan, brand, status } = req.body;
+    const vehicleId = req.params.id;
+
+    const oldVehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!oldVehicle) {
+      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    const vehicle = await prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { noPolisi, barcode, jenisKendaraan, brand, status: status || oldVehicle.status }
+    });
+
+    if (oldVehicle.barcode !== barcode) {
+      const oldQrPath = path.join(barcodesDir, `${oldVehicle.barcode}.png`);
+      if (fs.existsSync(oldQrPath)) fs.unlinkSync(oldQrPath);
+
+      const newQrPath = path.join(barcodesDir, `${barcode}.png`);
+      await QRCode.toFile(newQrPath, barcode, {
+        errorCorrectionLevel: 'H',
+        width: 1024,
+        margin: 4,
+        color: { dark: '#000000', light: '#FFFFFF' }
+      });
+    }
+
+    res.json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. DELETE Vehicle (Hapus Truk - A4: Khusus Admin)
+router.delete('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+  try {
+    const vehicleId = req.params.id;
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    await prisma.vehicle.delete({ where: { id: vehicleId } });
+
+    const qrPath = path.join(barcodesDir, `${vehicle.barcode}.png`);
+    if (fs.existsSync(qrPath)) {
+      fs.unlinkSync(qrPath);
+    }
+
+    res.json({ success: true, message: 'Kendaraan berhasil dihapus' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. PUT Vehicle Status (Ubah ke Maintenance / Active / dll - Admin & Pengawas)
+router.put('/:id/status', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PENGAWAS']), async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ error: 'Status wajib disertakan' });
+
+    const vehicle = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: { status }
+    });
+    res.json({ success: true, vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;

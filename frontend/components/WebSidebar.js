@@ -10,10 +10,13 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
   if (Platform.OS !== 'web' || !user) return null;
 
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
-  const isPengawas = user.role === 'PENGAWAS' || user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN';
+  const isManagement = isSuperAdmin || isAdmin;
+  const isPengawas = user.role === 'PENGAWAS';
 
   const getRoleLabel = () => {
     if (isSuperAdmin) return 'Super Admin';
+    if (isAdmin) return 'Admin';
     if (isPengawas) return 'Pengawas';
     return 'Awak Mobil Tangki';
   };
@@ -108,8 +111,8 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
             <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-700'}`}>Log Riwayat</Text>
           </TouchableOpacity>
 
-          {/* Section: Manajemen (isSuperAdmin) */}
-          {isSuperAdmin && (
+          {/* Section: Manajemen (isManagement) */}
+          {isManagement && (
             <>
               <View style={tw`flex-row items-center mt-3 mb-2.5 px-2`}>
                 <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
@@ -195,6 +198,22 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
               >
                 <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? 'white' : '#4B5563'} />
                 <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'PengawasList' ? 'text-white' : 'text-gray-700'}`}>Daftar Pengawas</Text>
+              </TouchableOpacity>
+
+              {/* 8. Daftar Admin */}
+              <TouchableOpacity
+                style={[
+                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
+                    activeMenu === 'AdminList'
+                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
+                      : 'bg-white/70 border-gray-200/80 shadow-sm'
+                  }`,
+                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                ]}
+                onPress={() => navigation.replace('AdminList')}
+              >
+                <Feather name="user-check" size={20} color={activeMenu === 'AdminList' ? 'white' : '#4B5563'} />
+                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'AdminList' ? 'text-white' : 'text-gray-700'}`}>Daftar Admin</Text>
               </TouchableOpacity>
             </>
           )}

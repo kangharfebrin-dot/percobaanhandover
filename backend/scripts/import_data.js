@@ -121,7 +121,7 @@ async function main() {
             barcode: plate, // Use plate as barcode for now
             jenisKendaraan: capacity || 'MT',
             brand: '',
-            status: 'Active'
+            status: 'Active' 
           }
         });
         vehicleCount++;

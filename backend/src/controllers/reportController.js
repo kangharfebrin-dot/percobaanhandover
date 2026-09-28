@@ -1,7 +1,6 @@
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prisma');
 
 const exportExcel = async (req, res) => {
   try {

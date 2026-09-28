@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
 import WebSidebar from '../../components/WebSidebar';
@@ -242,11 +242,21 @@ export default function HistoryScreen({ route, navigation }) {
       }
     } catch (err) {
       console.log('Gagal export excel:', err);
+      try {
+        if (await Linking.canOpenURL(url)) {
+          await Linking.openURL(url);
+          Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File diunduh melalui browser perangkat Anda.' });
+          return;
+        }
+      } catch (linkErr) {
+        console.log('Fallback linking failed:', linkErr);
+      }
       Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh Excel: ' + err.message });
     }
   };
 
   const handleExportPdf = async () => {
+    let url = '';
     try {
       const token = await AsyncStorage.getItem('token');
       let queryParams = `?token=${token}`;
@@ -255,7 +265,7 @@ export default function HistoryScreen({ route, navigation }) {
       if (startDate && endDate) {
         queryParams += `&startDate=${startDate}&endDate=${endDate}`;
       }
-      const url = `${API_URL}/api/reports/pdf${queryParams}`;
+      url = `${API_URL}/api/reports/pdf${queryParams}`;
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
@@ -282,6 +292,15 @@ export default function HistoryScreen({ route, navigation }) {
       }
     } catch (err) {
       console.log('Gagal export PDF:', err);
+      try {
+        if (url && (await Linking.canOpenURL(url))) {
+          await Linking.openURL(url);
+          Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File PDF dibuka/diunduh melalui browser perangkat Anda.' });
+          return;
+        }
+      } catch (linkErr) {
+        console.log('Fallback linking failed:', linkErr);
+      }
       Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh PDF: ' + err.message });
     }
   };
@@ -874,7 +893,7 @@ export default function HistoryScreen({ route, navigation }) {
                 <Feather name="grid" size={26} color="#9CA3AF" />
               </TouchableOpacity>
 
-              {user.role === 'SUPER_ADMIN' && (
+              {(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && (
                 <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
                   <Feather name="check-square" size={26} color="#9CA3AF" />
                 </TouchableOpacity>

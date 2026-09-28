@@ -223,14 +223,16 @@ export default function AdminDashboardScreen({ navigation }) {
   }
 
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
-  const isPengawas = user.role === 'PENGAWAS' || user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN';
+  const isPengawas = user.role === 'PENGAWAS';
   const isAMT = user.role === 'AMT' || user.role === 'USER';
 
-  const canSeeOverview = isSuperAdmin || isPengawas;
-  const canSeeActions = isSuperAdmin || isAMT;
+  const canSeeOverview = isSuperAdmin || isAdmin || isPengawas;
+  const canSeeActions = isSuperAdmin || isAdmin || isAMT;
 
   const getRoleLabel = () => {
     if (isSuperAdmin) return 'Super Admin';
+    if (isAdmin) return 'Admin';
     if (isPengawas) return 'Pengawas';
     return 'Awak Mobil Tangki';
   };
@@ -457,7 +459,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
             {/* Daftar Pengawas Full Width Card */}
             <TouchableOpacity
-              style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
+              style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
               onPress={() => navigation.navigate('PengawasList')}
             >
               <View style={tw`flex-row items-center flex-1`}>
@@ -473,6 +475,27 @@ export default function AdminDashboardScreen({ navigation }) {
                 <Feather name="chevron-right" size={20} color="#F59E0B" />
               </View>
             </TouchableOpacity>
+
+            {/* Daftar Admin Full Width Card */}
+            {(isSuperAdmin || isAdmin) && (
+              <TouchableOpacity
+                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                onPress={() => navigation.navigate('AdminList')}
+              >
+                <View style={tw`flex-row items-center flex-1`}>
+                  <View style={tw`w-14 h-14 bg-blue-100 rounded-full items-center justify-center mr-4`}>
+                    <Feather name="user-check" size={26} color="#0055A5" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Admin</Text>
+                    <Text style={tw`text-xs text-blue-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akses Sistem</Text>
+                  </View>
+                </View>
+                <View style={tw`w-10 h-10 bg-blue-50 rounded-full items-center justify-center`}>
+                  <Feather name="chevron-right" size={20} color="#0055A5" />
+                </View>
+              </TouchableOpacity>
+            )}
 
 
 

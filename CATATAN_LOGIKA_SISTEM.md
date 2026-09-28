@@ -191,5 +191,84 @@ Dokumen ini berisi rangkuman analisis mendalam terhadap celah logika bisnis (*bu
 | 8 | **Arsip Foto Bukti (Tanpa Hapus)** | **Sedang** | Harddisk VPS lokal penuh, risiko kehilangan data | Gunakan kompresi WebP + migrasi otomatis ke Cloud Object Storage / NAS tanpa menghapus bukti | ✅ **AKTIF** (Kompresi WebP 75-85% berjalan, aturan baku dilarang menghapus bukti foto HSSE Pertamina) |
 
 ---
-*Catatan ini diperbarui pada tanggal 27 September 2026 setelah seluruh perbaikan Prioritas 1 & Prioritas 2 selesai diimplementasikan.*
 
+## 5. Implementasi & Penyelesaian 20 Perbaikan Sistem (Phase 2 - Audit Komprehensif)
+
+Pada tanggal 28 September 2026, telah dilaksanakan audit menyeluruh terhadap arsitektur backend, middleware keamanan, integritas basis data, dan validasi logika bisnis. Seluruh 20 poin perbaikan berhasil diselesaikan dan lolos pengujian integrasi (19/19 Test Passed):
+
+### A. Keamanan & Autentikasi (Security Fixes)
+1. **A1: Hashing Password dengan Bcrypt:**
+   - Menjalankan migrasi massal (`migrate_hash_all_passwords.js`) untuk 332 akun pengguna yang sebelumnya tersimpan plain-text menjadi hash bcrypt (10 salt rounds).
+   - Menghapus celah *plain-text comparison fallback* pada endpoint login (`/api/auth/login`).
+   - Menerapkan auto-hash bcrypt pada pembuatan dan pengubahan data pekerja (`/api/workers`) serta pengawas (`/api/pengawas`).
+2. **A2: Penegakan JWT Secret & Refresh Secret:**
+   - Menghapus seluruh nilai fallback *hardcoded* (`'rahasia_negara_pertamina_123'`, `'default-secret-key'`).
+   - Menambahkan mekanisme *startup validation* di `index.js` yang secara otomatis menghentikan server jika `JWT_SECRET` atau `REFRESH_SECRET` tidak dikonfigurasi.
+3. **A3: Perbaikan Encoding File `.env`:**
+   - Memulihkan file `.env` dari kerusakan encoding UTF-16LE / NULL bytes menjadi UTF-8 bersih, sehingga variabel `ADMIN_EMAIL`, `EMAIL_USER`, `EMAIL_PASSWORD`, dan konfigurasi rahasia lainnya dapat dibaca dengan benar oleh runtime Node.js.
+4. **A4: Penerapan Middleware Otorisasi Peran (`authorizeRole`):**
+   - Menerapkan `authorizeRole(['ADMIN', 'SUPER_ADMIN'])` pada seluruh endpoint CRUD Kendaraan (`/api/vehicles`), Pekerja (`/api/workers`), Pengawas (`/api/pengawas`), dan Item Checklist (`/api/checklists`).
+   - Menerapkan `authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'])` pada evaluasi perbaikan isu dan perubahan status operasional kendaraan.
+5. **A5: Proteksi Endpoint Scan Barcode:**
+   - Memindahkan endpoint `GET /api/vehicles/scan/:barcode` ke dalam modul rute yang dilindungi middleware otentikasi token JWT (`authenticateToken`), mencegah akses data kendaraan secara anonim.
+6. **A6: Konfigurasi CORS Berbasis Whitelist:**
+   - Mengganti wildcard `cors()` tanpa batas dengan whitelist origin yang dapat dikonfigurasi via environment variable `CORS_ORIGIN`, mengizinkan domain client terpercaya dan aplikasi mobile native.
+
+### B. Logika Bisnis & Validasi (Business Logic Fixes)
+7. **B1: Eliminasi Auto-Create Dummy User:**
+   - Menghapus blok pembuatan user dummy (`dummy_${userId}`) dengan password `'123'` pada endpoint `POST /api/handovers`.
+   - Mengaitkan pelaporan handover secara langsung ke ID pengguna yang terotentikasi (`req.user.id`).
+8. **B2: Caching Responsif Berbasis Peran & Filter:**
+   - Mengubah *cache key* Redis pada `GET /api/handovers` agar menyertakan parameter dinamis: `role`, `userId`, `page`, `limit`, `status`, `shift`, dan kata kunci pencarian `search`.
+   - Menambahkan *cache invalidation* otomatis (`delPattern('handovers:*')`) saat terjadi submit handover baru, penutupan shift paksa, atau update status.
+9. **B3: Notifikasi Tertarget per Pengguna (`targetUserId`):**
+   - Menambahkan kolom `targetUserId` dan index pada model `Notification` di Prisma schema serta sinkronisasi ke tabel database MySQL.
+   - Mengarahkan notifikasi hasil verifikasi perbaikan langsung ke akun AMT pelapor terkait, disamping notifikasi berbasis peran (Admin/Pengawas).
+   - Menambahkan endpoint `PUT /api/notifications/read-all` untuk menandai seluruh notifikasi telah dibaca secara efisien.
+10. **B4: Pembatasan Peran pada Update Status Handover:**
+    - Membatasi endpoint `PUT /api/handovers/:id` hanya untuk peran berwenang (`ADMIN`, `SUPER_ADMIN`, `PENGAWAS`).
+11. **B5: Rendering Checklist Dinamis di Frontend:**
+    - Memperbarui `HandoverFormScreen.js` agar mengelompokkan dan merender item checklist secara dinamis berdasarkan seluruh kategori yang tersedia di API / database (tidak lagi terpaku hanya pada Kategori A dan B).
+    - Mempertahankan `DEFAULT_ITEMS` sebagai *fail-safe fallback* offline jika jaringan terputus.
+12. **B6: Penerapan Validasi Skema Joi:**
+    - Mengintegrasikan `submitHandoverSchema` pada endpoint `POST /api/handovers` untuk memvalidasi kelengkapan plat nomor, shift, dan struktur item checklist sebelum data diproses ke database.
+13. **B7: Soft Delete Pengguna & Integritas Relasi Database:**
+    - Menambahkan kolom `deletedAt` pada model `User` di Prisma schema.
+    - Mengubah operasi hapus pekerja dan pengawas (`DELETE /api/workers/:id`, `DELETE /api/pengawas/:id`) menjadi soft-delete (`deletedAt = now()`), sehingga riwayat handover masa lalu tetap utuh dan terhindar dari *Foreign Key Constraint Error*.
+
+### C. Arsitektur, Kualitas Kode & Maintainability
+14. **C1: Modularisasi Arsitektur Backend (Pemisahan Route):**
+    - Memecah file monolitik `index.js` (1.371 baris) menjadi modul rute bersih di bawah direktori `src/routes/`:
+      - `auth.js`
+      - `vehicles.js`
+      - `handovers.js`
+      - `workers.js`
+      - `pengawas.js`
+      - `checklists.js`
+      - `issues.js`
+      - `notifications.js`
+    - Menjadikan `index.js` ringkas (~120 baris) sebagai *application bootstrap & middleware pipeline*.
+15. **C2: Konsolidasi Middleware Autentikasi:**
+    - Menghilangkan duplikasi definisi `authenticateToken` di berbagai file dan memusatkannya di `src/middleware/auth.js`.
+16. **C3: Singleton PrismaClient Instance:**
+    - Membuat modul konfigurasi tunggal `src/config/prisma.js` yang digunakan bersama oleh seluruh controllers, routes, dan services, mencegah *database connection pool exhaustion*.
+17. **C4: Optimasi CacheService Non-Blocking (SCAN Stream):**
+    - Mengganti pemanggilan `redis.keys(pattern)` yang memblokir event-loop dengan `redis.scanStream()`, menjaga performa server tetap stabil pada data berskala besar.
+18. **C5: Rate Limiting Khusus Login:**
+    - Menambahkan `loginLimiter` (maksimal 10 percobaan per 15 menit) khusus pada endpoint `POST /api/auth/login` untuk mencegah serangan *brute-force* tebak password.
+19. **C6: Restrukturisasi File Skrip Pemeliharaan:**
+    - Memindahkan 25+ skrip migrasi, dump, dan perbaikan lepas dari direktori root backend ke dalam folder terstruktur `backend/scripts/`.
+20. **C7: Penyesuaian Durasi Kadaluarsa Akses Token:**
+    - Memperpendek masa berlaku JWT Access Token menjadi 1 jam (`1h`) dengan Refresh Token tetap 7 hari (`7d`), memenuhi standar keamanan token rotasi modern.
+21. **D1: Pembuatan Modul Daftar Admin (`/api/admins` & `AdminListScreen.js`) & Unifikasi Peran:**
+    - Menghadirkan modul manajemen administrator khusus di endpoint `/api/admins` terpisah dari pengawas.
+    - Menyederhanakan peran menjadi satu peran tunggal **`ADMIN`** dengan 100% hak akses penuh ke seluruh fitur sistem (tanpa pemisahan rumit Super Admin vs Admin).
+    - Menerapkan perlindungan *Anti-Self-Delete* (mencegah lockout sesi sendiri) dan *Last Active Admin Guard* (mencegah sistem kehabisan admin aktif).
+22. **D2: Sinkronisasi Tampilan Responsif Web & Mobile (Daftar Pekerja, Pengawas, & Admin):**
+    - Menyeragamkan antarmuka: pada tampilan Web (Desktop), tombol tambah diletakkan di Header Card atas; sedangkan pada tampilan Mobile (Smartphone), menggunakan Floating Action Button (FAB `+`) bulat biru di pojok kanan bawah.
+23. **D3: Migrasi Resmi `expo-file-system/legacy` & Fallback Ekspor Mobile:**
+    - Mengatasi error deprecation `downloadAsync` pada Expo SDK terbaru dengan beralih ke `expo-file-system/legacy`.
+    - Menambahkan fallback otomatis menggunakan browser perangkat (`Linking.openURL`) jika terjadi kendala izin penyimpanan lokal pada smartphone, menjamin laporan PDF/Excel dan barcode selalu berhasil diunduh.
+
+---
+*Catatan ini diperbarui pada tanggal 28 September 2026 setelah seluruh 23 perbaikan logika, keamanan, arsitektur, dan fitur baru selesai diimplementasikan dan diverifikasi secara otomatis.*

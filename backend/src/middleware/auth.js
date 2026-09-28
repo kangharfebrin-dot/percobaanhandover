@@ -1,38 +1,57 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_negara_pertamina_123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not defined in environment variables!');
+}
 
-exports.authMiddleware = (req, res, next) => {
+const authMiddleware = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
 
-  if (token == null) return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
+  if (!token) {
+    return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
+  }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Akses ditolak: Token tidak valid atau kadaluarsa' });
+    if (err) {
+      return res.status(403).json({ error: 'Akses ditolak: Token tidak valid atau kadaluarsa' });
+    }
     req.user = user;
     next();
   });
 };
 
-exports.adminMiddleware = (req, res, next) => {
-  exports.authMiddleware(req, res, () => {
-    if (req.user && req.user.role === 'ADMIN') {
-      next();
-    } else {
-      res.status(403).json({ error: 'Akses ditolak: Hanya admin yang bisa mengakses resource ini' });
+const authorizeRole = (...allowedRoles) => {
+  // Support both authorizeRole(['ADMIN', 'PENGAWAS']) and authorizeRole('ADMIN', 'PENGAWAS')
+  const roles = allowedRoles.flat();
+
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan' });
     }
+
+    // SUPER_ADMIN has full permissions for any ADMIN endpoint
+    const userRole = req.user.role;
+    if (userRole === 'SUPER_ADMIN' || roles.includes(userRole)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      error: `Akses ditolak: Peran '${userRole}' tidak diizinkan mengakses resource ini`
+    });
+  };
+};
+
+const adminMiddleware = (req, res, next) => {
+  authMiddleware(req, res, () => {
+    authorizeRole('ADMIN', 'SUPER_ADMIN')(req, res, next);
   });
 };
 
-exports.authenticateToken = exports.authMiddleware;
-
-exports.authorizeRole = (roles) => {
-  return (req, res, next) => {
-    if (req.user && roles.includes(req.user.role)) {
-      next();
-    } else {
-      res.status(403).json({ error: 'Akses ditolak: Role tidak diizinkan' });
-    }
-  };
+module.exports = {
+  authMiddleware,
+  authenticateToken: authMiddleware,
+  authorizeRole,
+  adminMiddleware
 };

@@ -35,9 +35,9 @@ Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesu
 
 | Role | Jabatan Operasional Pertamina | Tanggung Jawab Utama | Fitur Utama |
 | :--- | :--- | :--- | :--- |
-| **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
+| **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki di lapangan | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
 | **Pengawas** | **Pengawas Lapangan / Fleet Dispatcher** | Pemantauan kelayakan armada & operasional harian | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
-| **Admin** | **Supervisor Distribusi / Fleet Supervisor** | Pengelolaan master data, regulasi & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist HSSE, otorisasi Force Release, rekapitulasi audit |
+| **Admin** | **Supervisor Distribusi / Fleet & System Administrator** | Pengelolaan master data, armada, pengguna, & kontrol penuh sistem | Akses 100% penuh: kelola 334 AMT, 83 unit mobil tangki, akun Pengawas, sesama akun Admin, kustomisasi checklist HSSE, audit log, dan ekspor laporan |
 
 ---
 
@@ -76,9 +76,29 @@ Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesu
 ### 6. 💬 Pusat Pesan Operasional (Message Center)
 * Pengawas dapat mengirimkan instruksi cepat, pengumuman keselamatan (*Safety Talk*), atau peringatan armada langsung ke dashboard AMT.
 
-### 7. 💻 Desain Responsif & Premium (Web & Mobile)
+### 7. 👥 Manajemen Pengguna Terpadu (Pekerja, Pengawas, & Admin)
+* **Daftar Pekerja (`/api/workers`)**: Kelola akun 334 Awak Mobil Tangki (AMT I & II), edit data, dan reset password.
+* **Daftar Pengawas (`/api/pengawas`)**: Kelola supervisor lapangan penanggung jawab verifikasi kendala armada.
+* **Daftar Admin (`/api/admins`)**: Kelola administrator sistem dengan proteksi *Anti-Self-Delete* dan *Last Active Admin Guard*.
+* **Sinkronisasi Desain Responsif**:
+  * **Web**: Tombol tambah diletakkan seragam di Header Card atas.
+  * **Mobile**: Menggunakan *Floating Action Button* bulat biru (`+`) di pojok kanan bawah.
+
+### 8. 💻 Desain Responsif & Premium (Web & Mobile)
 * **Mobile (Android/iOS)**: Desain ergonomis dengan tombol navigasi melayang (*floating bottom bar*), scanner kamera cepat, dan performa ringan.
 * **Desktop / Web Browser**: Antarmuka modern bergaya *Glassmorphism* dengan sidebar terstruktur, tata letak grid kartu responsif, dan scrolling penuh (*infinite scroll*) yang dioptimalkan untuk ratusan data pekerja & armada.
+
+---
+
+## 🚀 Pembaruan Sistem Terkini (System Hardening & Enhancements)
+
+Proyek ini telah melalui audit dan penguatan arsitektur menyeluruh:
+1. **Keamanan Sandi Penuh (`bcrypt`)**: Seluruh akun pekerja, pengawas, dan admin dienkripsi menggunakan hashing `bcrypt` standar industri (10 salt rounds).
+2. **Koneksi Database Andal (Singleton Prisma)**: Menggunakan instance tunggal `prisma.js` untuk mencegah kebocoran pool koneksi MySQL (*connection pool exhaustion*).
+3. **Penyelarasan Peran Tunggal (`ADMIN`)**: Seluruh modul dibuka 100% penuh bagi Administrator tanpa hambatan izin kasta.
+4. **Performa Cache Non-Blocking**: Migrasi Redis key lookup ke `scanStream` menjaga stabilitas throughput saat traffic puncak.
+5. **Ketahanan Ekspor Mobile**: Migrasi resmi ke `expo-file-system/legacy` dengan fallback otomatis ke browser perangkat jika sistem file ponsel mengalami kendala.
+6. **JWT Token Rotation**: Masa berlaku Access Token diperpendek ke 1 jam (`1h`) dengan Refresh Token aman 7 hari (`7d`).
 
 ---
 
@@ -254,9 +274,11 @@ Dokumentasi arsitektur dan spesifikasi API mendalam tersedia di folder `docs/`:
 
 | Role | Username | Password Default | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Super Admin** | `admin` | `admin123` | Akses penuh seluruh sistem & master data |
+| **Admin** | `admin` | `admin123` | Akses penuh seluruh sistem, armada, & master data |
+| **Admin** | `yoan` | `admin123` | Administrator cadangan |
 | **Pengawas** | `pengawas` | `pengawas123` | Akses evaluasi perbaikan, laporan, pesan |
-| **AMT** | Sesuai NIP Pekerja | `123456` | Terdaftar 334 AMT aktif di database |
+| **Pengawas** | `haula` | `haula123` | Pengawas operasional lapangan |
+| **AMT** | Sesuai NIP Pekerja *(contoh: `617.05.0001`)* | `123456` | Terdaftar 334 AMT aktif di database |
 
 ---
 

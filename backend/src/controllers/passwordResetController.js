@@ -1,8 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const { sendPasswordResetNotification, sendPasswordResetCompletedEmail } = require('../services/emailService');
-
-const prisma = new PrismaClient();
+const prisma = require('../config/prisma');
 
 // 1. User submit forgot password request
 exports.submitPasswordResetRequest = async (req, res) => {

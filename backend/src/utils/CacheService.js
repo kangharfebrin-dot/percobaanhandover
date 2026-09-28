@@ -67,14 +67,23 @@ class CacheService {
   }
 
   /**
-   * Delete keys by pattern
+   * Delete keys by pattern using non-blocking SCAN stream
    */
   static async delPattern(pattern) {
     if (redis.status !== 'ready') return false;
     try {
-      const keys = await redis.keys(pattern);
-      if (keys.length > 0) {
-        await redis.del(keys);
+      const stream = redis.scanStream({
+        match: pattern,
+        count: 100
+      });
+      const keysToDelete = [];
+      for await (const resultKeys of stream) {
+        if (resultKeys.length > 0) {
+          keysToDelete.push(...resultKeys);
+        }
+      }
+      if (keysToDelete.length > 0) {
+        await redis.del(keysToDelete);
       }
       return true;
     } catch (error) {

@@ -292,7 +292,7 @@ const [modalVisible, setModalVisible] = useState(false);
             <Feather name="grid" size={26} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {user.role === 'SUPER_ADMIN' && (
+          {(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
               <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                 {!isLogoutVisible && (<Animated.View style={[tw`h-full w-[64px]`]}>
@@ -314,7 +314,7 @@ const [modalVisible, setModalVisible] = useState(false);
             </TouchableOpacity>
           )}
 
-          {(user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
+          {(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'PENGAWAS') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
               <Ionicons name="chatbubble-ellipses-outline" size={26} color="#9CA3AF" />
               {unreadNotificationsCount > 0 && <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}><Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text></View>}

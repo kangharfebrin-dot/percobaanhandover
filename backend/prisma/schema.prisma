@@ -103,8 +103,10 @@ model User {
   updatedAt DateTime @updatedAt
   refreshToken String? @db.Text
   fcmToken     String?
+  deletedAt    DateTime?
 
   handovers Handover[]
+  notifications Notification[] @relation("UserNotifications")
   passwordResetRequests      PasswordResetRequest[] @relation("UserPasswordResetRequests")
   passwordResetsPerformed    PasswordResetRequest[] @relation("AdminPasswordResetRequests")
   emailNotificationLogs      EmailNotificationLog[]
@@ -126,17 +128,22 @@ model Vehicle {
 }
 
 model Notification {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   message     String
-  isRead      Boolean  @default(false)
-  type        String   @default("INFO")
-  targetRole  String?  @default("ADMIN")
-  createdAt   DateTime @default(now())
+  isRead      Boolean   @default(false)
+  type        String    @default("INFO")
+  targetRole  String?   @default("ADMIN")
+  targetUserId String?
+  createdAt   DateTime  @default(now())
   actionType  String?
   actionId    String?
   noPolisi    String?
 
+  targetUser  User?     @relation("UserNotifications", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId])
+  @@index([targetRole])
   @@map("notification")
 }
 

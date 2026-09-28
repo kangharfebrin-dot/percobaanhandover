@@ -45,6 +45,7 @@ import WorkerListScreen from './screens/admin/WorkerListScreen';
 import PengawasListScreen from './screens/admin/PengawasListScreen';
 import VehicleListScreen from './screens/admin/VehicleListScreen';
 import ChecklistManagerScreen from './screens/admin/ChecklistManagerScreen';
+import AdminListScreen from './screens/admin/AdminListScreen';
 import PengawasDashboardScreen from './screens/pengawas/PengawasDashboardScreen';
 import IssueListScreen from './screens/pengawas/IssueListScreen';
 import IssueDetailScreen from './screens/pengawas/IssueDetailScreen';
@@ -156,6 +157,7 @@ export default function App() {
         <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
         <Stack.Screen name="WorkerList" component={WorkerListScreen} />
         <Stack.Screen name="PengawasList" component={PengawasListScreen} />
+        <Stack.Screen name="AdminList" component={AdminListScreen} />
 
       </Stack.Navigator>
       <Toast config={toastConfig} position="top" topOffset={50} />

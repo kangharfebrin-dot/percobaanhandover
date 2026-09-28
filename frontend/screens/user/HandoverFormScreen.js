@@ -83,6 +83,28 @@ export default function HandoverFormScreen({ route, navigation }) {
   // Checklist State (Mulai dari null/kosong)
   const [items, setItems] = useState([]);
 
+  // B5: Kelompokkan item checklist secara dinamis berdasarkan kategori
+  const categoryGroups = useMemo(() => {
+    const groups = {};
+    items.forEach(item => {
+      const cat = item.category || 'A';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+    return groups;
+  }, [items]);
+
+  const getCategoryMeta = (cat) => {
+    switch (cat) {
+      case 'A':
+        return { title: 'A. Perlengkapan Tangki', icon: 'construct', color: '#00A651', bg: 'bg-green-100' };
+      case 'B':
+        return { title: 'B. Perlengkapan AMT', icon: 'person-circle', color: '#0055A5', bg: 'bg-blue-100' };
+      default:
+        return { title: `Kategori ${cat}`, icon: 'shield-checkmark', color: '#6366F1', bg: 'bg-indigo-100' };
+    }
+  };
+
   // Camera & Photo State
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
@@ -111,7 +133,9 @@ export default function HandoverFormScreen({ route, navigation }) {
     
     const loadWorkers = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/workers`);
+        const token = await AsyncStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get(`${API_URL}/api/workers`, { headers });
         setWorkers(res.data);
       } catch (e) {
         console.error("Gagal load workers:", e);
@@ -121,7 +145,9 @@ export default function HandoverFormScreen({ route, navigation }) {
 
     const loadChecklist = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/checklists`);
+        const token = await AsyncStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get(`${API_URL}/api/checklists`, { headers });
         let sourceItems = res.data;
         if (!sourceItems || sourceItems.length === 0) {
           sourceItems = DEFAULT_ITEMS;
@@ -452,8 +478,13 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       });
 
+      const token = await AsyncStorage.getItem('token');
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.post(`${API_URL}/api/handovers`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...authHeaders
+        },
       });
 
       const issueItems = finalItems.filter(i => !i.isGood);
@@ -709,27 +740,21 @@ export default function HandoverFormScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Kategori A */}
-        <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
-          <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-            <View style={tw`bg-green-100 p-2 rounded-xl mr-3 shadow-sm`}>
-              <Ionicons name="construct" size={24} color="#00A651" />
+        {/* Dynamic Checklist Categories (B5) */}
+        {Object.keys(categoryGroups).sort().map(cat => {
+          const meta = getCategoryMeta(cat);
+          return (
+            <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
+              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
+                  <Ionicons name={meta.icon} size={24} color={meta.color} />
+                </View>
+                <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
+              </LinearGradient>
+              {categoryGroups[cat].map(renderChecklistItem)}
             </View>
-            <Text style={tw`font-extrabold text-lg text-gray-800`}>A. Perlengkapan Tangki</Text>
-          </LinearGradient>
-          {items.filter(i => i.category === 'A').map(renderChecklistItem)}
-        </View>
-
-        {/* Kategori B */}
-        <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
-          <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-            <View style={tw`bg-blue-100 p-2 rounded-xl mr-3 shadow-sm`}>
-              <Ionicons name="person-circle" size={24} color="#0055A5" />
-            </View>
-            <Text style={tw`font-extrabold text-lg text-gray-800`}>B. Perlengkapan AMT</Text>
-          </LinearGradient>
-          {items.filter(i => i.category === 'B').map(renderChecklistItem)}
-        </View>
+          );
+        })}
 
         {/* Area Foto 4 Sisi */}
         <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8 p-5`}>

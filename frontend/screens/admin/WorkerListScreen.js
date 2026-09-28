@@ -236,12 +236,26 @@ export default function WorkerListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+        <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+          <View style={tw`flex-row items-center z-30`}>
+            <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+              <Ionicons name="arrow-back" size={24} color="#0055A5" />
+            </TouchableOpacity>
+            <View>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pekerja</Text>
+              <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Awak Mobil Tangki (AMT)</Text>
+            </View>
+          </View>
 
-          <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-            <Ionicons name="arrow-back" size={24} color="#0055A5" />
-          </TouchableOpacity>
-          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pekerja</Text>
+          {isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+            <TouchableOpacity
+              onPress={openAddModal}
+              style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+            >
+              <Feather name="user-plus" size={18} color="white" />
+              <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Pekerja</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
@@ -308,10 +322,10 @@ export default function WorkerListScreen({ navigation }) {
           />
         </View>
 
-        {/* Floating Action Button (Only for Admin) */}
-        {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+        {/* Floating Action Button (Only for Admin on Mobile) */}
+        {!isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
           <TouchableOpacity
-            style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50`}
+            style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-40`}
             onPress={openAddModal}
           >
             <Feather name="plus" size={28} color="white" />

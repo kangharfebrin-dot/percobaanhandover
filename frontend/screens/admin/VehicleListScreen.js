@@ -5,13 +5,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, Linking } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const API_BASE = `${API_URL}/api`;
@@ -156,6 +156,16 @@ export default function VehicleListScreen({ navigation }) {
       setFullScreenBarcode(false);
     } catch (error) {
       console.error(error);
+      try {
+        if (imageUrl && (await Linking.canOpenURL(imageUrl))) {
+          await Linking.openURL(imageUrl);
+          setFullScreenBarcode(false);
+          Toast.show({ type: 'info', text1: 'Membuka Barcode', text2: 'Gambar barcode dibuka di browser perangkat Anda.' });
+          return;
+        }
+      } catch (linkErr) {
+        console.error('Fallback link error:', linkErr);
+      }
       Toast.show({ type: 'error', text1: 'Gagal', text2: error.message || 'Terjadi kesalahan saat memproses barcode.' });
     }
   };
@@ -432,7 +442,7 @@ export default function VehicleListScreen({ navigation }) {
         </View>
 
         {/* Floating Action Button (Only for Admin) */}
-        {user?.role === 'SUPER_ADMIN' && (
+        {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
           <TouchableOpacity
             style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-blue-500/30`}
             onPress={openAddModal}
