@@ -32,17 +32,38 @@ router.get('/scan/:barcode', authenticateToken, async (req, res) => {
     // Cek apakah user sedang memiliki pekerjaan "mulai" yang belum diakhiri dan tidak ada isu/kerusakan
     let activeUserHandover = null;
     if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true }
+      });
+      const conditions = [{ userId: userId }];
+      if (user?.name) {
+        conditions.push({ amt1: user.name });
+        conditions.push({ amt2: user.name });
+      }
+
       const userLastHandover = await prisma.handover.findFirst({
-        where: { userId: userId },
+        where: { OR: conditions },
         orderBy: { timestamp: 'desc' },
         include: { issue: true, items: true }
       });
 
       if (userLastHandover && userLastHandover.type === 'mulai' && !userLastHandover.issue) {
-        // Cek kerusakan Major
-        const hasMajorBlock = userLastHandover.items?.some(item => !item.isGood && item.name.includes('[MAJOR]'));
-        if (!hasMajorBlock) {
-          activeUserHandover = userLastHandover;
+        // Cek apakah kendaraan ini sudah diakhiri setelah handover mulai ini
+        const subsequentAkhiri = await prisma.handover.findFirst({
+          where: {
+            noPolisi: userLastHandover.noPolisi,
+            type: 'akhiri',
+            timestamp: { gt: userLastHandover.timestamp }
+          }
+        });
+
+        if (!subsequentAkhiri) {
+          // Cek kerusakan Major
+          const hasMajorBlock = userLastHandover.items?.some(item => !item.isGood && item.name.includes('[MAJOR]'));
+          if (!hasMajorBlock) {
+            activeUserHandover = userLastHandover;
+          }
         }
       }
     }
@@ -96,7 +117,7 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
         barcode,
         jenisKendaraan,
         brand,
-        status: status || 'Active'
+        status: status || 'READY_TO_START'
       }
     });
 

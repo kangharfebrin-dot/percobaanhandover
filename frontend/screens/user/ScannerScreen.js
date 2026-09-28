@@ -208,6 +208,19 @@ export default function ScannerScreen({ route, navigation }) {
 
         if (!isAdminOrPengawas) {
           if (type === 'mulai' && lastType === 'mulai') {
+            // Cek apakah user yang scan adalah AMT dari perjalanan aktif ini
+            const isAmt1 = isNameMatch(res.data.lastHandover.amt1, user?.name);
+            const isAmt2 = isNameMatch(res.data.lastHandover.amt2, user?.name);
+            const isCreator = String(res.data.lastHandover.userId) === String(userId);
+
+            if ((isAmt1 || isAmt2 || isCreator) && !isVehicleReady && !isIssueResolved) {
+              setErrorTitle('Pekerjaan Sedang Berjalan');
+              setErrorMessage(`Anda (${user?.name || 'AMT'}) tercatat sedang bertugas aktif pada kendaraan ${vehicleNoPolisi}.\n\nJika perjalanan telah selesai, silakan gunakan scan "Akhiri Pekerjaan", bukan Mulai Pekerjaan.`);
+              setLoading(false);
+              setScanResult('error');
+              return;
+            }
+
             // Boleh mulai lagi jika kendaraan READY_TO_START atau issue sebelumnya sudah RESOLVED
             if (!lastHasIssue && !isVehicleReady && !isIssueResolved) {
               if (shiftGantungDetected) {
@@ -222,20 +235,36 @@ export default function ScannerScreen({ route, navigation }) {
               setScanResult('error');
               return;
             }
-          } else if (type === 'akhiri' && lastType !== 'mulai' && !isVehicleReady) {
-            setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
-            setLoading(false);
-            setScanResult('error');
-            return;
+          } else if (type === 'akhiri') {
+            if (lastType !== 'mulai') {
+              setErrorMessage('Kendaraan ini belum memulai pekerjaan (Belum Mulai Pekerjaan).');
+              setLoading(false);
+              setScanResult('error');
+              return;
+            }
+
+            // Validasi logic: Ketika scan akhiri, sistem harus mencocokkan AMT yang sama dengan scan mulai
+            const isAmt1 = isNameMatch(res.data.lastHandover.amt1, user?.name);
+            const isAmt2 = isNameMatch(res.data.lastHandover.amt2, user?.name);
+            const isCreator = String(res.data.lastHandover.userId) === String(userId);
+
+            if (!isAmt1 && !isAmt2 && !isCreator) {
+              setErrorTitle('AMT Tidak Sesuai');
+              setErrorMessage(`Pekerjaan kendaraan ini dimulai oleh kru:\n• AMT 1: ${res.data.lastHandover.amt1 || '-'}\n• AMT 2: ${res.data.lastHandover.amt2 || '-'}\n\nHanya petugas AMT yang memulai perjalanan ini yang dapat mengakhiri pekerjaan.`);
+              setLoading(false);
+              setScanResult('error');
+              return;
+            }
           }
         }
 
+        // Simpan lastHandover untuk diteruskan ke HandoverFormScreen
+        setLastHandover(res.data.lastHandover);
+
         // Tampilkan recap jika ada data items dari handover terakhir
         if (res.data.lastHandover.items && res.data.lastHandover.items.length > 0) {
-          setLastHandover(res.data.lastHandover);
           finalResult = 'recap';
         } else {
-          setLastHandover(null);
           finalResult = 'success';
         }
       } else {
@@ -246,6 +275,7 @@ export default function ScannerScreen({ route, navigation }) {
           setScanResult('error');
           return;
         }
+        setLastHandover(null);
         finalResult = 'success';
       }
 

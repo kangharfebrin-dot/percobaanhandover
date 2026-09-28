@@ -21,6 +21,7 @@ const submitHandoverSchema = Joi.object({
     'any.required': 'Shift / Waktu perjalanan wajib diisi'
   }),
   type: Joi.string().valid('mulai', 'akhiri').default('mulai'),
+  status: Joi.string().valid('Aman', 'Siap Operasi (Normal)', 'Ada Masalah', 'FORCE_RELEASED', 'STARTED', 'FINISHED').allow(null, ''),
   locationLat: Joi.number().allow(null, ''),
   locationLng: Joi.number().allow(null, ''),
   items: Joi.alternatives().try(Joi.string(), Joi.array()).required().messages({
@@ -36,7 +37,7 @@ const vehicleSchema = Joi.object({
   barcode: Joi.string().trim().required(),
   jenisKendaraan: Joi.string().allow(null, ''),
   brand: Joi.string().allow(null, ''),
-  status: Joi.string().valid('Active', 'Maintenance', 'READY_TO_START', 'DIBLOKIR').default('Active')
+  status: Joi.string().valid('Active', 'Maintenance', 'READY_TO_START', 'DIBLOKIR').default('READY_TO_START')
 });
 
 const userManageSchema = Joi.object({

@@ -15,14 +15,39 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get('/my-active', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true }
+    });
+
+    const conditions = [{ userId }];
+    if (user?.name) {
+      conditions.push({ amt1: user.name });
+      conditions.push({ amt2: user.name });
+    }
 
     const lastHandover = await prisma.handover.findFirst({
-      where: { userId },
+      where: { OR: conditions },
       orderBy: { timestamp: 'desc' },
       include: { issue: true, items: true }
     });
 
-    if (!lastHandover) {
+    // Jika tidak ada, atau jenis terakhir bukan 'mulai', maka tidak ada pekerjaan aktif
+    if (!lastHandover || lastHandover.type !== 'mulai') {
+      return res.json({ success: true, activeHandover: null });
+    }
+
+    // Cek apakah kendaraan ini sudah diakhiri setelah handover mulai ini
+    // (misalnya oleh partner AMT atau force-release oleh pengawas)
+    const subsequentAkhiri = await prisma.handover.findFirst({
+      where: {
+        noPolisi: lastHandover.noPolisi,
+        type: 'akhiri',
+        timestamp: { gt: lastHandover.timestamp }
+      }
+    });
+
+    if (subsequentAkhiri) {
       return res.json({ success: true, activeHandover: null });
     }
 
@@ -177,6 +202,16 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
         where: { noPolisi },
         data: { status: 'Maintenance' }
       });
+    } else if (type === 'mulai') {
+      await prisma.vehicle.update({
+        where: { noPolisi },
+        data: { status: 'Active' }
+      });
+    } else if (type === 'akhiri') {
+      await prisma.vehicle.update({
+        where: { noPolisi },
+        data: { status: 'READY_TO_START' }
+      });
     }
 
     // Invalidate semua cache handovers
@@ -210,6 +245,24 @@ router.post('/force-release', authenticateToken, async (req, res) => {
 
     if (!lastHandover) {
       return res.status(400).json({ error: 'Tidak ada riwayat serah terima untuk kendaraan ini' });
+    }
+
+    const isAdminOrPengawas = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(req.user?.role);
+
+    // Jika bukan Admin/Pengawas, validasi bahwa ini benar-benar shift gantung (> 12 jam sejak mulai)
+    if (!isAdminOrPengawas) {
+      if (lastHandover.type !== 'mulai') {
+        return res.status(400).json({ error: 'Hanya shift yang belum diakhiri yang dapat ditutup paksa' });
+      }
+
+      const lastTime = new Date(lastHandover.timestamp || lastHandover.createdAt).getTime();
+      const elapsedHours = (Date.now() - lastTime) / (1000 * 60 * 60);
+
+      if (elapsedHours < 12) {
+        return res.status(403).json({
+          error: `Akses ditolak: Shift ini baru berjalan ${elapsedHours.toFixed(1)} jam. Force release hanya diizinkan untuk shift gantung (> 12 jam) atau oleh Pengawas/Admin.`
+        });
+      }
     }
 
     const releaseReason = reason || 'Shift gantung ditutup paksa agar mobil siap beroperasi kembali';
@@ -401,8 +454,20 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PE
       await sendNotification(updatedHandover.id, updatedHandover.noPolisi, [], false, 'RESOLVED');
       await prisma.vehicle.update({
         where: { noPolisi: updatedHandover.noPolisi },
-        data: { status: 'Active' }
+        data: { status: 'READY_TO_START' }
       });
+
+      // Update status issue ke RESOLVED jika ada issue terkait handover ini
+      if (updatedHandover.issue) {
+        await prisma.issue.update({
+          where: { id: updatedHandover.issue.id },
+          data: {
+            status: 'RESOLVED',
+            resolvedAt: new Date(),
+            resolvedBy: req.user.id
+          }
+        });
+      }
     }
 
     await CacheService.delPattern('handovers:*');

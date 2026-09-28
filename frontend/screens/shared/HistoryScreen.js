@@ -595,8 +595,8 @@ export default function HistoryScreen({ route, navigation }) {
         </View>
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
-          {/* Modern Search & Filter Button (Moved closer to navbar) */}
-          <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
+          {/* Modern Search & Filter Button with comfortable spacing */}
+          <View style={tw`px-6 pt-2 pb-3 mb-2 flex-row items-center justify-between z-10 border-b border-gray-100/60`}>
             <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mr-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
               <TextInput

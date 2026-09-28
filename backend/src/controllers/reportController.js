@@ -4,13 +4,18 @@ const prisma = require('../config/prisma');
 
 const exportExcel = async (req, res) => {
   try {
-    const { status, shift, startDate, endDate } = req.query;
+    const { status, shift, startDate, endDate, handoverId, id } = req.query;
 
     if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
 
     let where = {};
+    const targetId = handoverId || id;
+    if (targetId) {
+      where.id = targetId;
+    }
+
     if (status && status !== 'Semua') {
       where.status = status;
     }
@@ -292,13 +297,18 @@ const exportExcel = async (req, res) => {
 
 const exportPdf = async (req, res) => {
   try {
-    const { status, shift, startDate, endDate } = req.query;
+    const { status, shift, startDate, endDate, handoverId, id } = req.query;
 
     if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
 
     let where = {};
+    const targetId = handoverId || id;
+    if (targetId) {
+      where.id = targetId;
+    }
+
     if (status && status !== 'Semua') {
       where.status = status;
     }

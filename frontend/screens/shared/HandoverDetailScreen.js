@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Animated, Easing, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Animated, Easing, Modal, ActivityIndicator, Linking } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import Toast from 'react-native-toast-message';
 import WebSidebar from '../../components/WebSidebar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
@@ -28,6 +31,8 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const [user, setUser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [photoRotation, setPhotoRotation] = useState(0);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const onChange = ({ window }) => setScreenWidth(window.width);
@@ -44,6 +49,114 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const handleLogout = async () => {
     await AsyncStorage.multiRemove(['user', 'token']);
     navigation.replace('Login');
+  };
+
+  const handleExportExcel = async () => {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+      Toast.show({ type: 'error', text1: 'Akses Ditolak', text2: 'Hanya Admin yang dapat mengekspor laporan.' });
+      return;
+    }
+    if (!handover?.id) return;
+
+    try {
+      setExporting(true);
+      const token = await AsyncStorage.getItem('token');
+      const url = `${API_URL}/api/reports/excel?token=${token}&handoverId=${handover.id}`;
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}Detail_Handover_${handover.noPolisi || 'Report'}.xlsx`;
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+
+        if (downloadRes.status === 200) {
+          if (await Sharing.isAvailableAsync()) {
+            try {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                dialogTitle: 'Bagikan Detail Handover',
+                UTI: 'com.microsoft.excel.xls'
+              });
+            } catch (shareErr) {
+              Toast.show({ type: 'error', text1: 'Gagal Membagikan', text2: 'Tidak dapat membuka file: ' + shareErr.message });
+            }
+          } else {
+            Toast.show({ type: 'success', text1: 'Sukses', text2: 'File berhasil diunduh ke perangkat Anda.' });
+          }
+        } else {
+          Toast.show({ type: 'error', text1: 'Gagal', text2: 'Gagal mengunduh file Excel dari server. Status: ' + downloadRes.status });
+        }
+      }
+    } catch (err) {
+      console.log('Gagal export excel:', err);
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const fallbackUrl = `${API_URL}/api/reports/excel?token=${token}&handoverId=${handover.id}`;
+        if (await Linking.canOpenURL(fallbackUrl)) {
+          await Linking.openURL(fallbackUrl);
+          Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File diunduh melalui browser perangkat Anda.' });
+          return;
+        }
+      } catch (linkErr) {
+        console.log('Fallback linking failed:', linkErr);
+      }
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh Excel: ' + err.message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+      Toast.show({ type: 'error', text1: 'Akses Ditolak', text2: 'Hanya Admin yang dapat mengekspor laporan.' });
+      return;
+    }
+    if (!handover?.id) return;
+
+    try {
+      setExporting(true);
+      const token = await AsyncStorage.getItem('token');
+      const url = `${API_URL}/api/reports/pdf?token=${token}&handoverId=${handover.id}`;
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}Detail_Handover_${handover.noPolisi || 'Report'}.pdf`;
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+
+        if (downloadRes.status === 200) {
+          if (await Sharing.isAvailableAsync()) {
+            try {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Bagikan Detail Handover (PDF)',
+                UTI: 'com.adobe.pdf'
+              });
+            } catch (shareErr) {
+              Toast.show({ type: 'error', text1: 'Gagal Membagikan', text2: 'Tidak dapat membuka file: ' + shareErr.message });
+            }
+          } else {
+            Toast.show({ type: 'success', text1: 'Sukses', text2: 'File PDF berhasil diunduh ke perangkat Anda.' });
+          }
+        } else {
+          Toast.show({ type: 'error', text1: 'Gagal', text2: 'Gagal mengunduh file PDF dari server. Status: ' + downloadRes.status });
+        }
+      }
+    } catch (err) {
+      console.log('Gagal export PDF:', err);
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const fallbackUrl = `${API_URL}/api/reports/pdf?token=${token}&handoverId=${handover.id}`;
+        if (await Linking.canOpenURL(fallbackUrl)) {
+          await Linking.openURL(fallbackUrl);
+          Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File PDF dibuka/diunduh melalui browser perangkat Anda.' });
+          return;
+        }
+      } catch (linkErr) {
+        console.log('Fallback linking failed:', linkErr);
+      }
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh PDF: ' + err.message });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const fetchHandoverDetail = async () => {
@@ -340,14 +453,42 @@ export default function HandoverDetailScreen({ route, navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Navbar */}
-          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-            <Ionicons name="arrow-back" size={24} color="#0055A5" />
-          </TouchableOpacity>
-          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
-        </View>
+          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-3 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            <View style={tw`flex-row items-center`}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+              </TouchableOpacity>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
+            </View>
 
-        <ScrollView contentContainerStyle={tw`p-6 pb-32 w-full max-w-4xl mx-auto`} showsVerticalScrollIndicator={false}>
+            {/* Tombol Export Desktop Web (Hanya Admin) */}
+            {isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+              <View style={tw`flex-row items-center gap-2.5 z-30`}>
+                <TouchableOpacity onPress={handleExportPdf} disabled={exporting} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                  <Ionicons name="document-outline" size={16} color="white" />
+                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleExportExcel} disabled={exporting} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                  <Ionicons name="document-text" size={16} color="white" />
+                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Tombol Export Mobile di Navbar (Hanya Admin) */}
+            {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+              <TouchableOpacity
+                onPress={() => setShowExportModal(true)}
+                disabled={exporting}
+                style={tw`flex-row items-center bg-[#0055A5] px-3.5 py-2 rounded-xl shadow-sm z-30`}
+              >
+                <Feather name="download" size={15} color="white" />
+                <Text style={tw`text-white font-bold text-xs ml-1.5`}>Ekspor</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+        <ScrollView contentContainerStyle={tw`px-6 pt-2 pb-32 w-full max-w-4xl mx-auto`} showsVerticalScrollIndicator={false}>
 
           {/* Header Card */}
           <View style={tw`bg-white p-6 rounded-3xl mb-5 shadow-md border border-gray-100`}>
@@ -585,8 +726,94 @@ export default function HandoverDetailScreen({ route, navigation }) {
           )}
 
         </ScrollView>
+
+        {/* Tombol Ekspor Floating (Mobile Only - Hanya Admin) */}
+        {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+          <TouchableOpacity
+            style={tw`absolute bottom-8 right-6 z-40 bg-[#0055A5] px-5 py-3.5 rounded-full flex-row items-center shadow-2xl shadow-blue-600/50 border border-white/40 active:scale-95`}
+            onPress={() => setShowExportModal(true)}
+          >
+            <Feather name="download" size={18} color="white" />
+            <Text style={tw`text-white font-black text-sm ml-2 tracking-wide`}>Ekspor Detail</Text>
+          </TouchableOpacity>
+        )}
         </View>
       </SafeAreaView>
+
+      {/* Modal Pilihan Ekspor (Mobile) */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showExportModal}
+        onRequestClose={() => setShowExportModal(false)}
+      >
+        <View style={tw`flex-1 bg-black/60 justify-center items-center px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl`}>
+            <View style={tw`flex-row items-center justify-between pb-4 border-b border-gray-100`}>
+              <View style={tw`flex-row items-center`}>
+                <View style={tw`w-10 h-10 rounded-2xl bg-blue-50 items-center justify-center mr-3 border border-blue-100`}>
+                  <Feather name="download" size={20} color="#0055A5" />
+                </View>
+                <View>
+                  <Text style={tw`text-lg font-black text-gray-800`}>Ekspor Detail Handover</Text>
+                  <Text style={tw`text-xs text-gray-400 font-medium`}>Pilih format file</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={tw`p-2 bg-gray-50 rounded-full`}
+                onPress={() => setShowExportModal(false)}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={tw`py-4 gap-3`}>
+              {/* Opsi PDF */}
+              <TouchableOpacity
+                style={tw`flex-row items-center p-4 bg-red-50/60 rounded-2xl border border-red-100 active:scale-98`}
+                onPress={() => {
+                  setShowExportModal(false);
+                  handleExportPdf();
+                }}
+              >
+                <View style={tw`w-12 h-12 rounded-xl bg-[#ED1C24] items-center justify-center mr-3.5 shadow-md shadow-red-500/30`}>
+                  <Ionicons name="document-text" size={24} color="white" />
+                </View>
+                <View style={tw`flex-1`}>
+                  <Text style={tw`font-black text-gray-800 text-sm`}>Dokumen PDF (.pdf)</Text>
+                  <Text style={tw`text-xs text-gray-500 mt-0.5`}>Laporan resmi detail inspeksi</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Opsi Excel */}
+              <TouchableOpacity
+                style={tw`flex-row items-center p-4 bg-green-50/60 rounded-2xl border border-green-100 active:scale-98`}
+                onPress={() => {
+                  setShowExportModal(false);
+                  handleExportExcel();
+                }}
+              >
+                <View style={tw`w-12 h-12 rounded-xl bg-[#00A651] items-center justify-center mr-3.5 shadow-md shadow-green-500/30`}>
+                  <Ionicons name="grid" size={24} color="white" />
+                </View>
+                <View style={tw`flex-1`}>
+                  <Text style={tw`font-black text-gray-800 text-sm`}>Lembar Kerja Excel (.xlsx)</Text>
+                  <Text style={tw`text-xs text-gray-500 mt-0.5`}>Rekap checklist & data lengkap</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={tw`p-3 bg-gray-100 rounded-xl items-center mt-1`}
+              onPress={() => setShowExportModal(false)}
+            >
+              <Text style={tw`text-gray-600 font-bold text-xs`}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Full Screen Image Viewer (Premium Theme) */}
       <Modal visible={!!selectedPhoto} transparent={true} animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>

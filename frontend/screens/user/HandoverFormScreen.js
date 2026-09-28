@@ -45,6 +45,17 @@ const PERTAMINA_BLUE = ['#4A90E2', '#0055A5']; // Softer aesthetic blue gradient
 const PERTAMINA_RED = ['#FF4B4B', '#ED1C24'];
 const PERTAMINA_GREEN = ['#2ECC71', '#00A651'];
 
+const isAmt2Jabatan = (jbt) => {
+  const upper = (jbt || '').toUpperCase();
+  return upper.includes('AMT II') || upper.includes('AMT 2') || /\b(II|2)\b/.test(upper);
+};
+
+const isAmt1Jabatan = (jbt) => {
+  if (isAmt2Jabatan(jbt)) return false;
+  const upper = (jbt || '').toUpperCase();
+  return upper.includes('AMT I') || upper.includes('AMT 1') || /\b(I|1)\b/.test(upper) || (!upper.includes('II') && !upper.includes('2'));
+};
+
 export default function HandoverFormScreen({ route, navigation }) {
   const { noPolisi: initialNoPolisi, type, lastHandover } = route?.params || {};
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
@@ -159,7 +170,8 @@ export default function HandoverFormScreen({ route, navigation }) {
         const token = await AsyncStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`${API_URL}/api/workers`, { headers });
-        setWorkers(res.data);
+        const sorted = (res.data || []).sort((a, b) => a.name.localeCompare(b.name));
+        setWorkers(sorted);
       } catch (e) {
         console.error("Gagal load workers:", e);
       }
@@ -225,14 +237,28 @@ export default function HandoverFormScreen({ route, navigation }) {
           const user = JSON.parse(userStr);
           setUserRole(user.role || 'USER');
           
-          if (user.role === 'AMT' || user.role === 'USER') {
-            const jbt = (user.jabatan || '').toUpperCase();
-            if (jbt.includes('2')) {
+          if (type === 'akhiri' && lastHandover) {
+            // Sepaket otomatis terisi dari scan mulai!
+            if (lastHandover.amt1) {
+              setAmt1(lastHandover.amt1);
+              setIsAmt1Locked(true);
+            }
+            if (lastHandover.amt2) {
+              setAmt2(lastHandover.amt2);
+              setIsAmt2Locked(true);
+            }
+          } else if (user.role === 'AMT' || user.role === 'USER') {
+            const isAmt2User = isAmt2Jabatan(user.jabatan);
+            if (isAmt2User) {
               setAmt2(user.name);
               setIsAmt2Locked(true);
+              setAmt1('');
+              setIsAmt1Locked(false);
             } else {
               setAmt1(user.name);
               setIsAmt1Locked(true);
+              setAmt2('');
+              setIsAmt2Locked(false);
             }
           }
         }
@@ -252,24 +278,22 @@ export default function HandoverFormScreen({ route, navigation }) {
     })();
   }, []);
 
-  // AUTOCOMPLETE LOGIC
+  // AUTOCOMPLETE LOGIC (Sorted Alphabetically & Dedicated for AMT 1 vs AMT 2)
   const handleSearchAmt1 = (text) => {
     setAmt1(text);
-    if(text.length > 0) {
-      setFilteredWorkers1(workers.filter(w => w.name.toLowerCase().includes(text.toLowerCase())));
-      setShowWorkers1(true);
-    } else {
-      setShowWorkers1(false);
-    }
+    const filtered = workers
+      .filter(w => isAmt1Jabatan(w.jabatan) && (text.length === 0 || w.name.toLowerCase().includes(text.toLowerCase())))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setFilteredWorkers1(filtered);
+    setShowWorkers1(true);
   };
   const handleSearchAmt2 = (text) => {
     setAmt2(text);
-    if(text.length > 0) {
-      setFilteredWorkers2(workers.filter(w => w.name.toLowerCase().includes(text.toLowerCase())));
-      setShowWorkers2(true);
-    } else {
-      setShowWorkers2(false);
-    }
+    const filtered = workers
+      .filter(w => isAmt2Jabatan(w.jabatan) && (text.length === 0 || w.name.toLowerCase().includes(text.toLowerCase())))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setFilteredWorkers2(filtered);
+    setShowWorkers2(true);
   };
   const selectAmt1 = (name) => { setAmt1(name); setShowWorkers1(false); };
   const selectAmt2 = (name) => { setAmt2(name); setShowWorkers2(false); };
@@ -387,6 +411,16 @@ export default function HandoverFormScreen({ route, navigation }) {
     // 1. Validasi Info Dasar & Odometer
     if (!noPolisi || !odoMeter || !shift) {
       showValidationError("Perhatian", "Informasi perjalanan (Plat, Shift, Odo Meter) tidak boleh kosong.");
+      return;
+    }
+
+    if (!amt1 || amt1.trim() === '') {
+      showValidationError("AMT 1 Wajib Diisi", "Harap masukkan atau pilih nama petugas AMT 1.");
+      return;
+    }
+
+    if (amt1 && amt2 && amt1.trim().toLowerCase() === amt2.trim().toLowerCase()) {
+      showValidationError("Data AMT Duplikat", "Petugas AMT 1 dan AMT 2 tidak boleh orang yang sama.");
       return;
     }
 
@@ -727,13 +761,29 @@ export default function HandoverFormScreen({ route, navigation }) {
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
           <View style={tw`relative z-20`}>
-            <TextInput style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt1Locked ? "text-gray-400 bg-gray-100" : ""}`} placeholder="Nama AMT 1" value={amt1} editable={!isAmt1Locked} onChangeText={handleSearchAmt1} onFocus={() => amt1.length > 0 && setShowWorkers1(true)} />
-            {showWorkers1 && filteredWorkers1.length > 0 && (
-              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-40`}>
+            <TextInput
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
+              placeholder="Nama AMT 1"
+              value={amt1}
+              editable={!isAmt1Locked}
+              onChangeText={handleSearchAmt1}
+              onFocus={() => {
+                if (!isAmt1Locked) {
+                  const filtered = workers
+                    .filter(w => isAmt1Jabatan(w.jabatan) && (amt1.length === 0 || w.name.toLowerCase().includes(amt1.toLowerCase())))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                  setFilteredWorkers1(filtered);
+                  setShowWorkers1(true);
+                }
+              }}
+            />
+            {showWorkers1 && filteredWorkers1.length > 0 && !isAmt1Locked && (
+              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48`}>
                 <ScrollView nestedScrollEnabled={true}>
                   {filteredWorkers1.map(w => (
-                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100`} onPress={() => selectAmt1(w.name)}>
+                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100 flex-row justify-between items-center`} onPress={() => selectAmt1(w.name)}>
                       <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
+                      <Text style={tw`text-xs font-semibold text-[#0055A5]`}>{w.jabatan || 'AMT I'}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -743,13 +793,29 @@ export default function HandoverFormScreen({ route, navigation }) {
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
           <View style={tw`relative z-10`}>
-            <TextInput style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt2Locked ? "text-gray-400 bg-gray-100" : ""}`} placeholder="Nama AMT 2" value={amt2} editable={!isAmt2Locked} onChangeText={handleSearchAmt2} onFocus={() => amt2.length > 0 && setShowWorkers2(true)} />
-            {showWorkers2 && filteredWorkers2.length > 0 && (
-              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-40`}>
+            <TextInput
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}
+              placeholder="Nama AMT 2"
+              value={amt2}
+              editable={!isAmt2Locked}
+              onChangeText={handleSearchAmt2}
+              onFocus={() => {
+                if (!isAmt2Locked) {
+                  const filtered = workers
+                    .filter(w => isAmt2Jabatan(w.jabatan) && (amt2.length === 0 || w.name.toLowerCase().includes(amt2.toLowerCase())))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                  setFilteredWorkers2(filtered);
+                  setShowWorkers2(true);
+                }
+              }}
+            />
+            {showWorkers2 && filteredWorkers2.length > 0 && !isAmt2Locked && (
+              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48`}>
                 <ScrollView nestedScrollEnabled={true}>
                   {filteredWorkers2.map(w => (
-                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100`} onPress={() => selectAmt2(w.name)}>
+                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100 flex-row justify-between items-center`} onPress={() => selectAmt2(w.name)}>
                       <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
+                      <Text style={tw`text-xs font-semibold text-indigo-600`}>{w.jabatan || 'AMT II'}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>

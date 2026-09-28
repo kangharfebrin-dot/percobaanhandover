@@ -271,4 +271,31 @@ Pada tanggal 28 September 2026, telah dilaksanakan audit menyeluruh terhadap ars
     - Menambahkan fallback otomatis menggunakan browser perangkat (`Linking.openURL`) jika terjadi kendala izin penyimpanan lokal pada smartphone, menjamin laporan PDF/Excel dan barcode selalu berhasil diunduh.
 
 ---
-*Catatan ini diperbarui pada tanggal 28 September 2026 setelah seluruh 23 perbaikan logika, keamanan, arsitektur, dan fitur baru selesai diimplementasikan dan diverifikasi secara otomatis.*
+
+## 6. Penyelesaian Temuan Audit Logika Sistem (Phase 3 — State Consistency & Auth Hardening)
+
+Pada tanggal 28 September 2026, dilakukan audit mendalam berfokus pada **siklus hidup status kendaraan**, **filter data aktif**, **otorisasi force-release**, dan **hak akses ekspor laporan**:
+
+1. **Sinkronisasi Siklus Status Kendaraan (`READY_TO_START` vs `Active`):**
+   - Menyelaraskan rute `PUT /api/handovers/:id` agar memperbarui status kendaraan ke `'READY_TO_START'` (sebelumnya `'Active'`).
+   - Pada `POST /api/handovers`: ketika `type === 'mulai'`, status kendaraan berubah menjadi `'Active'` (sedang beroperasi); saat `type === 'akhiri'`, status kembali menjadi `'READY_TO_START'` (siap beroperasi kembali).
+   - Menetapkan nilai default kendaraan baru menjadi `'READY_TO_START'` pada model dan skema validasi Joi.
+2. **Filter Ketat Handover Aktif (`/api/handovers/my-active`):**
+   - Mengubah query `/my-active` agar hanya mengembalikan handover jika `type === 'mulai'` dan belum ada rekaman `akhiri` berikutnya pada kendaraan tersebut (`subsequentAkhiri`).
+   - Mencegah rekaman selesai (`akhiri`) tampil sebagai pekerjaan aktif di dashboard pekerja.
+3. **Pemberian Hak Akses Bertingkat pada Force-Release (`/api/handovers/force-release`):**
+   - `ADMIN`, `SUPER_ADMIN`, dan `PENGAWAS` memiliki wewenang penuh untuk melakukan force-release sewaktu-waktu.
+   - Kru lapangan (AMT/USER) dibatasi secara ketat di sisi backend: hanya diperbolehkan menutup paksa shift gantung jika kendaraan benar-benar telah melampaui batas waktu wajar (> 12 jam sejak dimulai). Mencegah penutupan sepihak atas shift orang lain yang baru berjalan.
+4. **Auto-Resolve Relasi Kerusakan (`Issue`) saat Handover Di-resolve:**
+   - Pada `PUT /api/handovers/:id`, saat admin/pengawas menyatakan handover kembali ke `'Siap Operasi (Normal)'`, status `issue` terkait kini otomatis di-update menjadi `'RESOLVED'` dengan pencatatan timestamp dan user penyelesai. Mencegah status perbaikan menggantung di tabel issue.
+5. **Penegakan Hak Ekspor Laporan Khusus Admin (Excel & PDF):**
+   - Sesuai kebijakan tata kelola data perusahaan, hak ekspor laporan (baik Excel maupun PDF) dibatasi secara ketat hanya untuk `ADMIN` dan `SUPER_ADMIN`.
+   - Endpoint `/api/reports/excel` dan `/api/reports/pdf` dilindungi middleware `authorizeRole('ADMIN', 'SUPER_ADMIN')` serta pengecekan ganda di controller. Pengguna non-admin (Pengawas, AMT, maupun Pekerja biasa) tidak memiliki akses ekspor data perusahaan.
+6. **Pembersihan Dead Code `isResolved` di Tampilan Dasbor:**
+   - Mengganti evaluasi properti fiktif `item.isResolved` di `AdminDashboardScreen`, `PengawasDashboardScreen`, dan `UserDashboardScreen` dengan pengecekan relasi yang valid: `item.issue?.status !== 'RESOLVED'`.
+7. **Pencegahan Double-Akhiri pada Scanner Lapangan:**
+   - Memastikan scan "Akhiri Pekerjaan" ditolak secara tegas jika kendaraan belum dalam status `mulai`, mencegah anomali data ganda.
+
+---
+*Catatan ini diperbarui pada tanggal 28 September 2026 setelah seluruh perbaikan audit logika sistem lolos pengujian regresi otomatis (13/13 Test Passed).*
+

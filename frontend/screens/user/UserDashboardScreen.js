@@ -261,27 +261,93 @@ export default function UserDashboardScreen({ navigation }) {
   const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
-  const renderAlertItem = ({ item }) => (
-    <View style={[tw`p-5 rounded-3xl mb-4 flex-row items-center overflow-hidden border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }]}>
-      <View style={tw`bg-red-100 p-4 rounded-2xl mr-4 items-center justify-center`}>
-        <Feather name="alert-triangle" size={28} color="#ED1C24" />
-      </View>
-      <View style={tw`flex-1`}>
-        <View style={tw`flex-row justify-between items-center mb-1`}>
-          <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
-          <View style={tw`bg-red-500 px-3 py-1 rounded-full`}>
-            <Text style={tw`text-[10px] text-white font-bold uppercase tracking-widest`}>Kritis</Text>
+  const renderAlertItem = ({ item }) => {
+    const isBad = item.status !== 'Siap Operasi (Normal)' && item.issue?.status !== 'RESOLVED';
+    const badItems = item.items ? item.items.filter(i => !i.isGood) : [];
+    const issueCount = badItems.length;
+    const firstIssue = badItems[0]?.name || 'Kendala operasional';
+    const remainingCount = issueCount - 1;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('HandoverDetail', { handover: item, handoverId: item.id })}
+        style={[
+          tw`p-4 rounded-3xl border border-white/70 justify-between ${Platform.OS === 'web' && isLargeScreen ? '' : 'mb-4'}`,
+          {
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            ...glassStyle,
+            shadowColor: isBad ? '#ED1C24' : '#00A651',
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
+            minHeight: 148,
+            ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {})
+          }
+        ]}
+      >
+        {/* Top Header Row */}
+        <View style={tw`flex-row items-center`}>
+          <View style={[
+            tw`w-12 h-12 rounded-2xl items-center justify-center mr-3.5 border`,
+            isBad ? tw`bg-red-100/90 border-red-200/80` : tw`bg-emerald-100/90 border-emerald-200/80`
+          ]}>
+            <Feather name={isBad ? "alert-triangle" : "check-circle"} size={24} color={isBad ? "#ED1C24" : "#059669"} />
+          </View>
+          <View style={tw`flex-1`}>
+            <View style={tw`flex-row justify-between items-center mb-0.5`}>
+              <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
+              <View style={[
+                tw`px-3 py-1 rounded-full`,
+                isBad ? tw`bg-red-500` : tw`bg-emerald-500`
+              ]}>
+                <Text style={tw`text-[10px] text-white font-extrabold uppercase tracking-widest`}>
+                  {isBad ? 'Kritis' : 'Aman'}
+                </Text>
+              </View>
+            </View>
+            <Text style={tw`text-xs text-gray-500 font-semibold uppercase tracking-wider`} numberOfLines={1}>
+              {item.shift} • {item.user?.name || 'Driver'}
+            </Text>
           </View>
         </View>
-        <Text style={tw`text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider`}>{item.shift} • {item.user.name}</Text>
-        <View style={tw`bg-red-50/50 p-3 rounded-xl border border-red-100/50`}>
-          {item.items.filter(i => !i.isGood).map((issue, idx) => (
-            <Text key={idx} style={tw`text-red-700 text-xs font-bold mb-1`}>• {issue.name}</Text>
-          ))}
+
+        {/* Bottom Status Summary Bar (Fixed neat height, identical structure for both) */}
+        <View style={[
+          tw`mt-3 px-3.5 py-2.5 rounded-2xl flex-row items-center justify-between border`,
+          isBad ? tw`bg-red-50/80 border-red-200/60` : tw`bg-emerald-50/80 border-emerald-200/60`
+        ]}>
+          <View style={tw`flex-1 mr-2`}>
+            <Text style={[
+              tw`text-xs font-black tracking-tight`,
+              isBad ? tw`text-red-700` : tw`text-emerald-700`
+            ]}>
+              {isBad ? `⚠️ ${issueCount > 0 ? `${issueCount} Kendala Ditemukan` : 'Status Unit Kritis'}` : '✓ Siap Operasi (Normal)'}
+            </Text>
+            <Text style={[
+              tw`text-[11px] font-medium mt-0.5`,
+              isBad ? tw`text-red-600` : tw`text-emerald-600`
+            ]} numberOfLines={1}>
+              {isBad 
+                ? `• ${firstIssue}${remainingCount > 0 ? ` (+${remainingCount} lainnya)` : ''}`
+                : '• Seluruh item checklist lengkap & sesuai standar'
+              }
+            </Text>
+          </View>
+          <View style={[
+            tw`flex-row items-center bg-white/90 px-2.5 py-1.5 rounded-xl border shadow-sm`,
+            isBad ? tw`border-red-200/80` : tw`border-emerald-200/80`
+          ]}>
+            <Text style={[
+              tw`text-[10px] font-bold mr-0.5`,
+              isBad ? tw`text-red-600` : tw`text-emerald-600`
+            ]}>Detail</Text>
+            <Feather name="chevron-right" size={12} color={isBad ? "#ED1C24" : "#059669"} />
+          </View>
         </View>
-      </View>
-    </View>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={tw`flex-1 bg-[#F4F7FA]`}>
@@ -484,9 +550,26 @@ export default function UserDashboardScreen({ navigation }) {
                 {loadingAlerts ? (
                   <ActivityIndicator size="large" color="#ED1C24" style={tw`my-10`} />
                 ) : alerts.length > 0 ? (
-                  <View style={tw`${isLargeScreen ? 'flex-row flex-wrap justify-between' : ''}`}>
+                  <View
+                    style={[
+                      tw`w-full`,
+                      Platform.OS === 'web' && isLargeScreen ? {
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: 16,
+                        width: '100%'
+                      } : (isLargeScreen ? tw`flex-row flex-wrap justify-between` : tw`flex-col`)
+                    ]}
+                  >
                     {alerts.map(item => (
-                      <View key={item.id} style={tw`${isLargeScreen ? 'w-[48%] mb-4' : 'w-full'}`}>
+                      <View
+                        key={item.id}
+                        style={[
+                          Platform.OS === 'web' && isLargeScreen
+                            ? { width: '100%' }
+                            : (isLargeScreen ? tw`w-[48.5%]` : tw`w-full`)
+                        ]}
+                      >
                         {renderAlertItem({ item })}
                       </View>
                     ))}
