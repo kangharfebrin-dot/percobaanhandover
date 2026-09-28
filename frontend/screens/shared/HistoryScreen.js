@@ -208,6 +208,10 @@ export default function HistoryScreen({ route, navigation }) {
   };
 
   const handleExportExcel = async () => {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+      Toast.show({ type: 'error', text1: 'Akses Ditolak', text2: 'Hanya Admin yang dapat mengekspor laporan.' });
+      return;
+    }
     try {
       const token = await AsyncStorage.getItem('token');
       let queryParams = `?token=${token}`;
@@ -257,6 +261,10 @@ export default function HistoryScreen({ route, navigation }) {
   };
 
   const handleExportPdf = async () => {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+      Toast.show({ type: 'error', text1: 'Akses Ditolak', text2: 'Hanya Admin yang dapat mengekspor laporan.' });
+      return;
+    }
     let url = '';
     try {
       const token = await AsyncStorage.getItem('token');
@@ -559,7 +567,7 @@ export default function HistoryScreen({ route, navigation }) {
             </TouchableOpacity>
             <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Riwayat Handover</Text>
           </View>
-          {isLargeScreen && user && (
+          {isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
             <View style={tw`flex-row items-center gap-2.5 z-30`}>
               <TouchableOpacity onPress={handleExportPdf} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
                 <Ionicons name="document-outline" size={16} color="white" />
@@ -878,8 +886,8 @@ export default function HistoryScreen({ route, navigation }) {
             />
           )}
 
-          {/* Tombol Ekspor Laporan (Mobile Only) */}
-          {!isLargeScreen && user && (
+          {/* Tombol Ekspor Laporan (Mobile Only - Hanya Admin) */}
+          {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
             <TouchableOpacity
               style={tw`absolute bottom-28 right-6 z-40 bg-[#0055A5] px-5 py-3.5 rounded-full flex-row items-center shadow-2xl shadow-blue-600/50 border border-white/40 active:scale-95`}
               onPress={() => setShowExportModal(true)}

@@ -6,10 +6,11 @@ const exportExcel = async (req, res) => {
   try {
     const { status, shift, startDate, endDate } = req.query;
 
-    let where = {};
-    if (req.user && (req.user.role === 'AMT' || req.user.role === 'USER')) {
-      where.userId = req.user.id;
+    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
+      return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
+
+    let where = {};
     if (status && status !== 'Semua') {
       where.status = status;
     }
@@ -293,10 +294,11 @@ const exportPdf = async (req, res) => {
   try {
     const { status, shift, startDate, endDate } = req.query;
 
-    let where = {};
-    if (req.user && (req.user.role === 'AMT' || req.user.role === 'USER')) {
-      where.userId = req.user.id;
+    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
+      return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
+
+    let where = {};
     if (status && status !== 'Semua') {
       where.status = status;
     }

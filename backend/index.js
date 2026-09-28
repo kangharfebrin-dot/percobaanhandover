@@ -11,7 +11,7 @@ const path = require('path');
 // Core Singletons & Configurations
 const prisma = require('./src/config/prisma');
 const logger = require('./src/config/logger');
-const { authenticateToken } = require('./src/middleware/auth');
+const { authenticateToken, authorizeRole } = require('./src/middleware/auth');
 const errorHandler = require('./src/middleware/errorHandler');
 
 // Startup Environment Validation (A2)
@@ -90,8 +90,8 @@ app.use('/barcodes', express.static(barcodesDir));
 const { exportExcel, exportPdf } = require('./src/controllers/reportController');
 const { getAnalytics } = require('./src/controllers/analyticsController');
 
-app.get('/api/reports/excel', authenticateToken, exportExcel);
-app.get('/api/reports/pdf', authenticateToken, exportPdf);
+app.get('/api/reports/excel', authenticateToken, authorizeRole('ADMIN', 'SUPER_ADMIN'), exportExcel);
+app.get('/api/reports/pdf', authenticateToken, authorizeRole('ADMIN', 'SUPER_ADMIN'), exportPdf);
 app.get('/api/dashboard/analytics', authenticateToken, getAnalytics);
 
 // Import Modular Routes (C1)
