@@ -625,57 +625,7 @@ export default function HistoryScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Active Filter Chips */}
-          {activeFilterCount > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`px-6 pt-3`} contentContainerStyle={tw`flex-row items-center gap-2`}>
-              {selectedStatus !== 'Semua' && (
-                <TouchableOpacity onPress={() => setSelectedStatus('Semua')} style={tw`flex-row items-center ${selectedStatus === 'Isu' ? 'bg-[#ED1C24]' : 'bg-[#00A651]'} px-3 py-2 rounded-full`}>
-                  <Ionicons name="shield-checkmark" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedStatus}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              {selectedShift !== 'Semua' && (
-                <TouchableOpacity onPress={() => setSelectedShift('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
-                  <Ionicons name="time" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedShift}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              {startDate !== '' && (
-                <TouchableOpacity onPress={() => setStartDate('')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
-                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>Mulai: {startDate}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              {endDate !== '' && (
-                <TouchableOpacity onPress={() => setEndDate('')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
-                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>Sampai: {endDate}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              {selectedYear !== 'Semua' && (
-                <TouchableOpacity onPress={() => setSelectedYear('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
-                  <Ionicons name="calendar" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedYear}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              {selectedMonth !== 'Semua' && (
-                <TouchableOpacity onPress={() => setSelectedMonth('Semua')} style={tw`flex-row items-center bg-[#0055A5] px-3 py-2 rounded-full`}>
-                  <Ionicons name="calendar-outline" size={12} color="white" style={tw`mr-1`} />
-                  <Text style={tw`text-white text-xs font-bold mr-1`}>{selectedMonth}</Text>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={resetAllFilters} style={tw`flex-row items-center bg-gray-200 px-3 py-2 rounded-full`}>
-                <Text style={tw`text-gray-600 text-xs font-bold mr-1`}>Hapus Semua</Text>
-                <Ionicons name="trash-outline" size={12} color="#6B7280" />
-              </TouchableOpacity>
-            </ScrollView>
-          )}
+
 
           {/* Filter Modal */}
           <Modal
