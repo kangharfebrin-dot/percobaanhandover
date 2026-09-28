@@ -551,14 +551,25 @@ export default function HistoryScreen({ route, navigation }) {
         {/* MAIN CONTENT AREA */}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
         {/* STICKY NAVBAR (Floating Modern Style) */}
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-          {/* Faint Logo Watermark with Clip */}
-
-
-          <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-            <Ionicons name="arrow-back" size={24} color="#0055A5" />
-          </TouchableOpacity>
-          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Riwayat Handover</Text>
+        <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+          <View style={tw`flex-row items-center`}>
+            <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+              <Ionicons name="arrow-back" size={24} color="#0055A5" />
+            </TouchableOpacity>
+            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Riwayat Handover</Text>
+          </View>
+          {isLargeScreen && user && (
+            <View style={tw`flex-row items-center gap-2.5 z-30`}>
+              <TouchableOpacity onPress={handleExportPdf} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                <Ionicons name="document-outline" size={16} color="white" />
+                <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleExportExcel} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                <Ionicons name="document-text" size={16} color="white" />
+                <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
@@ -866,20 +877,22 @@ export default function HistoryScreen({ route, navigation }) {
             />
           )}
 
-          {/* Export to Excel FAB (Only for Admin/Pengawas) */}
-          {user && (user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS') && (
-            <View style={tw`absolute bottom-28 right-6 z-40 items-end`}>
+          {/* Export FAB (Tersedia untuk Admin, Pengawas, dan AMT) */}
+          {user && (
+            <View style={tw`absolute ${isLargeScreen ? 'bottom-8' : 'bottom-28'} right-6 z-50 items-end gap-2.5`}>
               <TouchableOpacity
-                style={tw`bg-[#ED1C24] w-12 h-12 rounded-full items-center justify-center shadow-lg shadow-red-500/40 mb-3`}
+                style={tw`bg-[#ED1C24] px-4 py-2.5 rounded-full flex-row items-center shadow-xl shadow-red-600/40 border border-white/40 active:scale-95`}
                 onPress={handleExportPdf}
               >
-                <Ionicons name="document-outline" size={20} color="white" />
+                <Ionicons name="document-outline" size={18} color="white" />
+                <Text style={tw`text-white font-black text-xs ml-1.5`}>PDF</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={tw`bg-[#00A651] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-green-500/40`}
+                style={tw`bg-[#00A651] px-4.5 py-3 rounded-full flex-row items-center shadow-xl shadow-green-600/40 border border-white/40 active:scale-95`}
                 onPress={handleExportExcel}
               >
-                <Ionicons name="document-text" size={24} color="white" />
+                <Ionicons name="document-text" size={20} color="white" />
+                <Text style={tw`text-white font-black text-sm ml-1.5`}>Excel</Text>
               </TouchableOpacity>
             </View>
           )}
