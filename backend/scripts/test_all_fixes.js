@@ -97,10 +97,10 @@ async function testAll() {
       adminToken = loginRes.data.token;
       assert(loginRes.status === 200 && adminToken, '5. Admin login succeeded');
 
-      // Test C7: token expiry is 1 hour
+      // Test C7: token expiry is 7 days (168h) for operational mobile usability
       const decoded = jwt.decode(adminToken);
       const expiryHours = (decoded.exp - decoded.iat) / 3600;
-      assert(expiryHours === 1, `6. (C7) JWT access token expires in 1 hour (got ${expiryHours}h)`);
+      assert(expiryHours === 168, `6. (C7) JWT access token expires in 7 days (got ${expiryHours}h)`);
     }
 
     if (workerUser) {

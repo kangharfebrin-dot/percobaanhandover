@@ -55,18 +55,81 @@ import ScannerScreen from './screens/user/ScannerScreen';
 import HandoverFormScreen from './screens/user/HandoverFormScreen';
 import FixVerificationScreen from './screens/user/FixVerificationScreen';
 
+import { API_URL } from './config';
+
 const Stack = createNativeStackNavigator();
+
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    const jsonStr = typeof atob === 'function' ? atob(base64) : '';
+    if (!jsonStr) return false;
+    const parsed = JSON.parse(jsonStr);
+    if (!parsed.exp) return false;
+    // Beri buffer 10 detik
+    return Date.now() >= (parsed.exp * 1000 - 10000);
+  } catch (e) {
+    return true;
+  }
+};
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
 
   useEffect(() => {
+    // Interceptor global untuk membersihkan session jika token expired / unauthorized
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const status = error.response?.status;
+        const errMessage = error.response?.data?.error || '';
+        if (status === 401 || (status === 403 && (errMessage.includes('Token') || errMessage.includes('kadaluarsa')))) {
+          await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
+          delete axios.defaults.headers.common['Authorization'];
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  useEffect(() => {
     const checkLogin = async () => {
       try {
         const userStr = await AsyncStorage.getItem('user');
-        const token = await AsyncStorage.getItem('token');
+        let token = await AsyncStorage.getItem('token');
+        const refreshToken = await AsyncStorage.getItem('refreshToken');
         
         if (userStr && token) {
+          // Validasi apakah token JWT sudah kadaluarsa
+          if (isTokenExpired(token)) {
+            if (refreshToken) {
+              try {
+                const refreshRes = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+                if (refreshRes.data?.token) {
+                  token = refreshRes.data.token;
+                  await AsyncStorage.setItem('token', token);
+                } else {
+                  throw new Error('Refresh token gagal');
+                }
+              } catch (refreshErr) {
+                console.log('Sesi login telah berakhir, silakan login kembali');
+                await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
+                setInitialRoute('Login');
+                return;
+              }
+            } else {
+              console.log('Token telah kadaluarsa, reset session ke Login');
+              await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
+              setInitialRoute('Login');
+              return;
+            }
+          }
+
           const user = JSON.parse(userStr);
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           

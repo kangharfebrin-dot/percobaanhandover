@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, ScrollView, Animated, Easing, Platform, Alert, Image, Modal, RefreshControl } from 'react-native';
@@ -97,9 +97,14 @@ export default function AdminDashboardScreen({ navigation }) {
   }, []);
 
   const isLargeScreen = screenWidth > 768;
+  const lastFetchTimeRef = useRef(0);
 
-  useEffect(() => {
-    const loadData = async () => {
+  const loadData = async (isFocus = false) => {
+    const now = Date.now();
+    if (isFocus && now - lastFetchTimeRef.current < 2000) return;
+    lastFetchTimeRef.current = now;
+
+    try {
       const userStr = await AsyncStorage.getItem('user');
       if (userStr) {
         const userData = JSON.parse(userStr);
@@ -109,20 +114,18 @@ export default function AdminDashboardScreen({ navigation }) {
           fetchNotifications();
         }
       }
-    };
-    loadData();
+    } catch (e) {
+      console.log('Error loading user data:', e.message);
+    }
+  };
+
+  useEffect(() => {
+    loadData(false);
   }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', async () => {
-      const userStr = await AsyncStorage.getItem('user');
-      if (userStr) {
-        const userData = JSON.parse(userStr);
-        if (userData.role === 'SUPER_ADMIN' || userData.role === 'PENGAWAS' || userData.role === 'ADMIN') {
-          fetchAlerts();
-          fetchNotifications();
-        }
-      }
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData(true);
     });
     return unsubscribe;
   }, [navigation]);
@@ -157,7 +160,7 @@ export default function AdminDashboardScreen({ navigation }) {
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        await AsyncStorage.multiRemove(['user', 'token']);
+        await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
         navigation.replace('Login');
       }
     } finally {
@@ -178,7 +181,7 @@ export default function AdminDashboardScreen({ navigation }) {
     } catch (error) {
       console.log("Gagal mengambil notifikasi:", error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        await AsyncStorage.multiRemove(['user', 'token']);
+        await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
         navigation.replace('Login');
       }
     }

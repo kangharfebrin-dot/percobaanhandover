@@ -15,7 +15,10 @@ const authMiddleware = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Akses ditolak: Token tidak valid atau kadaluarsa' });
+      return res.status(401).json({
+        error: 'Akses ditolak: Token tidak valid atau kadaluarsa',
+        isTokenExpired: err.name === 'TokenExpiredError'
+      });
     }
     req.user = user;
     next();
