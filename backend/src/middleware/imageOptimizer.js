@@ -19,20 +19,23 @@ const optimizeImages = async (req, res, next) => {
       const previewName = `${filenameBase}-preview.webp`;
       const thumbName = `${filenameBase}-thumb.webp`;
 
-      // Full size (1200x1200 max)
+      // Full size (1200x1200 max, auto-rotated according to EXIF)
       await sharp(file.buffer)
+        .rotate()
         .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 80 })
         .toFile(path.join(uploadsDir, fullName));
 
-      // Preview size (600x600 max)
+      // Preview size (600x600 max, auto-rotated according to EXIF)
       await sharp(file.buffer)
+        .rotate()
         .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 80 })
         .toFile(path.join(uploadsDir, previewName));
 
-      // Thumbnail size (200x200 cropped)
+      // Thumbnail size (200x200 cropped, auto-rotated according to EXIF)
       await sharp(file.buffer)
+        .rotate()
         .resize(200, 200, { fit: 'cover' })
         .webp({ quality: 80 })
         .toFile(path.join(uploadsDir, thumbName));

@@ -25,6 +25,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
 
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [photoRotation, setPhotoRotation] = useState(0);
 
   useEffect(() => {
     const onChange = ({ window }) => setScreenWidth(window.width);
@@ -250,7 +251,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Ionicons name="camera" size={16} color="#ED1C24" style={tw`mr-2`} />
                   <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
                 </View>
-                <TouchableOpacity onPress={() => setSelectedPhoto(damagePhoto)}>
+                <TouchableOpacity onPress={() => { setSelectedPhoto(damagePhoto); setPhotoRotation(0); }}>
                   <Image source={{ uri: `${API_URL}/${damagePhoto.thumbnailUrl || damagePhoto.previewUrl || damagePhoto.url}` }} style={tw`w-full h-32 rounded-lg mt-1`} />
                 </TouchableOpacity>
               </View>
@@ -267,7 +268,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Text style={tw`text-sm text-green-700 leading-5 mb-2`}>{item.repairNote}</Text>
                 ) : null}
                 {item.repairPhotoUrl ? (
-                  <TouchableOpacity onPress={() => setSelectedPhoto({ type: 'Perbaikan', url: item.repairPhotoUrl })}>
+                  <TouchableOpacity onPress={() => { setSelectedPhoto({ type: 'Perbaikan', url: item.repairPhotoUrl }); setPhotoRotation(0); }}>
                     <Image source={{ uri: `${API_URL}/${item.repairPhotoUrl}` }} style={tw`w-full h-32 rounded-lg mt-2`} />
                   </TouchableOpacity>
                 ) : null}
@@ -486,14 +487,21 @@ export default function HandoverDetailScreen({ route, navigation }) {
                 {generalPhotos.map((photo, idx) => (
                   <TouchableOpacity
                     key={photo.id || idx}
-                    style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm`}
-                    onPress={() => setSelectedPhoto(photo)}
+                    style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm relative`}
+                    onPress={() => {
+                      setSelectedPhoto(photo);
+                      setPhotoRotation(0);
+                    }}
                   >
                     <Image
                       source={{ uri: `${API_URL}/${photo.thumbnailUrl || photo.previewUrl || photo.url}` }}
                       style={tw`w-full h-full`}
                       resizeMode="cover"
                     />
+                    <View style={tw`absolute top-2 right-2 bg-black/50 px-2 py-1 rounded-full flex-row items-center border border-white/20`}>
+                      <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
+                      <Text style={tw`text-white text-[10px] font-bold`}>Preview</Text>
+                    </View>
                     <View style={tw`absolute bottom-0 left-0 right-0 bg-black/60 py-2 px-3`}>
                       <Text style={tw`text-white text-xs font-bold`}>{photo.type || `Foto ${idx + 1}`}</Text>
                     </View>
@@ -540,29 +548,41 @@ export default function HandoverDetailScreen({ route, navigation }) {
       <Modal visible={!!selectedPhoto} transparent={true} animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
         <View style={tw`flex-1 bg-black/90 justify-center items-center`}>
           {/* Glass Navbar */}
-          <View style={tw`absolute top-0 w-full pt-12 pb-5 px-6 flex-row justify-between items-center z-50 bg-black/50 border-b border-white/10`}>
-            <View>
-              <Text style={tw`text-white font-black text-2xl tracking-wide`}>
-                Preview Foto
+          <View style={tw`absolute top-0 w-full pt-12 pb-5 px-6 flex-row justify-between items-center z-50 bg-black/60 border-b border-white/10`}>
+            <View style={tw`flex-1 mr-3`}>
+              <Text style={tw`text-white font-black text-xl tracking-wide`}>
+                Preview Foto Detail
               </Text>
-              <Text style={tw`text-blue-300 font-bold text-xs uppercase tracking-widest mt-1 flex-row items-center`}>
-                Sisi {selectedPhoto?.type || 'Kendaraan'}
+              <Text style={tw`text-blue-300 font-bold text-xs uppercase tracking-widest mt-0.5`}>
+                Sisi {selectedPhoto?.type || 'Kendaraan'} {handover?.noPolisi ? `• ${handover.noPolisi}` : ''}
               </Text>
             </View>
-            <TouchableOpacity
-              style={tw`p-3 bg-white/20 rounded-full border border-white/30`}
-              onPress={() => setSelectedPhoto(null)}
-            >
-              <Ionicons name="close" size={24} color="white" />
-            </TouchableOpacity>
+            <View style={tw`flex-row items-center gap-2`}>
+              <TouchableOpacity
+                style={tw`flex-row items-center px-3.5 py-2 bg-white/20 rounded-full border border-white/30 active:scale-95`}
+                onPress={() => setPhotoRotation(prev => (prev + 90) % 360)}
+              >
+                <Ionicons name="refresh" size={16} color="white" style={tw`mr-1.5`} />
+                <Text style={tw`text-white font-bold text-xs`}>Putar 90° ({photoRotation}°)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`p-2.5 bg-white/20 rounded-full border border-white/30`}
+                onPress={() => {
+                  setSelectedPhoto(null);
+                  setPhotoRotation(0);
+                }}
+              >
+                <Ionicons name="close" size={22} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {selectedPhoto && (
-            <View style={tw`w-full h-full justify-center items-center p-4 pt-20`}>
-              <View style={tw`w-full h-[80%] bg-black/50 rounded-[40px] overflow-hidden border border-white/20 shadow-2xl relative`}>
+            <View style={tw`w-full h-full justify-center items-center p-4 pt-24`}>
+              <View style={tw`w-full h-[80%] bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative justify-center items-center`}>
                 <Image
-                  source={{ uri: `${API_URL}/${selectedPhoto.url}` }}
-                  style={tw`w-full h-full`}
+                  source={{ uri: `${API_URL}/${selectedPhoto.previewUrl || selectedPhoto.url}` }}
+                  style={[tw`w-full h-full`, { transform: [{ rotate: `${photoRotation}deg` }] }]}
                   resizeMode="contain"
                 />
 

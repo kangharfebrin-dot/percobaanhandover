@@ -522,11 +522,24 @@ export default function HistoryScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Tap indicator */}
-        <View style={tw`flex-row items-center justify-end mt-3 pt-3 border-t border-gray-100`}>
-          <Text style={tw`text-xs text-[#0055A5] font-bold mr-1`}>Lihat Detail</Text>
-          <Ionicons name="chevron-forward" size={14} color="#0055A5" />
-        </View>
+        {/* Tap indicator & Photo counter */}
+        {item.photos && item.photos.length > 0 ? (
+          <View style={tw`flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100`}>
+            <View style={tw`flex-row items-center bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100`}>
+              <Ionicons name="camera" size={13} color="#0055A5" style={tw`mr-1`} />
+              <Text style={tw`text-[11px] font-black text-[#0055A5]`}>{item.photos.length} Foto</Text>
+            </View>
+            <View style={tw`flex-row items-center`}>
+              <Text style={tw`text-xs text-[#0055A5] font-bold mr-1`}>Lihat Detail & Preview</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0055A5" />
+            </View>
+          </View>
+        ) : (
+          <View style={tw`flex-row items-center justify-end mt-3 pt-3 border-t border-gray-100`}>
+            <Text style={tw`text-xs text-[#0055A5] font-bold mr-1`}>Lihat Detail</Text>
+            <Ionicons name="chevron-forward" size={14} color="#0055A5" />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };

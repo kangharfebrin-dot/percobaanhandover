@@ -319,7 +319,7 @@ export default function HandoverFormScreen({ route, navigation }) {
       // Beri jeda sedikit agar UI (Loading Indicator) ter-render mulus sebelum membebani Native Camera
       setTimeout(async () => {
         try {
-          const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+          const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
 
           const now = new Date();
           const timestampStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -990,15 +990,16 @@ export default function HandoverFormScreen({ route, navigation }) {
               </View>
 
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
-                <View style={tw`w-80 h-56 border border-white/30 rounded-3xl relative shadow-2xl bg-white/5`}>
+                <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>
                   <View style={tw`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-[#2ECC71] rounded-tl-3xl`} />
                   <View style={tw`absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-[#2ECC71] rounded-tr-3xl`} />
                   <View style={tw`absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-[#2ECC71] rounded-bl-3xl`} />
                   <View style={tw`absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-[#2ECC71] rounded-br-3xl`} />
 
-                  <View style={tw`flex-1 items-center justify-center`}>
-                    <Ionicons name="scan-outline" size={48} color="rgba(255,255,255,0.3)" />
-                  </View>
+                  <Ionicons name="scan-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text style={tw`text-white/90 font-bold text-xs mt-3 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/20`}>
+                    Ambil foto secara tegak (Portrait)
+                  </Text>
                 </View>
               </View>
 

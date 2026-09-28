@@ -25,6 +25,8 @@ export default function FixVerificationScreen({ route, navigation }) {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activeItemId, setActiveItemId] = useState(null);
+  const [selectedPreviewPhoto, setSelectedPreviewPhoto] = useState(null);
+  const [previewRotation, setPreviewRotation] = useState(0);
   const cameraRef = useRef(null);
 
   useEffect(() => {
@@ -149,7 +151,7 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   const takePicture = async () => {
     if (cameraRef.current && activeItemId) {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
       const index = brokenItems.findIndex(i => i.id === activeItemId);
       if (index !== -1) {
         const newItems = [...brokenItems];
@@ -317,6 +319,44 @@ export default function FixVerificationScreen({ route, navigation }) {
                   </View>
                 </View>
 
+                {/* Foto Temuan Kerusakan Awal saat Handover */}
+                {(() => {
+                  const damagePhoto = (issue?.handover?.photos || []).find(p => {
+                    const cleanPType = (p.type || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+                    const cleanIName = (item.name || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+                    return cleanPType.includes(cleanIName) || cleanIName.includes(cleanPType);
+                  });
+                  if (!damagePhoto) return null;
+                  return (
+                    <View style={tw`mb-3 bg-red-50/70 p-3 rounded-xl border border-red-100`}>
+                      <Text style={tw`text-xs font-bold text-red-800 mb-1.5`}>Foto Temuan Kerusakan Awal:</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          setSelectedPreviewPhoto({
+                            title: 'Foto Kerusakan Awal',
+                            subtitle: item.name,
+                            url: `${API_URL}/${damagePhoto.previewUrl || damagePhoto.url}`,
+                            type: 'Temuan Serah Terima'
+                          });
+                          setPreviewRotation(0);
+                        }}
+                        style={tw`relative rounded-xl overflow-hidden`}
+                      >
+                        <Image 
+                          source={{ uri: `${API_URL}/${damagePhoto.previewUrl || damagePhoto.url}` }} 
+                          style={tw`w-full h-36 rounded-xl bg-gray-100`} 
+                          resizeMode="cover" 
+                        />
+                        <View style={tw`absolute bottom-2 right-2 bg-black/60 px-2.5 py-1 rounded-full flex-row items-center border border-white/20`}>
+                          <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
+                          <Text style={tw`text-white text-[10px] font-bold`}>Ketuk untuk Zoom / Putar</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })()}
+
                 <View style={tw`flex-row bg-gray-100 p-1 rounded-xl mb-4`}>
                   <TouchableOpacity
                     style={tw`flex-1 py-2 rounded-lg items-center ${item.repairStatus === 'BAIK' ? 'bg-green-500 shadow' : 'bg-transparent'}`}
@@ -348,10 +388,28 @@ export default function FixVerificationScreen({ route, navigation }) {
                       {photoLabel} {!isCategoryB && <Text style={tw`text-red-500`}>*</Text>}
                     </Text>
                     {item.photo ? (
-                      <View style={tw`relative mb-2`}>
-                        <Image source={{ uri: item.photo.uri }} style={tw`w-full h-40 rounded-xl`} />
+                      <View style={tw`relative mb-2 rounded-xl overflow-hidden`}>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() => {
+                            setSelectedPreviewPhoto({
+                              title: 'Foto Bukti Perbaikan Anda',
+                              subtitle: item.name,
+                              url: item.photo.uri,
+                              isLocal: true,
+                              type: 'Bukti Perbaikan'
+                            });
+                            setPreviewRotation(0);
+                          }}
+                        >
+                          <Image source={{ uri: item.photo.uri }} style={tw`w-full h-44 rounded-xl`} resizeMode="cover" />
+                          <View style={tw`absolute bottom-2 right-2 bg-black/60 px-2.5 py-1 rounded-full flex-row items-center border border-white/20`}>
+                            <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
+                            <Text style={tw`text-white text-[10px] font-bold`}>Ketuk untuk Zoom / Putar</Text>
+                          </View>
+                        </TouchableOpacity>
                         <TouchableOpacity 
-                          style={tw`absolute top-2 right-2 bg-red-500 p-2 rounded-full`}
+                          style={tw`absolute top-2 right-2 bg-red-500 p-2 rounded-full shadow-md z-10`}
                           onPress={() => {
                             const newItems = [...brokenItems];
                             newItems[index].photo = null;
@@ -425,11 +483,20 @@ export default function FixVerificationScreen({ route, navigation }) {
               </View>
 
               <TouchableOpacity
-                style={tw`absolute top-12 left-4 bg-black/50 p-2 rounded-full`}
+                style={tw`absolute top-12 left-4 bg-black/50 p-2 rounded-full z-10`}
                 onPress={() => { setIsCameraOpen(false); setIsCameraReady(false); setActiveItemId(null); }}
               >
                 <Ionicons name="close" size={28} color="white" />
               </TouchableOpacity>
+
+              <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
+                <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>
+                  <Ionicons name="scan-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text style={tw`text-white/90 font-bold text-xs mt-3 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/20`}>
+                    Ambil foto bukti secara tegak (Portrait)
+                  </Text>
+                </View>
+              </View>
 
               <View style={tw`absolute bottom-12 w-full flex-row justify-center`}>
                 <TouchableOpacity 
@@ -463,6 +530,80 @@ export default function FixVerificationScreen({ route, navigation }) {
               <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Menu Utama</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* MODAL FULL SCREEN PREVIEW FOTO DENGAN ROTASI */}
+      <Modal 
+        visible={!!selectedPreviewPhoto} 
+        transparent={true} 
+        animationType="fade" 
+        onRequestClose={() => {
+          setSelectedPreviewPhoto(null);
+          setPreviewRotation(0);
+        }}
+      >
+        <View style={tw`flex-1 bg-black/95 justify-center items-center`}>
+          {/* Glass Navbar */}
+          <View style={tw`absolute top-0 w-full pt-12 pb-5 px-6 flex-row justify-between items-center z-50 bg-black/60 border-b border-white/10`}>
+            <View style={tw`flex-1 mr-3`}>
+              <Text style={tw`text-white font-black text-xl tracking-wide`} numberOfLines={1}>
+                {selectedPreviewPhoto?.title || 'Preview Foto'}
+              </Text>
+              <Text style={tw`text-blue-300 font-bold text-xs uppercase tracking-widest mt-0.5`}>
+                {selectedPreviewPhoto?.subtitle} {selectedPreviewPhoto?.type ? `• ${selectedPreviewPhoto.type}` : ''}
+              </Text>
+            </View>
+            <View style={tw`flex-row items-center gap-2`}>
+              <TouchableOpacity
+                style={tw`flex-row items-center px-3.5 py-2 bg-white/20 rounded-full border border-white/30 active:scale-95`}
+                onPress={() => setPreviewRotation(prev => (prev + 90) % 360)}
+              >
+                <Ionicons name="refresh" size={16} color="white" style={tw`mr-1.5`} />
+                <Text style={tw`text-white font-bold text-xs`}>Putar 90° ({previewRotation}°)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`p-2.5 bg-white/20 rounded-full border border-white/30`}
+                onPress={() => {
+                  setSelectedPreviewPhoto(null);
+                  setPreviewRotation(0);
+                }}
+              >
+                <Ionicons name="close" size={22} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {selectedPreviewPhoto && (
+            <View style={tw`w-full h-full justify-center items-center p-4 pt-24`}>
+              <View style={tw`w-full h-[80%] bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative justify-center items-center`}>
+                <Image
+                  source={{ uri: selectedPreviewPhoto.url }}
+                  style={[tw`w-full h-full`, { transform: [{ rotate: `${previewRotation}deg` }] }]}
+                  resizeMode="contain"
+                />
+
+                {/* Bottom Info Banner */}
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.85)']}
+                  style={tw`absolute bottom-0 w-full p-5 pt-12`}
+                  pointerEvents="none"
+                >
+                  <View style={tw`flex-row items-center`}>
+                    <View style={tw`w-10 h-10 bg-[#0055A5] rounded-xl items-center justify-center mr-3 border border-white/20`}>
+                      <Ionicons name="camera" size={20} color="white" />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-white font-extrabold text-sm`}>{selectedPreviewPhoto.title}</Text>
+                      <Text style={tw`text-gray-300 text-xs mt-0.5`}>
+                        {selectedPreviewPhoto.subtitle}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
 
