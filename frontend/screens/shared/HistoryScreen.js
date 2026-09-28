@@ -46,6 +46,7 @@ export default function HistoryScreen({ route, navigation }) {
   const [tempMonth, setTempMonth] = useState('Semua');
   const [tempYear, setTempYear] = useState('Semua');
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const [activeMenu, setActiveMenu] = useState('History');
   const [previousMenu, setPreviousMenu] = useState('History');
@@ -877,25 +878,107 @@ export default function HistoryScreen({ route, navigation }) {
             />
           )}
 
-          {/* Export FAB (Tersedia untuk Admin, Pengawas, dan AMT) */}
-          {user && (
-            <View style={tw`absolute ${isLargeScreen ? 'bottom-8' : 'bottom-28'} right-6 z-50 items-end gap-2.5`}>
-              <TouchableOpacity
-                style={tw`bg-[#ED1C24] px-4 py-2.5 rounded-full flex-row items-center shadow-xl shadow-red-600/40 border border-white/40 active:scale-95`}
-                onPress={handleExportPdf}
-              >
-                <Ionicons name="document-outline" size={18} color="white" />
-                <Text style={tw`text-white font-black text-xs ml-1.5`}>PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={tw`bg-[#00A651] px-4.5 py-3 rounded-full flex-row items-center shadow-xl shadow-green-600/40 border border-white/40 active:scale-95`}
-                onPress={handleExportExcel}
-              >
-                <Ionicons name="document-text" size={20} color="white" />
-                <Text style={tw`text-white font-black text-sm ml-1.5`}>Excel</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Tombol Ekspor Laporan (Mobile Only) */}
+          {!isLargeScreen && user && (
+            <TouchableOpacity
+              style={tw`absolute bottom-28 right-6 z-40 bg-[#0055A5] px-5 py-3.5 rounded-full flex-row items-center shadow-2xl shadow-blue-600/50 border border-white/40 active:scale-95`}
+              onPress={() => setShowExportModal(true)}
+            >
+              <Feather name="download" size={18} color="white" />
+              <Text style={tw`text-white font-black text-sm ml-2 tracking-wide`}>Ekspor Laporan</Text>
+            </TouchableOpacity>
           )}
+
+          {/* MODAL PILIH FORMAT EKSPOR (MOBILE) */}
+          <Modal
+            visible={showExportModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowExportModal(false)}
+          >
+            <View style={tw`flex-1 justify-end sm:justify-center items-center bg-black/50 px-4 sm:px-0 z-50`}>
+              <View style={tw`bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl relative overflow-hidden pb-8 sm:pb-6`}>
+                
+                {/* Header Modal */}
+                <View style={tw`flex-row justify-between items-center mb-2`}>
+                  <View style={tw`flex-row items-center`}>
+                    <View style={tw`w-11 h-11 bg-blue-50 rounded-2xl items-center justify-center mr-3 border border-blue-100`}>
+                      <Feather name="download" size={22} color="#0055A5" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-xl font-black text-gray-900 tracking-tight`}>Pilih Format Ekspor</Text>
+                      <Text style={tw`text-xs text-gray-400 font-medium`}>Pilih format dokumen laporan handover</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setShowExportModal(false)}
+                    style={tw`w-9 h-9 bg-gray-100 rounded-full items-center justify-center`}
+                  >
+                    <Ionicons name="close" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={tw`h-[1px] bg-gray-100 my-4`} />
+
+                {/* Pilihan Format */}
+                <View style={tw`gap-3`}>
+                  {/* Opsi PDF */}
+                  <TouchableOpacity
+                    style={tw`p-4 rounded-2xl border-2 border-red-100 bg-red-50/50 flex-row items-center active:scale-[0.98] active:bg-red-100/60`}
+                    onPress={() => {
+                      setShowExportModal(false);
+                      handleExportPdf();
+                    }}
+                  >
+                    <View style={tw`w-12 h-12 rounded-xl bg-[#ED1C24] items-center justify-center shadow-md shadow-red-500/30 mr-3.5`}>
+                      <Ionicons name="document-outline" size={26} color="white" />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <View style={tw`flex-row items-center justify-between mb-0.5`}>
+                        <Text style={tw`text-base font-black text-gray-800`}>Dokumen PDF (.pdf)</Text>
+                        <View style={tw`bg-red-100 px-2 py-0.5 rounded-full`}>
+                          <Text style={tw`text-red-700 font-bold text-[10px]`}>Siap Cetak</Text>
+                        </View>
+                      </View>
+                      <Text style={tw`text-xs text-gray-500 leading-4`}>Format berita acara serah terima resmi Pertamina Patra Niaga</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#9CA3AF" style={tw`ml-2`} />
+                  </TouchableOpacity>
+
+                  {/* Opsi Excel */}
+                  <TouchableOpacity
+                    style={tw`p-4 rounded-2xl border-2 border-green-100 bg-green-50/50 flex-row items-center active:scale-[0.98] active:bg-green-100/60`}
+                    onPress={() => {
+                      setShowExportModal(false);
+                      handleExportExcel();
+                    }}
+                  >
+                    <View style={tw`w-12 h-12 rounded-xl bg-[#00A651] items-center justify-center shadow-md shadow-green-500/30 mr-3.5`}>
+                      <Ionicons name="document-text" size={26} color="white" />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <View style={tw`flex-row items-center justify-between mb-0.5`}>
+                        <Text style={tw`text-base font-black text-gray-800`}>Spreadsheet Excel (.xlsx)</Text>
+                        <View style={tw`bg-green-100 px-2 py-0.5 rounded-full`}>
+                          <Text style={tw`text-green-700 font-bold text-[10px]`}>Data Rekap</Text>
+                        </View>
+                      </View>
+                      <Text style={tw`text-xs text-gray-500 leading-4`}>Rekapitulasi data lengkap untuk analisis dan pengolahan tabel</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#9CA3AF" style={tw`ml-2`} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Tombol Batal */}
+                <TouchableOpacity
+                  style={tw`w-full bg-gray-100 py-3.5 rounded-2xl items-center mt-5 active:bg-gray-200`}
+                  onPress={() => setShowExportModal(false)}
+                >
+                  <Text style={tw`text-gray-700 font-bold text-sm`}>Batal</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
                   </View>
 
