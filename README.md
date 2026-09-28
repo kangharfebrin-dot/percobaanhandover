@@ -37,7 +37,7 @@ Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesu
 | :--- | :--- | :--- | :--- |
 | **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
 | **Pengawas** | **Pengawas Lapangan / Fleet Dispatcher** | Pemantauan kelayakan armada & operasional harian | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
-| **Super Admin** | **Supervisor Distribusi / Fleet Supervisor** | Pengelolaan master data, regulasi & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist HSSE, otorisasi Force Release, rekapitulasi audit |
+| **Admin** | **Supervisor Distribusi / Fleet Supervisor** | Pengelolaan master data, regulasi & sistem | Manajemen 334 AMT & 83 unit mobil tangki, kelola akun Pengawas, kustomisasi butir checklist HSSE, otorisasi Force Release, rekapitulasi audit |
 
 ---
 
