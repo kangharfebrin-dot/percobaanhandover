@@ -129,6 +129,14 @@ export default function AdminListScreen({ navigation }) {
     setManageModalVisible(true);
   };
 
+  const closeManageModal = () => {
+    setManageModalVisible(false);
+    setSelectedAdmin(null);
+    setName('');
+    setUsername('');
+    setPassword('');
+  };
+
   const openEditModal = (admin) => {
     setSelectedAdmin(admin);
     setName(admin.name);
@@ -349,7 +357,7 @@ export default function AdminListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* MANAGE ADMIN MODAL (ADD / EDIT) */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
+      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
         <View style={tw`flex-1 justify-end bg-black/60`}>
           <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
             <View style={tw`flex-row justify-between items-center mb-6`}>
@@ -357,7 +365,7 @@ export default function AdminListScreen({ navigation }) {
                 <Text style={tw`text-2xl font-black text-gray-800`}>{selectedAdmin ? 'Ubah Data Admin' : 'Tambah Admin Baru'}</Text>
                 <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan dan konfigurasi sistem</Text>
               </View>
-              <TouchableOpacity onPress={() => setManageModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
+              <TouchableOpacity onPress={closeManageModal} style={tw`p-2 bg-gray-100 rounded-full`}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
@@ -371,6 +379,7 @@ export default function AdminListScreen({ navigation }) {
                   placeholderTextColor="#9CA3AF"
                   value={name}
                   onChangeText={setName}
+                  autoComplete="off"
                 />
               </View>
 
@@ -383,6 +392,9 @@ export default function AdminListScreen({ navigation }) {
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                  textContentType="none"
                 />
               </View>
 
@@ -403,10 +415,11 @@ export default function AdminListScreen({ navigation }) {
                 <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan / Divisi</Text>
                 <TextInput
                   style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                  placeholder="Contoh: Fleet Supervisor / IT Terminal"
+                  placeholder="Contoh: Admin Distribusi / IT Terminal"
                   placeholderTextColor="#9CA3AF"
                   value={jabatan}
                   onChangeText={setJabatan}
+                  autoComplete="off"
                 />
               </View>
 
@@ -421,6 +434,8 @@ export default function AdminListScreen({ navigation }) {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
                 />
               </View>
 

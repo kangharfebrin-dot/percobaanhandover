@@ -130,9 +130,18 @@ export default function PengawasListScreen({ navigation }) {
     setName('');
     setUsername('');
     setPassword('');
-    
     setRole('PENGAWAS');
+    setJabatan('Pengawas Lapangan');
     setManageModalVisible(true);
+  };
+
+  const closeManageModal = () => {
+    setManageModalVisible(false);
+    setSelectedPengawas(null);
+    setName('');
+    setUsername('');
+    setPassword('');
+    setJabatan('');
   };
 
   const openEditModal = (pengawas) => {
@@ -140,54 +149,48 @@ export default function PengawasListScreen({ navigation }) {
     setName(pengawas.name);
     setUsername(pengawas.username);
     setPassword(''); // biarkan kosong jika tidak diubah
-    
-    setRole(pengawas.role);
+    setRole(pengawas.role || 'PENGAWAS');
+    setJabatan(pengawas.jabatan || 'Pengawas Lapangan');
     setManageModalVisible(true);
   };
 
   const handleSavePengawas = async () => {
-    if (!name || !username || (!selectedPengawas && !password)) {
-      showNotification('Data Tidak Lengkap', 'Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.', 'info');
-      return;
-    }
-
-    const isUsernameValid = /^[a-zA-Z0-9\s.\-_]+$/.test(username);
-    const isPasswordValid = selectedPengawas && !password ? true : /^[0-9]+$/.test(password);
-
-    if (!isUsernameValid) {
-      showNotification('Format Tidak Valid', 'Username hanya boleh berisi huruf, angka, spasi, titik, strip atau underscore.', 'info');
-      return;
-    }
-
-    if (!isPasswordValid) {
-      showNotification('Format Tidak Valid', 'Password hanya boleh berisi angka.', 'info');
+    if (!name.trim() || !username.trim() || (!selectedPengawas && !password.trim())) {
+      showNotification('Data Tidak Lengkap', 'Nama, Username, dan Password (untuk pengawas baru) wajib diisi.', 'info');
       return;
     }
 
     try {
-      const data = { name, username, role: 'PENGAWAS' };
-      if (password) data.password = password;
+      const data = {
+        name: name.trim(),
+        username: username.trim(),
+        role: 'PENGAWAS',
+        jabatan: (jabatan || 'Pengawas Lapangan').trim()
+      };
+      if (password && password.trim() !== '') {
+        data.password = password.trim();
+      }
 
       if (selectedPengawas) {
         // Update
         await axios.put(`${API_BASE}/pengawas/${selectedPengawas.id}`, data);
-        showNotification('Berhasil', 'Data pekerja berhasil diperbarui!', 'success');
+        showNotification('Berhasil', `Data pengawas '${name}' berhasil diperbarui!`, 'success');
       } else {
         // Create
         await axios.post(`${API_BASE}/pengawas`, data);
-        showNotification('Berhasil', 'Pekerja baru berhasil ditambahkan!', 'success');
+        showNotification('Berhasil', `Pengawas baru '${name}' berhasil ditambahkan!`, 'success');
       }
-      setManageModalVisible(false);
+      closeManageModal();
       fetchPengawass();
     } catch (error) {
-      showNotification('Gagal', error.response?.data?.error || error.message, 'error');
+      showNotification('Gagal Menyimpan', error.response?.data?.error || error.message, 'error');
     }
   };
 
   const handleDeletePengawas = () => {
     if (!selectedPengawas) return;
-
     setPengawasToDelete(selectedPengawas);
+    setManageModalVisible(false);
     setConfirmModalVisible(true);
   };
 
@@ -337,77 +340,115 @@ export default function PengawasListScreen({ navigation }) {
         </View>
       </SafeAreaView>
 
-      {/* MANAGE PENGAWAS MODAL */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
+      {/* MANAGE PENGAWAS MODAL (ADD / EDIT) */}
+      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
         <View style={tw`flex-1 justify-end bg-black/60`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
+          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
             <View style={tw`flex-row justify-between items-center mb-6`}>
-              <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Edit Pengawas' : 'Tambah Pengawas'}</Text>
-              <TouchableOpacity onPress={() => setManageModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
+              <View>
+                <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Ubah Data Pengawas' : 'Tambah Pengawas Baru'}</Text>
+                <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan operasional dan persetujuan checklist</Text>
+              </View>
+              <TouchableOpacity onPress={closeManageModal} style={tw`p-2 bg-gray-100 rounded-full`}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pengawas</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan nama lengkap"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Lengkap</Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder="Masukkan nama lengkap"
+                  placeholderTextColor="#9CA3AF"
+                  value={name}
+                  onChangeText={setName}
+                  autoComplete="off"
+                />
+              </View>
 
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Username</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan username"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-              />
-                        </View>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Username (Untuk Login)</Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder="Masukkan username (tanpa spasi)"
+                  placeholderTextColor="#9CA3AF"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                  textContentType="none"
+                />
+              </View>
 
-            <View style={tw`mb-6`}>
-              {selectedPengawas && (
-                <View style={tw`mb-4 p-4 bg-gray-100 rounded-xl border border-gray-200 flex-row justify-between items-center`}>
-                  <View>
-                    <Text style={tw`text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1`}>Password Saat Ini</Text>
-                    <Text style={tw`text-sm font-bold text-gray-700`}>{selectedPengawas.password}</Text>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Hak Akses Sistem</Text>
+                <View style={tw`p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex-row items-center`}>
+                  <View style={tw`w-10 h-10 bg-blue-100 rounded-xl items-center justify-center mr-3`}>
+                    <Feather name="shield" size={20} color="#0055A5" />
                   </View>
-                  <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`font-extrabold text-[#0055A5] text-sm`}>PENGAWAS</Text>
+                    <Text style={tw`text-[11px] text-blue-800 mt-0.5`}>Akses verifikasi checklist, validasi temuan kendala, dan approval handover.</Text>
+                  </View>
                 </View>
-              )}
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
-                Password {selectedPengawas ? '(Kosongkan jika tidak diubah)' : ''}
-              </Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder={selectedPengawas ? "Masukkan password baru" : "Masukkan password"}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+              </View>
 
-            <View style={tw`flex-row justify-between w-full mb-6`}>
-              {selectedPengawas ? (
-                <>
-                  <TouchableOpacity style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`} onPress={handleDeletePengawas}>
-                    <Text style={tw`text-red-700 font-bold`}>Hapus Data</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={tw`flex-1 bg-[#4F46E5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-indigo-500/40`} onPress={handleSavePengawas}>
-                    <Text style={tw`text-white font-bold`}>Simpan</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity style={tw`flex-1 bg-[#4F46E5] p-4 rounded-xl items-center shadow-lg shadow-indigo-500/40`} onPress={handleSavePengawas}>
-                  <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PENGAWAS</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan / Divisi</Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder="Contoh: Pengawas Lapangan / Pengawas HSSE"
+                  placeholderTextColor="#9CA3AF"
+                  value={jabatan}
+                  onChangeText={setJabatan}
+                  autoComplete="off"
+                />
+              </View>
 
+              <View style={tw`mb-6`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
+                  Password {selectedPengawas ? '(Kosongkan jika tidak ingin diubah)' : '(Wajib)'}
+                </Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder={selectedPengawas ? "Ketik sandi baru untuk mengganti" : "Ketik sandi akun baru"}
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+              </View>
+
+              <View style={tw`flex-row justify-between w-full mb-6`}>
+                {selectedPengawas ? (
+                  <>
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`}
+                      onPress={handleDeletePengawas}
+                    >
+                      <Text style={tw`text-red-700 font-bold`}>Hapus Pengawas</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`}
+                      onPress={handleSavePengawas}
+                    >
+                      <Text style={tw`text-white font-bold`}>Simpan Perubahan</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`}
+                    onPress={handleSavePengawas}
+                  >
+                    <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PENGAWAS BARU</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

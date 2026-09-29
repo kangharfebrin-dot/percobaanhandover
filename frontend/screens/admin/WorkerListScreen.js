@@ -112,9 +112,18 @@ export default function WorkerListScreen({ navigation }) {
     setName('');
     setUsername('');
     setPassword('');
-    setJabatan('');
+    setJabatan('AMT I');
     setRole('AMT');
     setManageModalVisible(true);
+  };
+
+  const closeManageModal = () => {
+    setManageModalVisible(false);
+    setSelectedWorker(null);
+    setName('');
+    setUsername('');
+    setPassword('');
+    setJabatan('');
   };
 
   const openEditModal = (worker) => {
@@ -122,53 +131,49 @@ export default function WorkerListScreen({ navigation }) {
     setName(worker.name);
     setUsername(worker.username);
     setPassword(''); // biarkan kosong jika tidak diubah
-    setJabatan(worker.jabatan || '');
-    setRole(worker.role);
+    setJabatan(worker.jabatan || 'AMT I');
+    setRole(worker.role || 'AMT');
     setManageModalVisible(true);
   };
 
   const handleSaveWorker = async () => {
-    if (!name || !username || (!selectedWorker && !password)) {
-      showNotification('Data Tidak Lengkap', 'Pastikan Nama, Username, dan Password (untuk pengguna baru) diisi.', 'info');
-      return;
-    }
-
-    const isUsernameValid = /^[a-zA-Z0-9\s.\-_]+$/.test(username);
-    const isPasswordValid = selectedWorker && !password ? true : /^[0-9]+$/.test(password);
-
-    if (!isUsernameValid) {
-      showNotification('Format Tidak Valid', 'Username hanya boleh berisi huruf, angka, spasi, titik, strip atau underscore.', 'info');
-      return;
-    }
-
-    if (!isPasswordValid) {
-      showNotification('Format Tidak Valid', 'Password hanya boleh berisi angka.', 'info');
+    if (!name.trim() || !username.trim() || (!selectedWorker && !password.trim())) {
+      showNotification('Data Tidak Lengkap', 'Nama, Username, dan Password (untuk pekerja baru) wajib diisi.', 'info');
       return;
     }
 
     try {
-      const data = { name, username, role, jabatan };
-      if (password) data.password = password;
+      const data = {
+        name: name.trim(),
+        username: username.trim(),
+        role: role || 'AMT',
+        jabatan: (jabatan || 'AMT I').trim()
+      };
+      if (password && password.trim() !== '') {
+        data.password = password.trim();
+      }
 
       if (selectedWorker) {
         // Update
         await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data);
-        showNotification('Berhasil', 'Data pekerja berhasil diperbarui!', 'success');
+        showNotification('Berhasil', `Data pekerja '${name}' berhasil diperbarui!`, 'success');
       } else {
         // Create
         await axios.post(`${API_BASE}/workers`, data);
-        showNotification('Berhasil', 'Pekerja baru berhasil ditambahkan!', 'success');
+        showNotification('Berhasil', `Pekerja baru '${name}' berhasil ditambahkan!`, 'success');
         setSearchQuery('');
       }
-      setManageModalVisible(false);
+      closeManageModal();
       fetchWorkers();
     } catch (error) {
-      showNotification('Gagal', error.response?.data?.error || error.message, 'error');
+      showNotification('Gagal Menyimpan', error.response?.data?.error || error.message, 'error');
     }
   };
 
-    const handleDeleteWorker = () => {
+  const handleDeleteWorker = () => {
+    if (!selectedWorker) return;
     setWorkerToDelete(selectedWorker);
+    setManageModalVisible(false);
     setConfirmModalVisible(true);
   };
 
@@ -336,95 +341,127 @@ export default function WorkerListScreen({ navigation }) {
         </View>
       </SafeAreaView>
 
-      {/* MANAGE WORKER MODAL */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
+      {/* MANAGE WORKER MODAL (ADD / EDIT) */}
+      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
         <View style={tw`flex-1 justify-end bg-black/60`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
+          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
             <View style={tw`flex-row justify-between items-center mb-6`}>
-              <Text style={tw`text-2xl font-black text-gray-800`}>{selectedWorker ? 'Edit Pekerja' : 'Tambah Pekerja'}</Text>
-              <TouchableOpacity onPress={() => setManageModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
+              <View>
+                <Text style={tw`text-2xl font-black text-gray-800`}>{selectedWorker ? 'Ubah Data Pekerja' : 'Tambah Pekerja Baru'}</Text>
+                <Text style={tw`text-xs font-bold text-gray-500`}>Akses operasional checklist kendaraan dan serah terima shift</Text>
+              </View>
+              <TouchableOpacity onPress={closeManageModal} style={tw`p-2 bg-gray-100 rounded-full`}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pekerja</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan nama lengkap"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
-
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Username</Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder="Masukkan username"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={tw`mb-4`}>
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan</Text>
-              <View style={tw`flex-row justify-between`}>
-                <TouchableOpacity
-                  style={tw`flex-1 p-4 rounded-xl border ${jabatan === 'AMT I' ? 'border-[#0055A5] bg-[#0055A5]' : 'border-slate-200 bg-slate-50'} mr-2 items-center`}
-                  onPress={() => setJabatan('AMT I')}
-                >
-                  <Text style={tw`font-bold ${jabatan === 'AMT I' ? 'text-white' : 'text-gray-600'}`}>AMT I</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={tw`flex-1 p-4 rounded-xl border ${jabatan === 'AMT II' ? 'border-[#0055A5] bg-[#0055A5]' : 'border-slate-200 bg-slate-50'} ml-2 items-center`}
-                  onPress={() => setJabatan('AMT II')}
-                >
-                  <Text style={tw`font-bold ${jabatan === 'AMT II' ? 'text-white' : 'text-gray-600'}`}>AMT II</Text>
-                </TouchableOpacity>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Lengkap</Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder="Masukkan nama lengkap"
+                  placeholderTextColor="#9CA3AF"
+                  value={name}
+                  onChangeText={setName}
+                  autoComplete="off"
+                />
               </View>
-            </View>
 
-            <View style={tw`mb-6`}>
-              {selectedWorker && (
-                <View style={tw`mb-4 p-4 bg-gray-100 rounded-xl border border-gray-200 flex-row justify-between items-center`}>
-                  <View>
-                    <Text style={tw`text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1`}>Password Saat Ini</Text>
-                    <Text style={tw`text-sm font-bold text-gray-700`}>{selectedWorker.password}</Text>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Username (Untuk Login)</Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder="Masukkan username / NIP (tanpa spasi)"
+                  placeholderTextColor="#9CA3AF"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                  textContentType="none"
+                />
+              </View>
+
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Hak Akses Sistem</Text>
+                <View style={tw`p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex-row items-center`}>
+                  <View style={tw`w-10 h-10 bg-blue-100 rounded-xl items-center justify-center mr-3`}>
+                    <Feather name="truck" size={20} color="#0055A5" />
                   </View>
-                  <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`font-extrabold text-[#0055A5] text-sm`}>AWAK MOBIL TANGKI (AMT)</Text>
+                    <Text style={tw`text-[11px] text-blue-800 mt-0.5`}>Akses pengisian checklist kendaraan dan serah terima shift armada.</Text>
+                  </View>
                 </View>
-              )}
-              <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
-                Password {selectedWorker ? '(Kosongkan jika tidak diubah)' : ''}
-              </Text>
-              <TextInput
-                style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
-                placeholder={selectedWorker ? "Masukkan password baru" : "Masukkan password"}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+              </View>
 
-            <View style={tw`flex-row justify-between w-full mb-6`}>
-              {selectedWorker ? (
-                <>
-                  <TouchableOpacity style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`} onPress={handleDeleteWorker}>
-                    <Text style={tw`text-red-700 font-bold`}>Hapus Data</Text>
+              <View style={tw`mb-4`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Jabatan / Posisi AMT</Text>
+                <View style={tw`flex-row justify-between gap-3`}>
+                  <TouchableOpacity
+                    style={tw`flex-1 p-3.5 rounded-xl border ${jabatan === 'AMT I' ? 'border-[#0055A5] bg-blue-50' : 'border-slate-200 bg-slate-50'} items-center flex-row justify-center`}
+                    onPress={() => setJabatan('AMT I')}
+                  >
+                    <View style={tw`w-4 h-4 rounded-full mr-2 items-center justify-center border ${jabatan === 'AMT I' ? 'border-[#0055A5]' : 'border-slate-400'}`}>
+                      {jabatan === 'AMT I' && <View style={tw`w-2 h-2 rounded-full bg-[#0055A5]`} />}
+                    </View>
+                    <Text style={tw`font-extrabold ${jabatan === 'AMT I' ? 'text-[#0055A5]' : 'text-gray-600'}`}>AMT I (Supir)</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveWorker}>
-                    <Text style={tw`text-white font-bold`}>Simpan</Text>
+                  <TouchableOpacity
+                    style={tw`flex-1 p-3.5 rounded-xl border ${jabatan === 'AMT II' ? 'border-[#0055A5] bg-blue-50' : 'border-slate-200 bg-slate-50'} items-center flex-row justify-center`}
+                    onPress={() => setJabatan('AMT II')}
+                  >
+                    <View style={tw`w-4 h-4 rounded-full mr-2 items-center justify-center border ${jabatan === 'AMT II' ? 'border-[#0055A5]' : 'border-slate-400'}`}>
+                      {jabatan === 'AMT II' && <View style={tw`w-2 h-2 rounded-full bg-[#0055A5]`} />}
+                    </View>
+                    <Text style={tw`font-extrabold ${jabatan === 'AMT II' ? 'text-[#0055A5]' : 'text-gray-600'}`}>AMT II (Kernet)</Text>
                   </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`} onPress={handleSaveWorker}>
-                  <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PEKERJA</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                </View>
+              </View>
 
+              <View style={tw`mb-6`}>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>
+                  Password {selectedWorker ? '(Kosongkan jika tidak ingin diubah)' : '(Wajib)'}
+                </Text>
+                <TextInput
+                  style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold`}
+                  placeholder={selectedWorker ? "Ketik sandi baru untuk mengganti" : "Ketik sandi akun baru"}
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+              </View>
+
+              <View style={tw`flex-row justify-between w-full mb-6`}>
+                {selectedWorker ? (
+                  <>
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-red-100 p-4 rounded-xl mr-2 items-center`}
+                      onPress={handleDeleteWorker}
+                    >
+                      <Text style={tw`text-red-700 font-bold`}>Hapus Pekerja</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl ml-2 items-center shadow-lg shadow-blue-500/40`}
+                      onPress={handleSaveWorker}
+                    >
+                      <Text style={tw`text-white font-bold`}>Simpan Perubahan</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={tw`flex-1 bg-[#0055A5] p-4 rounded-xl items-center shadow-lg shadow-blue-500/40`}
+                    onPress={handleSaveWorker}
+                  >
+                    <Text style={tw`text-white font-black text-lg tracking-wide`}>SIMPAN PEKERJA BARU</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
