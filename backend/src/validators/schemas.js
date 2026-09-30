@@ -36,6 +36,7 @@ const vehicleSchema = Joi.object({
   noPolisi: Joi.string().trim().required(),
   barcode: Joi.string().trim().required(),
   jenisKendaraan: Joi.string().allow(null, ''),
+  kapasitas: Joi.number().integer().allow(null),
   brand: Joi.string().allow(null, ''),
   status: Joi.string().valid('Active', 'Maintenance', 'READY_TO_START', 'DIBLOKIR').default('READY_TO_START')
 });

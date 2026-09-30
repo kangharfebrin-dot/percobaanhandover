@@ -57,6 +57,7 @@ export default function VehicleListScreen({ navigation }) {
   const [newNoPolisi, setNewNoPolisi] = useState('');
   const [newBrand, setNewBrand] = useState('');
   const [newType, setNewType] = useState('');
+  const [newKapasitas, setNewKapasitas] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [newBarcode, setNewBarcode] = useState('');
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -205,7 +206,7 @@ export default function VehicleListScreen({ navigation }) {
 
   const openAddModal = () => {
     setIsEditMode(false);
-    setNewNoPolisi(''); setNewBrand(''); setNewType(''); setNewBarcode('');
+    setNewNoPolisi(''); setNewBrand(''); setNewType(''); setNewKapasitas(null); setNewBarcode('');
     setAddModalVisible(true);
   };
 
@@ -215,6 +216,7 @@ export default function VehicleListScreen({ navigation }) {
     setNewNoPolisi(vehicle.noPolisi);
     setNewBrand(vehicle.brand || '');
     setNewType(vehicle.jenisKendaraan || '');
+    setNewKapasitas(vehicle.kapasitas || null);
     setNewBarcode(vehicle.barcode || '');
     setManageModalVisible(false);
     setAddModalVisible(true);
@@ -309,6 +311,7 @@ export default function VehicleListScreen({ navigation }) {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
+          kapasitas: newKapasitas,
           barcode: generatedBarcode
         });
         showSuccessModal('Kendaraan berhasil diperbarui!');
@@ -317,6 +320,7 @@ export default function VehicleListScreen({ navigation }) {
           noPolisi: newNoPolisi,
           brand: newBrand,
           jenisKendaraan: newType,
+          kapasitas: newKapasitas,
           barcode: generatedBarcode
         });
         showSuccessModal('Kendaraan baru berhasil ditambahkan!');
@@ -354,7 +358,7 @@ export default function VehicleListScreen({ navigation }) {
           </View>
           <View style={tw`flex-1 pr-2`}>
             <Text style={tw`text-xl font-black ${isMaintenance ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
-            <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>{item.brand || 'Truk'} • {item.jenisKendaraan || 'Umum'}</Text>
+            <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>{item.jenisKendaraan || 'Mobil Tanki'}{item.kapasitas ? ` • ${item.kapasitas} KL` : ''}</Text>
           </View>
         </View>
 
@@ -478,41 +482,9 @@ export default function VehicleListScreen({ navigation }) {
         </View>
       </Modal>
 
-
-
-      {/* FULL SCREEN BARCODE MODAL */}
-      <Modal visible={fullScreenBarcode} transparent={true} animationType="fade" onRequestClose={() => setFullScreenBarcode(false)}>
-        <View style={tw`flex-1 bg-black/90 justify-center items-center`}>
-          {selectedVehicle && (
-            <>
-              <View style={tw`absolute top-10 right-5 z-50`}>
-                <TouchableOpacity onPress={() => setFullScreenBarcode(false)} style={tw`p-3 bg-white/20 rounded-full`}>
-                  <Ionicons name="close" size={32} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              <Text style={tw`text-white text-2xl font-black mb-10`}>{selectedVehicle.noPolisi}</Text>
-              <View style={tw`w-80 h-80 bg-white rounded-3xl p-4`}>
-                <Image
-                  source={{ uri: `${API_URL}/barcodes/${selectedVehicle.barcode}.png` }}
-                  style={tw`w-full h-full`}
-                  resizeMode="contain"
-                />
-              </View>
-
-              <TouchableOpacity style={tw`bg-[#0055A5] mt-8 px-6 py-4 rounded-full flex-row items-center shadow-lg shadow-blue-500/50`} onPress={handleDownloadBarcode}>
-                <Feather name="download" size={20} color="white" />
-                <Text style={tw`text-white font-bold text-lg ml-3 tracking-wide`}>Simpan Barcode</Text>
-              </TouchableOpacity>
-
-              <Text style={tw`text-gray-300 text-sm mt-6 text-center px-10`}>Barcode akan diunduh dan Anda bisa menyimpannya ke galeri.</Text>
-            </>
-          )}
-        </View>
-      </Modal>
-
       {/* MANAGE VEHICLE MODAL (For ADMIN & PENGAWAS) */}
       {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'PENGAWAS') && (
-        <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
+        <Modal visible={manageModalVisible && !fullScreenBarcode} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
           <View style={tw`flex-1 justify-end bg-black/60`}>
             {selectedVehicle && (
               user?.role === 'PENGAWAS' ? (
@@ -532,8 +504,8 @@ export default function VehicleListScreen({ navigation }) {
                   <View style={tw`px-6 pt-6 pb-8 bg-white -mt-5 rounded-t-[25px]`}>
                     <View style={tw`flex-row justify-between mb-4`}>
                       <View style={tw`flex-1 mr-2 bg-gray-50 p-4 rounded-2xl border border-gray-100`}>
-                        <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Merek / Tipe</Text>
-                        <Text style={tw`text-base font-black text-gray-800`}>{selectedVehicle.brand || '-'} {selectedVehicle.jenisKendaraan ? `(${selectedVehicle.jenisKendaraan})` : ''}</Text>
+                        <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Tipe / Kapasitas</Text>
+                        <Text style={tw`text-base font-black text-gray-800`}>{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
                       </View>
                       <View style={tw`flex-1 ml-2 bg-gray-50 p-4 rounded-2xl border border-gray-100`}>
                         <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Status Saat Ini</Text>
@@ -596,8 +568,8 @@ export default function VehicleListScreen({ navigation }) {
 
                   <View style={tw`flex-row mb-6`}>
                     <View style={tw`flex-1 justify-center`}>
-                      <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Merek / Tipe</Text>
-                      <Text style={tw`text-base font-black text-gray-800 mb-3`}>{selectedVehicle.brand || '-'} {selectedVehicle.jenisKendaraan ? `(${selectedVehicle.jenisKendaraan})` : ''}</Text>
+                      <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Tipe / Kapasitas</Text>
+                      <Text style={tw`text-base font-black text-gray-800 mb-3`}>{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
 
                       <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Status Truk</Text>
                       <Text style={tw`text-base font-black ${selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'text-red-600' : 'text-green-600'} mb-3`}>
@@ -689,16 +661,17 @@ export default function VehicleListScreen({ navigation }) {
                   
                   {showTypeDropdown && (
                     <View style={tw`bg-white mt-2 rounded-xl border border-slate-200 shadow-sm overflow-hidden`}>
-                      {['5 KL', '8 KL', '16 KL', '24 KL'].map((typeOption, index) => (
+                      {[{label: 'Mobil Tanki 8 KL', kapasitas: 8}, {label: 'Mobil Tanki 16 KL', kapasitas: 16}, {label: 'Mobil Tanki 24 KL', kapasitas: 24}].map((typeOption, index) => (
                         <TouchableOpacity
-                          key={typeOption}
-                          style={tw`p-4 ${index < 3 ? 'border-b border-slate-100' : ''} ${newType === typeOption ? 'bg-blue-50' : ''}`}
+                          key={typeOption.label}
+                          style={tw`p-4 ${index < 2 ? 'border-b border-slate-100' : ''} ${newType === typeOption.label ? 'bg-blue-50' : ''}`}
                           onPress={() => {
-                            setNewType(typeOption);
+                            setNewType(typeOption.label);
+                            setNewKapasitas(typeOption.kapasitas);
                             setShowTypeDropdown(false);
                           }}
                         >
-                          <Text style={tw`font-bold ${newType === typeOption ? 'text-blue-600' : 'text-gray-700'}`}>{typeOption}</Text>
+                          <Text style={tw`font-bold ${newType === typeOption.label ? 'text-blue-600' : 'text-gray-700'}`}>{typeOption.label} ({typeOption.kapasitas} KL)</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -884,6 +857,43 @@ export default function VehicleListScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* FULL SCREEN BARCODE MODAL */}
+      {fullScreenBarcode && (
+        <Modal visible={true} transparent={true} animationType="fade" onRequestClose={() => setFullScreenBarcode(false)}>
+          <View style={[tw`flex-1 bg-black/90 justify-center items-center`, Platform.OS === 'web' ? { zIndex: 999999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 } : {}]}>
+            <TouchableOpacity 
+              style={tw`absolute inset-0 w-full h-full`} 
+              activeOpacity={1} 
+              onPress={() => setFullScreenBarcode(false)} 
+            />
+            {selectedVehicle && (
+              <View style={tw`items-center z-10 w-full max-w-sm px-6`} pointerEvents="box-none">
+                <View style={tw`w-full flex-row justify-end mb-4`}>
+                  <TouchableOpacity onPress={() => setFullScreenBarcode(false)} style={tw`p-3 bg-white/20 rounded-full`}>
+                    <Ionicons name="close" size={28} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={tw`text-white text-3xl font-black mb-6 text-center tracking-tight`}>{selectedVehicle.noPolisi}</Text>
+                <View style={tw`w-72 h-72 bg-white rounded-3xl p-4 shadow-2xl items-center justify-center`}>
+                  <Image
+                    source={{ uri: `${API_URL}/barcodes/${selectedVehicle.barcode}.png` }}
+                    style={tw`w-full h-full`}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                <TouchableOpacity style={tw`bg-[#0055A5] mt-6 px-8 py-4 rounded-full flex-row items-center shadow-lg shadow-blue-500/50 w-full justify-center`} onPress={handleDownloadBarcode}>
+                  <Feather name="download" size={20} color="white" />
+                  <Text style={tw`text-white font-bold text-base ml-3 tracking-wide`}>Simpan Barcode</Text>
+                </TouchableOpacity>
+
+                <Text style={tw`text-gray-300 text-xs mt-4 text-center px-4 leading-relaxed`}>Barcode akan diunduh dan Anda bisa menyimpannya ke galeri.</Text>
+              </View>
+            )}
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }

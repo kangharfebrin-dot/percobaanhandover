@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator, Dimensions, Platform, AppState } from 'react-native';
 import tw from 'twrnc';
 import TextLogo from '../../components/TextLogo';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,6 +142,8 @@ export default function HandoverFormScreen({ route, navigation }) {
   // Camera & Photo State
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -262,25 +264,148 @@ export default function HandoverFormScreen({ route, navigation }) {
             }
           }
         }
-
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          // OPTIMASI LOKASI: Gunakan akurasi Balanced dan timeout agar tidak hang
-          let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-            timeout: 5000
-          });
-          setLocation(loc.coords);
-        }
       } catch (err) {
-        console.log("Location or user fetch silently failed on mount:", err);
+        console.log("User fetch failed on mount:", err);
       }
     })();
   }, []);
 
+  // FUNGSI PENGAMBILAN LOKASI GPS (Manual & Otomatis)
+  const fetchLocation = async (silent = true) => {
+    try {
+      if (!silent) setGpsLoading(true);
+      const isServiceEnabled = await Location.hasServicesEnabledAsync().catch(() => true);
+      if (!isServiceEnabled) {
+        setGpsError("Layanan lokasi (GPS) belum aktif di HP.");
+        if (!silent) {
+          Alert.alert("GPS Tidak Aktif", "Silakan nyalakan GPS / Layanan Lokasi di HP Anda, lalu coba lagi.");
+        }
+        return null;
+      }
+
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setGpsError("Izin lokasi belum diberikan.");
+        if (!silent) {
+          Alert.alert("Izin Lokasi Diperlukan", "Harap berikan izin akses lokasi pada aplikasi ini di Pengaturan HP.");
+        }
+        return null;
+      }
+
+      // Ambil posisi terakhir yang diketahui secara instan jika ada
+      const lastKnown = await Location.getLastKnownPositionAsync({}).catch(() => null);
+      if (lastKnown && lastKnown.coords) {
+        setLocation(lastKnown.coords);
+        setGpsError(null);
+      }
+
+      // Ambil posisi baru akurat (Balanced mode)
+      const freshLoc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 6000
+      });
+
+      if (freshLoc && freshLoc.coords) {
+        setLocation(freshLoc.coords);
+        setGpsError(null);
+        return freshLoc.coords;
+      }
+    } catch (err) {
+      const errMsg = err?.message || String(err);
+      if (errMsg.includes("unsatisfied device settings")) {
+        setGpsError("GPS perangkat belum aktif / mode hemat daya.");
+      } else {
+        setGpsError("Menunggu sinyal GPS...");
+      }
+    } finally {
+      if (!silent) setGpsLoading(false);
+    }
+    return null;
+  };
+
+  // EFFECT: Watcher & Auto-update Lokasi GPS secara otomatis
+  useEffect(() => {
+    let isMounted = true;
+    let watcherSub = null;
+
+    const startWatching = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted' && isMounted) {
+          watcherSub = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.Balanced,
+              timeInterval: 3000,
+              distanceInterval: 5,
+            },
+            (newLocation) => {
+              if (newLocation?.coords && isMounted) {
+                setLocation(newLocation.coords);
+                setGpsError(null);
+              }
+            }
+          );
+        }
+      } catch (e) {
+        if (e?.message?.includes("unsatisfied device settings")) {
+          if (isMounted) setGpsError("GPS perangkat belum aktif / mode hemat daya.");
+        }
+      }
+    };
+
+    fetchLocation(true);
+    startWatching();
+
+    // Auto-detect saat user kembali ke app (misal baru mengaktifkan GPS di Android Quick Settings / Settings)
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && isMounted) {
+        fetchLocation(true);
+        if (!watcherSub) {
+          startWatching();
+        }
+      }
+    });
+
+    // Polling ringan berkala selama lokasi belum terdeteksi (setiap 4 detik)
+    const intervalId = setInterval(async () => {
+      if (isMounted) {
+        const services = await Location.hasServicesEnabledAsync().catch(() => false);
+        if (services) {
+          fetchLocation(true);
+        }
+      }
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      if (watcherSub) watcherSub.remove();
+      appStateSub?.remove();
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Sinkronisasi otomatis watermark foto jika lokasi GPS baru saja terdeteksi
+  useEffect(() => {
+    if (location) {
+      const locStr = `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`;
+      setPhotos(prev => {
+        let hasUpdate = false;
+        const nextPhotos = { ...prev };
+        Object.keys(nextPhotos).forEach(key => {
+          if (nextPhotos[key] && (!nextPhotos[key].locStr || nextPhotos[key].locStr.includes('tidak ditemukan'))) {
+            nextPhotos[key] = { ...nextPhotos[key], locStr };
+            hasUpdate = true;
+          }
+        });
+        return hasUpdate ? nextPhotos : prev;
+      });
+    }
+  }, [location]);
+
   // AUTOCOMPLETE LOGIC (Sorted Alphabetically & Dedicated for AMT 1 vs AMT 2)
   const handleSearchAmt1 = (text) => {
     setAmt1(text);
+    setShowWorkers2(false);
     const filtered = workers
       .filter(w => isAmt1Jabatan(w.jabatan) && (text.length === 0 || w.name.toLowerCase().includes(text.toLowerCase())))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -289,6 +414,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
   const handleSearchAmt2 = (text) => {
     setAmt2(text);
+    setShowWorkers1(false);
     const filtered = workers
       .filter(w => isAmt2Jabatan(w.jabatan) && (text.length === 0 || w.name.toLowerCase().includes(text.toLowerCase())))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -344,19 +470,10 @@ export default function HandoverFormScreen({ route, navigation }) {
     setIsCameraReady(false);
     setIsCameraOpen(true);
 
-    // Ambil lokasi secara asinkron di latar belakang agar tidak memblokir UI
-    Location.requestForegroundPermissionsAsync().then(({ status }) => {
-      if (status === 'granted') {
-        Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced, 
-          timeout: 5000
-        }).then(loc => {
-          setLocation(loc.coords);
-        }).catch(() => {
-          // Fallback tanpa alert agar tidak mengganggu jika gagal
-        });
-      }
-    });
+    // Ambil/perbarui lokasi secara asinkron di latar belakang jika belum terdeteksi
+    if (!location) {
+      fetchLocation(true);
+    }
   };
 
   const takePicture = () => {
@@ -493,18 +610,7 @@ export default function HandoverFormScreen({ route, navigation }) {
 
       let currentLoc = location;
       if (!currentLoc) {
-        try {
-          const { status: locPerm } = await Location.requestForegroundPermissionsAsync();
-          if (locPerm === 'granted') {
-            const freshLoc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-              timeout: 4000
-            });
-            currentLoc = freshLoc.coords;
-          }
-        } catch (locErr) {
-          console.log('Location retry on submit failed:', locErr.message);
-        }
+        currentLoc = await fetchLocation(true);
       }
 
       if (currentLoc) {
@@ -719,22 +825,53 @@ export default function HandoverFormScreen({ route, navigation }) {
         </LinearGradient>
       </View>
 
-      <ScrollView style={tw`flex-1`} contentContainerStyle={tw`w-full px-4 pt-8 pb-10`} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={tw`flex-1`} 
+        contentContainerStyle={tw`w-full px-4 pt-8 pb-10`} 
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Info Perjalanan */}
         <View style={tw`bg-white p-6 rounded-3xl mb-8 shadow-md border border-gray-100`}>
-          <View style={tw`flex-row items-center justify-between mb-6`}>
-            <View style={tw`flex-row items-center`}>
-              <View style={tw`bg-blue-50 p-2 rounded-xl mr-3`}>
-                <Ionicons name="car-sport" size={24} color="#0055A5" />
+          <View style={tw`flex-row items-center justify-between mb-5`}>
+            <View style={tw`flex-row items-center flex-shrink-0 mr-2`}>
+              <View style={tw`bg-blue-50 p-2.5 rounded-2xl mr-2.5`}>
+                <Ionicons name="car-sport" size={20} color="#0055A5" />
               </View>
-              <Text style={tw`text-gray-800 font-extrabold text-xl tracking-tight`}>Info Perjalanan</Text>
+              <Text style={tw`text-gray-800 font-extrabold text-base tracking-tight`}>Info Perjalanan</Text>
             </View>
-            <View style={tw`flex-row items-center px-2.5 py-1 rounded-full ${location ? 'bg-green-100 border border-green-200' : 'bg-amber-100 border border-amber-200'}`}>
-              <Ionicons name={location ? "location" : "location-outline"} size={13} color={location ? "#00A651" : "#D97706"} />
-              <Text style={tw`text-[11px] font-bold ml-1 ${location ? 'text-green-800' : 'text-amber-800'}`}>
-                {location ? 'GPS Aktif' : 'GPS Mencari...'}
-              </Text>
-            </View>
+
+            {/* GPS Detail di Samping Info Perjalanan */}
+            <TouchableOpacity
+              onPress={() => fetchLocation(false)}
+              disabled={gpsLoading}
+              activeOpacity={0.7}
+              style={tw`flex-row items-center bg-white border ${location ? 'border-emerald-200' : 'border-amber-200'} px-3 py-2 rounded-2xl shadow-sm`}
+            >
+              <View style={tw`w-7 h-7 rounded-xl ${location ? 'bg-emerald-500' : 'bg-amber-500'} items-center justify-center mr-2.5 flex-shrink-0 shadow-sm`}>
+                {gpsLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" style={{ transform: [{ scale: 0.65 }] }} />
+                ) : (
+                  <Ionicons name={location ? "location" : "navigate"} size={13} color="#FFFFFF" />
+                )}
+              </View>
+              <View style={tw`justify-center`}>
+                <View style={tw`flex-row items-center`}>
+                  <Text style={tw`text-xs font-black ${location ? 'text-emerald-800' : 'text-amber-800'} tracking-tight`}>
+                    {location ? 'GPS Terdeteksi' : (gpsLoading ? 'Mencari...' : 'GPS Mencari')}
+                  </Text>
+                  {!gpsLoading && (
+                    <Feather name="refresh-cw" size={9} color={location ? "#059669" : "#D97706"} style={tw`ml-1.5 opacity-60`} />
+                  )}
+                </View>
+                <Text style={tw`text-[10px] font-bold text-gray-500 font-mono mt-0.5`}>
+                  {location 
+                    ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` 
+                    : (gpsError || 'Ketuk periksa')}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>No Polisi Kendaraan</Text>
@@ -760,15 +897,16 @@ export default function HandoverFormScreen({ route, navigation }) {
           </TouchableOpacity>
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
-          <View style={tw`relative z-20`}>
+          <View style={tw`mb-5`}>
             <TextInput
-              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
               placeholder="Nama AMT 1"
               value={amt1}
               editable={!isAmt1Locked}
               onChangeText={handleSearchAmt1}
               onFocus={() => {
                 if (!isAmt1Locked) {
+                  setShowWorkers2(false);
                   const filtered = workers
                     .filter(w => isAmt1Jabatan(w.jabatan) && (amt1.length === 0 || w.name.toLowerCase().includes(amt1.toLowerCase())))
                     .sort((a, b) => a.name.localeCompare(b.name));
@@ -778,12 +916,29 @@ export default function HandoverFormScreen({ route, navigation }) {
               }}
             />
             {showWorkers1 && filteredWorkers1.length > 0 && !isAmt1Locked && (
-              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48`}>
-                <ScrollView nestedScrollEnabled={true}>
+              <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
+                <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
+                  <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 1)</Text>
+                  <TouchableOpacity onPress={() => setShowWorkers1(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  nestedScrollEnabled={true} 
+                  keyboardShouldPersistTaps="handled"
+                  style={{ maxHeight: 200 }}
+                  showsVerticalScrollIndicator={true}
+                >
                   {filteredWorkers1.map(w => (
-                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100 flex-row justify-between items-center`} onPress={() => selectAmt1(w.name)}>
-                      <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
-                      <Text style={tw`text-xs font-semibold text-[#0055A5]`}>{w.jabatan || 'AMT I'}</Text>
+                    <TouchableOpacity 
+                      key={w.id} 
+                      style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`} 
+                      onPress={() => selectAmt1(w.name)}
+                    >
+                      <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
+                      <View style={tw`bg-blue-100 px-2 py-0.5 rounded-md`}>
+                        <Text style={tw`text-xs font-bold text-[#0055A5]`}>{w.jabatan || 'AMT I'}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -792,15 +947,16 @@ export default function HandoverFormScreen({ route, navigation }) {
           </View>
 
           <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
-          <View style={tw`relative z-10`}>
+          <View style={tw`mb-5`}>
             <TextInput
-              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm mb-5 ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}
               placeholder="Nama AMT 2"
               value={amt2}
               editable={!isAmt2Locked}
               onChangeText={handleSearchAmt2}
               onFocus={() => {
                 if (!isAmt2Locked) {
+                  setShowWorkers1(false);
                   const filtered = workers
                     .filter(w => isAmt2Jabatan(w.jabatan) && (amt2.length === 0 || w.name.toLowerCase().includes(amt2.toLowerCase())))
                     .sort((a, b) => a.name.localeCompare(b.name));
@@ -810,12 +966,29 @@ export default function HandoverFormScreen({ route, navigation }) {
               }}
             />
             {showWorkers2 && filteredWorkers2.length > 0 && !isAmt2Locked && (
-              <View style={tw`absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48`}>
-                <ScrollView nestedScrollEnabled={true}>
+              <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
+                <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
+                  <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 2)</Text>
+                  <TouchableOpacity onPress={() => setShowWorkers2(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  nestedScrollEnabled={true} 
+                  keyboardShouldPersistTaps="handled"
+                  style={{ maxHeight: 200 }}
+                  showsVerticalScrollIndicator={true}
+                >
                   {filteredWorkers2.map(w => (
-                    <TouchableOpacity key={w.id} style={tw`p-3 border-b border-gray-100 flex-row justify-between items-center`} onPress={() => selectAmt2(w.name)}>
-                      <Text style={tw`font-bold text-gray-800`}>{w.name}</Text>
-                      <Text style={tw`text-xs font-semibold text-indigo-600`}>{w.jabatan || 'AMT II'}</Text>
+                    <TouchableOpacity 
+                      key={w.id} 
+                      style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`} 
+                      onPress={() => selectAmt2(w.name)}
+                    >
+                      <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
+                      <View style={tw`bg-indigo-100 px-2 py-0.5 rounded-md`}>
+                        <Text style={tw`text-xs font-bold text-indigo-700`}>{w.jabatan || 'AMT II'}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>

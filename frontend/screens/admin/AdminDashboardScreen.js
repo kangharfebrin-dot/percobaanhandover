@@ -539,7 +539,7 @@ export default function AdminDashboardScreen({ navigation }) {
             {/* Daftar Admin Full Width Card */}
             {(isSuperAdmin || isAdmin) && (
               <TouchableOpacity
-                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
                 onPress={() => navigation.navigate('AdminList')}
               >
                 <View style={tw`flex-row items-center flex-1`}>
@@ -553,6 +553,27 @@ export default function AdminDashboardScreen({ navigation }) {
                 </View>
                 <View style={tw`w-10 h-10 bg-blue-50 rounded-full items-center justify-center`}>
                   <Feather name="chevron-right" size={20} color="#0055A5" />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Manajer Checklist Full Width Card */}
+            {(isSuperAdmin || isAdmin) && (
+              <TouchableOpacity
+                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                onPress={() => navigation.navigate('ChecklistManager')}
+              >
+                <View style={tw`flex-row items-center flex-1`}>
+                  <View style={tw`w-14 h-14 bg-green-100 rounded-full items-center justify-center mr-4`}>
+                    <Feather name="check-square" size={26} color="#00A651" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Manajer Checklist</Text>
+                    <Text style={tw`text-xs text-green-600 font-black uppercase tracking-widest mt-1`}>Konfigurasi Pertanyaan Inspeksi</Text>
+                  </View>
+                </View>
+                <View style={tw`w-10 h-10 bg-green-50 rounded-full items-center justify-center`}>
+                  <Feather name="chevron-right" size={20} color="#00A651" />
                 </View>
               </TouchableOpacity>
             )}
@@ -692,7 +713,7 @@ export default function AdminDashboardScreen({ navigation }) {
               <Feather name="grid" size={26} color={activeMenu === 'Home' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
             </TouchableOpacity>
 
-            {isSuperAdmin && (
+            {(isSuperAdmin || isAdmin) && (
               <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
                 {activeMenu === 'Checklist' && !isLogoutVisible && (
                   <>

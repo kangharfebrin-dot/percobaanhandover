@@ -20,6 +20,7 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
 
   // Animasi crossfade untuk maskot
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -90,22 +91,31 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleForgotPassword = async () => {
+    if (isSubmittingReset) return; // Cegah double-tap
+
     if (!username.trim()) {
       setShowForgotPasswordModal(false);
       showNotification('Username Kosong', 'Mohon isi username Anda pada form login sebelum meminta reset password.', 'error');
       return;
     }
     
+    setIsSubmittingReset(true);
+    setShowForgotPasswordModal(false);
+
+    // Langsung tampilkan notif sukses (optimistic)
+    showNotification('Berhasil', `Permintaan reset password untuk '${username}' telah dikirim ke Admin.`, 'success');
+
+    // Kirim API di background
     try {
       await axios.post(`${API_URL}/api/password-reset/request`, { 
         email: username, 
         reason: 'Lupa password dari aplikasi' 
       });
-      setShowForgotPasswordModal(false);
-      showNotification('Berhasil', `Permintaan reset password untuk '${username}' telah dikirim ke Admin.`, 'success');
     } catch (error) {
-      setShowForgotPasswordModal(false);
+      // Jika gagal, timpa notif sukses dengan notif error
       showNotification('Gagal', error.response?.data?.message || "Gagal mengirim permintaan reset password.", 'error');
+    } finally {
+      setIsSubmittingReset(false);
     }
   };
 
@@ -170,10 +180,11 @@ export default function LoginScreen({ navigation }) {
                   <Text style={tw`text-gray-600 font-bold`}>Batal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={tw`flex-1 bg-[#ED1C24] py-4 rounded-2xl ml-2 items-center shadow-md`}
+                  style={tw`flex-1 ${isSubmittingReset ? 'bg-gray-300' : 'bg-[#ED1C24]'} py-4 rounded-2xl ml-2 items-center shadow-md`}
                   onPress={handleForgotPassword}
+                  disabled={isSubmittingReset}
                 >
-                  <Text style={tw`text-white font-bold`}>Kirim Notif</Text>
+                  <Text style={tw`text-white font-bold`}>{isSubmittingReset ? 'Mengirim...' : 'Kirim Notif'}</Text>
                 </TouchableOpacity>
               </View>
             </View>

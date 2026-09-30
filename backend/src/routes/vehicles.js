@@ -102,7 +102,7 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
   try {
     const { error, value } = vehicleSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
-    const { noPolisi, barcode, jenisKendaraan, brand, status } = value;
+    const { noPolisi, barcode, jenisKendaraan, kapasitas, brand, status } = value;
 
     const existingVehicle = await prisma.vehicle.findFirst({
       where: { OR: [{ noPolisi }, { barcode }] }
@@ -116,6 +116,7 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
         noPolisi,
         barcode,
         jenisKendaraan,
+        kapasitas,
         brand,
         status: status || 'READY_TO_START'
       }
@@ -139,7 +140,7 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
 // 3. PUT Vehicle (Ubah Data Truk - A4: Khusus Admin)
 router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {
-    const { noPolisi, barcode, jenisKendaraan, brand, status } = req.body;
+    const { noPolisi, barcode, jenisKendaraan, kapasitas, brand, status } = req.body;
     const vehicleId = req.params.id;
 
     const oldVehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
@@ -149,7 +150,7 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), a
 
     const vehicle = await prisma.vehicle.update({
       where: { id: vehicleId },
-      data: { noPolisi, barcode, jenisKendaraan, brand, status: status || oldVehicle.status }
+      data: { noPolisi, barcode, jenisKendaraan, kapasitas, brand, status: status || oldVehicle.status }
     });
 
     if (oldVehicle.barcode !== barcode) {

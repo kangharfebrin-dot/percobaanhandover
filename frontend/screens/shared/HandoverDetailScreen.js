@@ -475,17 +475,6 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </View>
             )}
 
-            {/* Tombol Export Mobile di Navbar (Hanya Admin) */}
-            {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-              <TouchableOpacity
-                onPress={() => setShowExportModal(true)}
-                disabled={exporting}
-                style={tw`flex-row items-center bg-[#0055A5] px-3.5 py-2 rounded-xl shadow-sm z-30`}
-              >
-                <Feather name="download" size={15} color="white" />
-                <Text style={tw`text-white font-bold text-xs ml-1.5`}>Ekspor</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
         <ScrollView contentContainerStyle={tw`px-6 pt-2 pb-32 w-full max-w-4xl mx-auto`} showsVerticalScrollIndicator={false}>

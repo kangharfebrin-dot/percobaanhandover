@@ -119,6 +119,7 @@ model Vehicle {
   noPolisi       String   @unique(map: "Vehicle_noPolisi_key")
   barcode        String   @unique(map: "Vehicle_barcode_key")
   jenisKendaraan String?
+  kapasitas      Int?
   brand          String?
   status         String   @default("Active")
   createdAt      DateTime @default(now())

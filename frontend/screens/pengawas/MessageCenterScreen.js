@@ -408,7 +408,7 @@ export default function MessageCenterScreen({ navigation }) {
             <Feather name="grid" size={26} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {user.role === 'SUPER_ADMIN' && (
+          {(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && (
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
               <Feather name="check-square" size={26} color="#9CA3AF" />
             </TouchableOpacity>

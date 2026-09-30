@@ -31,10 +31,26 @@ exports.submitPasswordResetRequest = async (req, res) => {
     });
     
     if (existingRequest) {
-      return res.status(400).json({
-        success: false,
-        message: 'Anda sudah memiliki permintaan reset yang pending'
-      });
+      const isUserLoggedInAfterRequest = user.updatedAt && new Date(user.updatedAt) > new Date(existingRequest.createdAt);
+      const isExpired = Date.now() - new Date(existingRequest.createdAt).getTime() > 24 * 60 * 60 * 1000;
+
+      if (isUserLoggedInAfterRequest || isExpired) {
+        // Otomatis selesaikan request lama karena user pernah login atau request sudah kedaluwarsa
+        await prisma.passwordResetRequest.update({
+          where: { id: existingRequest.id },
+          data: {
+            status: isUserLoggedInAfterRequest ? 'RESOLVED' : 'EXPIRED',
+            adminNotes: isUserLoggedInAfterRequest
+              ? 'Otomatis diselesaikan karena user telah berhasil login setelah permohonan dibuat.'
+              : 'Otomatis kedaluwarsa setelah lebih dari 24 jam.'
+          }
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Anda sudah memiliki permintaan reset yang sedang diproses oleh Admin.'
+        });
+      }
     }
     
     // Create password reset request
