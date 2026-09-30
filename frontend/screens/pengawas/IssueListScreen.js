@@ -1,4 +1,5 @@
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
@@ -29,7 +30,7 @@ export default function IssueListScreen({ navigation }) {
   const numCols = isLargeScreen ? 3 : 1;
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [manageModalVisible, setManageModalVisible] = useState(false);
-  
+
   // Custom Modals State
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
@@ -76,9 +77,9 @@ export default function IssueListScreen({ navigation }) {
         axios.get(`${API_BASE}/vehicles`),
         axios.get(`${API_BASE}/issues/ongoing`)
       ]);
-      
+
       const activePolisi = vehicleRes.data.map(v => v.noPolisi);
-      
+
       const activeIssues = issueRes.data
         .map(issue => ({
           ...issue.handover,
@@ -86,7 +87,7 @@ export default function IssueListScreen({ navigation }) {
           issueStatus: issue.status
         }))
         .filter(h => activePolisi.includes(h.noPolisi));
-        
+
       setIssues(activeIssues);
     } catch (error) {
       console.error(error);
@@ -114,7 +115,7 @@ export default function IssueListScreen({ navigation }) {
       setConfirmModalVisible(false);
       fetchIssues();
       setSuccessModalVisible(true);
-      
+
       // Auto close success modal after 2.5 seconds
       setTimeout(() => {
         setSuccessModalVisible(false);
@@ -133,7 +134,7 @@ export default function IssueListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
           tw`bg-white p-5 rounded-2xl mb-4 shadow-md border border-red-300 bg-red-50/50`,
           isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
@@ -193,32 +194,34 @@ export default function IssueListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-6 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-            <Ionicons name="arrow-back" size={24} color="#ED1C24" />
-          </TouchableOpacity>
-          <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Isu Ditemukan</Text>
-        </View>
+          <WebNavbar
+            user={user}
+            activeMenu={'IssueList'}
+            title="Isu Ditemukan"
+            onBack={() => navigation.goBack()}
+            showBack={true}
+            navigation={navigation}
+          />
 
-        <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
-          style={tw`flex-1`}
-          contentContainerStyle={tw`p-6 pb-20 w-full max-w-7xl mx-auto`}
-          data={issues}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          initialNumToRender={Platform.OS === 'web' ? 100 : 20}
-          maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 20}
-          windowSize={Platform.OS === 'web' ? 30 : 10}
-          removeClippedSubviews={false}
-          showsVerticalScrollIndicator={true}
-          ListEmptyComponent={
-            <View style={tw`items-center mt-20`}>
-              <Ionicons name="checkmark-circle-outline" size={60} color="#CBD5E1" />
-              <Text style={tw`text-center text-gray-400 font-bold mt-4 text-lg`}>Tidak ada isu ditemukan. Semua aman.</Text>
-            </View>
-          }
-        />
-      
+          <FlatList key={numCols} numColumns={numCols} columnWrapperStyle={isLargeScreen ? tw`justify-start gap-4` : undefined}
+            style={tw`flex-1`}
+            contentContainerStyle={tw`p-6 pb-20 w-full max-w-7xl mx-auto`}
+            data={issues}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderItem}
+            initialNumToRender={Platform.OS === 'web' ? 100 : 20}
+            maxToRenderPerBatch={Platform.OS === 'web' ? 50 : 20}
+            windowSize={Platform.OS === 'web' ? 30 : 10}
+            removeClippedSubviews={false}
+            showsVerticalScrollIndicator={true}
+            ListEmptyComponent={
+              <View style={tw`items-center mt-20`}>
+                <Ionicons name="checkmark-circle-outline" size={60} color="#CBD5E1" />
+                <Text style={tw`text-center text-gray-400 font-bold mt-4 text-lg`}>Tidak ada isu ditemukan. Semua aman.</Text>
+              </View>
+            }
+          />
+
         </View>
       </SafeAreaView>
 
@@ -230,18 +233,18 @@ export default function IssueListScreen({ navigation }) {
               {/* Background Accent */}
               <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
               <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
-              
+
               {/* Logo Digihandover background watermark */}
               <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-5`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
-              
+
               <View style={tw`w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-5 shadow-lg shadow-red-500/30 z-10 border-4 border-white`}>
                 <Ionicons name="build" size={40} color="#ED1C24" />
               </View>
-              
+
               <Text style={tw`text-xs font-bold text-red-500 uppercase tracking-widest z-10 mb-1`}>KENDARAAN BERMASALAH</Text>
               <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter z-10 text-center mb-8`}>{selectedVehicle.noPolisi}</Text>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={tw`bg-green-500 w-full p-4 rounded-2xl items-center flex-row justify-center shadow-lg shadow-green-500/40 z-10 mb-3`}
                 onPress={toggleMaintenance}
               >
@@ -249,7 +252,7 @@ export default function IssueListScreen({ navigation }) {
                 <Text style={tw`text-white font-black text-lg tracking-wide`}>SUDAH DIPERBAIKI</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={tw`bg-gray-100 w-full p-4 rounded-2xl items-center flex-row justify-center z-10 mb-6`}
                 onPress={() => setManageModalVisible(false)}
               >
@@ -281,17 +284,17 @@ export default function IssueListScreen({ navigation }) {
             <Text style={tw`text-sm text-gray-500 text-center mb-8 font-medium leading-5`}>
               Apakah Anda yakin kendaraan <Text style={tw`font-bold text-gray-800`}>{selectedVehicle?.noPolisi}</Text> sudah diperbaiki dan benar-benar siap beroperasi normal kembali?
             </Text>
-            
+
             <View style={tw`w-full flex-row justify-between gap-4`}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={tw`flex-1 py-4 rounded-2xl items-center bg-gray-100`}
                 onPress={() => setConfirmModalVisible(false)}
                 disabled={isResolving}
               >
                 <Text style={tw`text-gray-500 font-bold`}>Batal</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={tw`flex-1 py-4 rounded-2xl items-center bg-green-500 shadow-md shadow-green-500/30 flex-row justify-center`}
                 onPress={executeResolveIssue}
                 disabled={isResolving}
@@ -316,7 +319,7 @@ export default function IssueListScreen({ navigation }) {
           <View style={tw`bg-white w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl border border-green-100`}>
             {/* Background Accent */}
             <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full`} />
-            
+
             <View style={tw`w-24 h-24 bg-green-500 rounded-full items-center justify-center mb-6 shadow-xl shadow-green-500/40 border-4 border-white z-10`}>
               <Ionicons name="checkmark" size={60} color="white" />
             </View>

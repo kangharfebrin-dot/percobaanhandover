@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 
 const PERTAMINA_BLUE = ['#003366', '#0055A5'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -372,41 +373,43 @@ export default function PengawasDashboardScreen({ navigation }) {
         <View style={tw`flex-1 relative`}>
 
           {/* STICKY NAVBAR (Floating Modern Style) */}
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            {/* Faint Logo Watermark with Clip */}
-            <View style={tw`absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-3xl`}>
-              <TextLogo style={[tw`absolute`, { top: 15, right: -10, transform: [{ scale: 0.65 }] }]} />
-            </View>
+          {isLargeScreen ? (
+            <WebNavbar user={user} />
+          ) : (
+            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+              {/* Faint Logo Watermark with Clip */}
+              <View style={tw`absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-3xl`}>
+                <TextLogo style={[tw`absolute`, { top: 15, right: -10, transform: [{ scale: 0.65 }] }]} />
+              </View>
 
-            <View style={tw`flex-row items-center flex-1`}>
-              <View style={tw`w-[50px] h-[50px] mr-4 shadow-lg shadow-gray-300 relative justify-center items-center`}>
-                <Animated.View style={[tw`absolute w-full h-full rounded-full overflow-hidden`, { transform: [{ rotate: spinInterpolate }] }]}>
-                  <LinearGradient
-                    colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={tw`flex-1 w-full h-full`}
-                  />
-                </Animated.View>
-                <View style={tw`w-[44px] h-[44px] rounded-full bg-white items-center justify-center`}>
-                  <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`}>{getInitials()}</Text>
+              <View style={tw`flex-row items-center flex-1`}>
+                <View style={tw`w-[50px] h-[50px] mr-4 shadow-lg shadow-gray-300 relative justify-center items-center`}>
+                  <Animated.View style={[tw`absolute w-full h-full rounded-full overflow-hidden`, { transform: [{ rotate: spinInterpolate }] }]}>
+                    <LinearGradient
+                      colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={tw`flex-1 w-full h-full`}
+                    />
+                  </Animated.View>
+                  <View style={tw`w-[44px] h-[44px] rounded-full bg-white items-center justify-center`}>
+                    <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`}>{getInitials()}</Text>
+                  </View>
+                </View>
+                <View style={tw`flex-1 pr-24`}>
+                  <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
+                  <Text style={tw`text-gray-800 text-lg font-black max-w-[150px]`} numberOfLines={1} ellipsizeMode="tail">{user.name}</Text>
                 </View>
               </View>
-              <View style={tw`flex-1 pr-24`}>
-                <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
-                <Text style={tw`text-gray-800 text-lg font-black max-w-[150px]`} numberOfLines={1} ellipsizeMode="tail">{user.name}</Text>
-              </View>
             </View>
-
-
-          </View>
+          )}
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
 
             {/* Title Section */}
-            <View style={tw`mb-8`}>
-              <Text style={tw`text-xs font-black text-[#0055A5] uppercase tracking-widest mb-1`}>SISTEM TERINTEGRASI PERTAMINA</Text>
-              <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>
+            <View style={tw`mb-6`}>
+              <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest mb-1`}>SISTEM TERINTEGRASI PERTAMINA</Text>
+              <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
                 Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text>
               </Text>
             </View>
@@ -416,47 +419,47 @@ export default function PengawasDashboardScreen({ navigation }) {
               <>
                 <View style={tw`flex-row justify-between mb-4`}>
                   <TouchableOpacity
-                    style={[tw`flex-1 p-6 rounded-[35px] border border-white/60 mr-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 }]}
+                    style={[tw`flex-1 p-5 rounded-[28px] border border-white/60 mr-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 }]}
                     onPress={() => navigation.navigate('VehicleList')}
                   >
-                    <View style={tw`w-14 h-14 bg-blue-100 rounded-full items-center justify-center mb-6`}>
-                      <Feather name="truck" size={26} color="#0055A5" />
+                    <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mb-5`}>
+                      <Feather name="truck" size={22} color="#0055A5" />
                     </View>
                     <View>
-                      <Text style={tw`text-5xl font-black text-gray-800 tracking-tighter`}>{vehiclesCount}</Text>
-                      <Text style={tw`text-xs text-gray-500 font-black uppercase tracking-widest mt-2`}>Total Kendaraan</Text>
+                      <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>{vehiclesCount}</Text>
+                      <Text style={tw`text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1.5`}>Total Kendaraan</Text>
                     </View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[tw`flex-1 p-6 rounded-[35px] border border-white/60 ml-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                    style={[tw`flex-1 p-5 rounded-[28px] border border-white/60 ml-3 justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 }]}
                     onPress={() => navigation.navigate('IssueList')}
                   >
-                    <View style={tw`w-14 h-14 bg-red-100 rounded-full items-center justify-center mb-6`}>
-                      <Feather name="alert-circle" size={26} color="#ED1C24" />
+                    <View style={tw`w-12 h-12 bg-red-100 rounded-full items-center justify-center mb-5`}>
+                      <Feather name="alert-circle" size={22} color="#ED1C24" />
                     </View>
                     <View>
-                      <Text style={tw`text-5xl font-black text-[#ED1C24] tracking-tighter`}>{activeIssuesCount}</Text>
-                      <Text style={tw`text-xs text-red-400 font-black uppercase tracking-widest mt-2`}>Isu Ditemukan</Text>
+                      <Text style={tw`text-4xl font-black text-[#ED1C24] tracking-tighter`}>{activeIssuesCount}</Text>
+                      <Text style={tw`text-[11px] text-red-400 font-black uppercase tracking-widest mt-1.5`}>Isu Ditemukan</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
 
                 {/* Daftar Pekerja Full Width Card */}
                 <TouchableOpacity
-                  style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                  style={[tw`w-full p-5 rounded-[28px] border border-white/60 mb-8 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
                   onPress={() => navigation.navigate('WorkerList')}
                 >
                   <View style={tw`flex-row items-center flex-1`}>
-                    <View style={tw`w-14 h-14 bg-green-100 rounded-full items-center justify-center mr-4`}>
-                      <Feather name="users" size={26} color="#00A651" />
+                    <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4`}>
+                      <Feather name="users" size={22} color="#00A651" />
                     </View>
                     <View>
-                      <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pekerja</Text>
-                      <Text style={tw`text-xs text-green-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                      <Text style={tw`text-xl font-black text-gray-800 tracking-tighter`}>Daftar Pekerja</Text>
+                      <Text style={tw`text-[11px] text-green-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
                     </View>
                   </View>
-                  <View style={tw`w-10 h-10 bg-green-50 rounded-full items-center justify-center`}>
+                  <View style={tw`w-9 h-9 bg-green-50 rounded-full items-center justify-center`}>
                     <Feather name="chevron-right" size={20} color="#00A651" />
                   </View>
                 </TouchableOpacity>

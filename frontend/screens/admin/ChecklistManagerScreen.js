@@ -10,6 +10,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -257,20 +258,38 @@ const [modalVisible, setModalVisible] = useState(false);
         )}
 
         {/* MAIN CONTENT AREA */}
-        <View style={tw`flex-1 relative`}>
-        <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
-          <View style={tw`flex-row items-center`}>
-            <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-              <Ionicons name="arrow-back" size={24} color="#00A651" />
-            </TouchableOpacity>
-            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
+        <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
+        {isLargeScreen ? (
+          <WebNavbar
+            user={user}
+            title="Manajer Checklist"
+            subtitle="Kustomisasi parameter inspeksi & form serah terima"
+            navigation={navigation}
+            showBack={true}
+            rightAction={
+              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+                <TouchableOpacity onPress={openAddModal} style={tw`flex-row items-center bg-[#00A651] px-4 py-2.5 rounded-2xl shadow-md`}>
+                  <Ionicons name="add-circle-outline" size={20} color="white" />
+                  <Text style={tw`text-white font-bold text-sm ml-1.5`}>Tambah Item</Text>
+                </TouchableOpacity>
+              ) : null
+            }
+          />
+        ) : (
+          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
+            <View style={tw`flex-row items-center`}>
+              <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#00A651" />
+              </TouchableOpacity>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
+            </View>
+            {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+              <TouchableOpacity onPress={openAddModal}>
+                 <Ionicons name="add-circle" size={28} color="#00A651" />
+              </TouchableOpacity>
+            )}
           </View>
-          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-            <TouchableOpacity onPress={openAddModal}>
-               <Ionicons name="add-circle" size={28} color="#00A651" />
-            </TouchableOpacity>
-          )}
-        </View>
+        )}
 
         <View style={tw`px-6 mb-2`}>
           <Text style={tw`text-gray-500 font-medium text-sm`}>Edit pertanyaan yang akan muncul di Form Handover AMT secara real-time.</Text>
@@ -281,6 +300,7 @@ const [modalVisible, setModalVisible] = useState(false);
           data={items}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          initialNumToRender={100}
         />
       </View>
       </SafeAreaView>

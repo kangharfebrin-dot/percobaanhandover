@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Platform, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
@@ -323,61 +323,122 @@ export default function ScannerScreen({ route, navigation }) {
     const itemsB = lastHandover.items.filter(i => i.category === 'B');
     const odoItem = lastHandover.items.find(i => i.category === 'C');
 
+    // Change back to 'Baik' to match the design 100%
+    // Change back to 'Baik' to match the design 100%
+    // Change back to 'Baik' to match the design 100%
     const countAGood = itemsA.filter(i => i.isGood || i.isRepaired).length;
     const countBGood = itemsB.filter(i => i.isGood || i.isRepaired).length;
     const odoMeter = odoItem ? odoItem.name.replace('Odo Meter: ', '') : '-';
 
+    // Status logic
+    const isPerfect = countAGood === itemsA.length && countBGood === itemsB.length;
+    const statusText = isPerfect ? 'Aman' : 'Ada Masalah';
+    const statusBg = isPerfect ? 'bg-[#E5F5EB]' : 'bg-[#FEE2E2]';
+    const statusDot = isPerfect ? 'bg-[#10B981]' : 'bg-[#EF4444]';
+    const statusColor = isPerfect ? 'text-[#10B981]' : 'text-[#EF4444]';
+
     return (
-      <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-4 z-50`}>
-        <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-6 shadow-2xl`}>
+      <View style={tw`absolute inset-0 bg-black/60 justify-center items-center px-5 z-50`}>
+        {/* Slightly smaller modal container w-[90%] max-w-[340px] */}
+        <View style={tw`bg-white w-[90%] max-w-[330px] rounded-[32px] pt-5 pb-5 px-5 relative overflow-visible shadow-2xl`}>
+
+          {/* Close Button inside modal */}
+          <TouchableOpacity
+            style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100/80 rounded-full`}
+            onPress={() => { setScanResult(null); navigation.navigate('UserDashboard'); }}
+          >
+            <Ionicons name="close" size={20} color="#4B5563" />
+          </TouchableOpacity>
+
           {/* Header Recap */}
-          <View style={tw`items-center mb-6`}>
-            <View style={tw`w-20 h-20 bg-green-50 rounded-full items-center justify-center mb-4`}>
-              <Ionicons name="checkmark" size={48} color="#00A651" />
+          <View style={tw`items-center mb-5`}>
+            {/* Checkmark with perfectly sized glow */}
+            <View style={tw`relative items-center justify-center mb-4 mt-2`}>
+              <View style={[tw`absolute rounded-full bg-green-400`, { width: 70, height: 70, opacity: 0.15, transform: [{ scale: 1.2 }], shadowColor: '#4ade80', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 15, elevation: 10 }]} />
+              <View style={tw`w-16 h-16 rounded-full border-[4px] border-[#22c55e] items-center justify-center bg-white z-10`}>
+                <Ionicons name="checkmark-sharp" size={40} color="#22c55e" />
+              </View>
             </View>
-            <View style={tw`bg-green-100 px-3 py-1 rounded-full mb-3`}>
-              <Text style={tw`text-[#00A651] font-bold text-[10px] uppercase tracking-widest`}>RECAP TERAKHIR</Text>
+
+            {/* Pill */}
+            <View style={tw`bg-[#575F6A] px-3.5 py-1 rounded-full mb-5 shadow-sm`}>
+              <Text style={tw`text-white font-bold text-[10px] tracking-[2px]`}>RINGKASAN INSPEKSI</Text>
             </View>
-            <Text style={tw`text-xl font-extrabold text-gray-800 text-center mb-2 leading-6`}>Data Inspeksi Terakhir{"\n"}Berhasil Ditemukan!</Text>
-            <Text style={tw`text-gray-500 text-center text-xs font-medium px-2 leading-5`}>Seluruh alur pemeriksaan telah tervalidasi dalam sistem digital iAMT.</Text>
+
+            {/* Title & Subtitle */}
+            <Text style={tw`text-[20px] font-black text-[#1F2937] text-center mb-2.5 leading-[26px] tracking-tight`}>Data Inspeksi Terakhir{"\n"}Berhasil Ditemukan!</Text>
+            <Text style={tw`text-[#4B5563] text-center text-[12px] px-1 leading-4`}>Seluruh alur pemeriksaan telah tervalidasi dalam{"\n"}sistem digital iAMT Pertamina.</Text>
           </View>
 
           {/* Table Data */}
-          <View style={tw`border border-gray-100 rounded-2xl p-4 mb-6 bg-slate-50/50 shadow-sm`}>
-            <View style={tw`flex-row justify-between py-2 border-b border-gray-100`}>
-              <Text style={tw`text-gray-500 text-sm`}>No Polisi</Text>
-              <Text style={tw`font-extrabold text-gray-800 text-sm`}>{lastHandover.noPolisi}</Text>
+          <View style={[tw`w-full bg-[#FAF9F6] rounded-[24px] p-4 mb-5 overflow-hidden relative`, { borderTopWidth: 4, borderTopColor: '#ED1C24' }]}>
+            {/* Aksen Coretan Pertamina (Top Left) */}
+            <View style={tw`absolute top-[-2px] left-[-2px] opacity-10`}>
+              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#ED1C24] rounded-br-[40px]`, { top: 0, left: 0, width: 75, height: 75 }]} />
+              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#00A651] rounded-br-[30px]`, { top: 0, left: 0, width: 60, height: 60 }]} />
+              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#0055A5] rounded-br-[20px]`, { top: 0, left: 0, width: 45, height: 45 }]} />
             </View>
-            <View style={tw`flex-row justify-between py-2 border-b border-gray-100`}>
-              <Text style={tw`text-gray-500 text-sm`}>Shift</Text>
-              <Text style={tw`font-extrabold text-gray-800 text-sm`}>{lastHandover.shift}</Text>
+
+            {/* Aksen Coretan Pertamina (Bottom Right) */}
+            <View style={tw`absolute bottom-[-2px] right-[-2px] opacity-10`}>
+              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#ED1C24] rounded-tl-[40px]`, { bottom: 0, right: 0, width: 75, height: 75 }]} />
+              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#00A651] rounded-tl-[30px]`, { bottom: 0, right: 0, width: 60, height: 60 }]} />
+              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#0055A5] rounded-tl-[20px]`, { bottom: 0, right: 0, width: 45, height: 45 }]} />
             </View>
-            <View style={tw`flex-row justify-between py-2 border-b border-gray-100 items-center`}>
-              <Text style={tw`text-gray-500 text-sm`}>Status</Text>
-              <View style={tw`bg-green-100 px-2 py-1 rounded-md flex-row items-center`}>
-                <View style={tw`w-2 h-2 bg-green-500 rounded-full mr-2`} />
-                <Text style={tw`text-green-700 font-bold text-xs`}>{lastHandover.status}</Text>
+
+            {/* Row: No Polisi */}
+            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>No Polisi</Text>
+              <Text style={tw`font-black text-[#111827] text-[16px]`}>{lastHandover.noPolisi}</Text>
+            </View>
+
+            {/* Row: Shift */}
+            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>Shift</Text>
+              <Text style={tw`font-black text-[#111827] text-[16px]`}>{lastHandover.shift}</Text>
+            </View>
+
+            {/* Row: Status */}
+            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>Status</Text>
+              <View style={tw`${statusBg} px-2.5 py-1 rounded-md flex-row items-center`}>
+                <View style={tw`w-2 h-2 ${statusDot} rounded-full mr-2`} />
+                <Text style={tw`${statusColor} font-bold text-[12px]`}>{statusText}</Text>
               </View>
             </View>
-            <View style={tw`flex-row justify-between py-2 border-b border-gray-100`}>
-              <Text style={tw`text-gray-500 text-xs`}>Checklist Kendaraan</Text>
-              <Text style={tw`font-extrabold text-green-700 text-xs`}>{countAGood}/{itemsA.length} Baik</Text>
+
+            {/* Row: Checklist */}
+            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>Checklist Kendaraan</Text>
+              <View style={tw`border-b-[3px] border-[#10B981] pb-0.5`}>
+                <Text style={tw`font-bold text-[#10B981] text-[15px]`}>{countAGood}/{itemsA.length} Baik</Text>
+              </View>
             </View>
-            <View style={tw`flex-row justify-between py-2 border-b border-gray-100`}>
-              <Text style={tw`text-gray-500 text-xs`}>Perlengkapan AMT</Text>
-              <Text style={tw`font-extrabold text-green-700 text-xs`}>{countBGood}/{itemsB.length} Lengkap</Text>
+
+            {/* Row: Perlengkapan */}
+            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>Perlengkapan AMT</Text>
+              <View style={tw`border-b-[3px] border-[#10B981] pb-0.5`}>
+                <Text style={tw`font-bold text-[#10B981] text-[15px]`}>{countBGood}/{itemsB.length} Lengkap</Text>
+              </View>
             </View>
-            <View style={tw`flex-row justify-between pt-2`}>
-              <Text style={tw`text-gray-500 text-xs`}>ODO Meter</Text>
-              <Text style={tw`font-extrabold text-gray-800 text-xs`}>{odoMeter} km</Text>
+
+            {/* Row: ODO Meter */}
+            <View style={tw`flex-row justify-between pt-2.5 z-10 items-center`}>
+              <Text style={tw`text-[#4B5563] text-[14px]`}>ODO Meter</Text>
+              <Text style={tw`font-black text-[#111827] text-[16px]`}>{odoMeter} km</Text>
             </View>
           </View>
 
           {/* Button Lanjut */}
           <TouchableOpacity onPress={proceedToForm} style={tw`w-full`}>
-            <LinearGradient colors={['#0055A5', '#003366']} style={tw`p-4 rounded-xl items-center`}>
-              <Text style={tw`text-white font-bold text-[14px]`}>Lanjut ke Pengisian Perjalanan →</Text>
-            </LinearGradient>
+            <View style={[tw`w-full bg-[#003366] p-4 rounded-xl flex-row items-center justify-between`, { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 12 }]}>
+              <View style={tw`flex-1 flex-row justify-center items-center pl-3`}>
+                <Text style={tw`text-white font-bold text-[13px] mr-2`}>Lanjut ke Pengisian Perjalanan</Text>
+                <Text style={tw`text-white font-bold text-[14px]`}>➔</Text>
+              </View>
+              <Image source={require('../../assets/clean_emblem.png')} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -415,282 +476,282 @@ export default function ScannerScreen({ route, navigation }) {
       )}
       <View style={[tw`flex-1 bg-black relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
         {isFocused && !scanResult && (
-        <CameraView
-          style={tw`absolute inset-0`}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-          onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
-        />
-      )}
+          <CameraView
+            style={tw`absolute inset-0`}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
+          />
+        )}
 
-      {/* Overlay UI diletakkan di luar CameraView */}
-      <View style={tw`absolute inset-0 justify-center items-center`} pointerEvents="none">
-        <View style={tw`w-72 h-72 border-4 ${scanResult ? 'border-green-500' : 'border-[#0055A5]'} rounded-3xl bg-transparent flex items-center justify-center relative overflow-hidden`}>
-          {scanResult === null && !loading && (
-            <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
-          )}
-          {loading && <ActivityIndicator size="large" color="#0055A5" />}
+        {/* Overlay UI diletakkan di luar CameraView */}
+        <View style={tw`absolute inset-0 justify-center items-center`} pointerEvents="none">
+          <View style={tw`w-72 h-72 border-4 ${scanResult ? 'border-green-500' : 'border-[#0055A5]'} rounded-3xl bg-transparent flex items-center justify-center relative overflow-hidden`}>
+            {scanResult === null && !loading && (
+              <View style={tw`w-full h-1 bg-[#0055A5]/50 absolute top-1/2`} />
+            )}
+            {loading && <ActivityIndicator size="large" color="#0055A5" />}
+          </View>
+          <Text style={tw`text-white bg-black/60 px-4 py-2 mt-6 rounded-full font-bold`}>
+            Arahkan kamera ke QR Kendaraan ({type?.toUpperCase() || 'MULAI'})
+          </Text>
         </View>
-        <Text style={tw`text-white bg-black/60 px-4 py-2 mt-6 rounded-full font-bold`}>
-          Arahkan kamera ke QR Kendaraan ({type?.toUpperCase() || 'MULAI'})
-        </Text>
-      </View>
 
-      <TouchableOpacity
-        style={tw`absolute top-12 left-6 bg-black/50 p-3 rounded-full flex-row items-center`}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color="white" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={tw`absolute top-12 left-6 bg-black/50 p-3 rounded-full flex-row items-center`}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
 
-      {scanResult === 'recap' && renderRecapModal()}
-      {scanResult === 'success' && renderSuccessModal()}
+        {scanResult === 'recap' && renderRecapModal()}
+        {scanResult === 'success' && renderSuccessModal()}
 
 
-      {scanResult === 'pending_approval' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-amber-300 relative`}>
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
+        {scanResult === 'pending_approval' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-amber-300 relative`}>
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
 
-            <View style={tw`w-24 h-24 bg-amber-50 rounded-full items-center justify-center mb-5 shadow-lg shadow-amber-200 border-4 border-amber-100`}>
-              <Ionicons name="hourglass" size={48} color="#D97706" />
-            </View>
-
-            <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-3`}>
-              <Text style={tw`text-amber-800 font-bold text-[11px] uppercase tracking-wider`}>MENUNGGU PERSETUJUAN</Text>
-            </View>
-
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Menunggu Respon{"\n"}Admin</Text>
-            
-            <Text style={tw`text-gray-500 text-center mb-6 font-medium text-sm leading-5`}>
-              Laporan perbaikan untuk truk ini telah dikirimkan dan saat ini sedang menunggu respon serta persetujuan dari Admin / Pengawas.
-            </Text>
-
-            <View style={tw`w-full bg-amber-50/80 rounded-2xl p-4 border border-amber-200/60 mb-6`}>
-              <View style={tw`flex-row justify-between items-center mb-2`}>
-                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
-                <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+              <View style={tw`w-24 h-24 bg-amber-50 rounded-full items-center justify-center mb-5 shadow-lg shadow-amber-200 border-4 border-amber-100`}>
+                <Ionicons name="hourglass" size={48} color="#D97706" />
               </View>
-              <View style={tw`flex-row justify-between items-center`}>
-                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Status:</Text>
-                <View style={tw`bg-amber-200/80 px-2 py-0.5 rounded-md`}>
-                  <Text style={tw`text-amber-900 font-bold text-[11px]`}>Menunggu Evaluasi Admin</Text>
+
+              <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-3`}>
+                <Text style={tw`text-amber-800 font-bold text-[11px] uppercase tracking-wider`}>MENUNGGU PERSETUJUAN</Text>
+              </View>
+
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Menunggu Respon{"\n"}Admin</Text>
+
+              <Text style={tw`text-gray-500 text-center mb-6 font-medium text-sm leading-5`}>
+                Laporan perbaikan untuk truk ini telah dikirimkan dan saat ini sedang menunggu respon serta persetujuan dari Admin / Pengawas.
+              </Text>
+
+              <View style={tw`w-full bg-amber-50/80 rounded-2xl p-4 border border-amber-200/60 mb-6`}>
+                <View style={tw`flex-row justify-between items-center mb-2`}>
+                  <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
+                  <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+                </View>
+                <View style={tw`flex-row justify-between items-center`}>
+                  <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Status:</Text>
+                  <View style={tw`bg-amber-200/80 px-2 py-0.5 rounded-md`}>
+                    <Text style={tw`text-amber-900 font-bold text-[11px]`}>Menunggu Evaluasi Admin</Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/20`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Beranda</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/20`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      {scanResult === 'repair' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
-              <Ionicons name="construct" size={50} color="#ED1C24" />
-            </View>
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Truk Dalam{"\n"}Perbaikan!</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan.</Text>
-
-            <TouchableOpacity
-              style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
-              onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi || data }); }}
-            >
-              <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-red-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {scanResult === 'repair_minor' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-yellow-400 relative`}>
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <View style={tw`w-24 h-24 bg-yellow-100 rounded-full items-center justify-center mb-6 shadow-lg shadow-yellow-200`}>
-              <Ionicons name="warning" size={50} color="#F59E0B" />
-            </View>
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Kerusakan Minor</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini memiliki catatan kerusakan minor, namun masih bisa digunakan.</Text>
-
-            <TouchableOpacity
-              style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
-              onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi }); }}
-            >
-              <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`w-full bg-green-500 p-4 rounded-2xl items-center shadow-lg mb-3`}
-              onPress={() => {
-                setScanResult(nextScanResult);
-              }}
-            >
-              <Text style={tw`text-white font-bold text-[15px]`}>Lanjut Pekerjaan</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`w-full bg-gray-100 p-4 rounded-2xl items-center border border-gray-200`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-gray-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {scanResult === 'maintenance' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
-              <Ionicons name="lock-closed" size={50} color="#ED1C24" />
-            </View>
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Kendaraan{"\n"}Diblokir</Text>
-            <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam status MAINTENANCE total. Tidak dapat digunakan untuk operasional.</Text>
-            <TouchableOpacity
-              style={tw`w-full bg-red-600 p-4 rounded-2xl items-center shadow-lg shadow-red-500/30`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-white font-bold text-lg`}>Kembali ke Beranda</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {scanResult === 'shift_gantung' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-7 items-center shadow-2xl border-4 border-amber-300 relative`}>
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-
-            <View style={tw`w-20 h-20 bg-amber-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-amber-200 border-2 border-amber-200`}>
-              <Ionicons name="time" size={44} color="#D97706" />
-            </View>
-
-            <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-2`}>
-              <Text style={tw`text-amber-800 font-bold text-[10px] uppercase tracking-wider`}>SHIFT GANTUNG TERDETEKSI</Text>
-            </View>
-
-            <Text style={tw`text-xl font-black text-gray-800 mb-2 text-center`}>Shift Belum Diakhiri</Text>
-            
-            <Text style={tw`text-gray-500 text-center mb-4 font-medium text-xs leading-5`}>
-              Sesi pekerjaan sebelumnya dimulai lebih dari {Math.floor(hangingElapsedHours)} jam yang lalu dan belum diakhiri oleh supir sebelumnya.
-            </Text>
-
-            <View style={tw`w-full bg-amber-50 rounded-2xl p-3 border border-amber-200/80 mb-5`}>
-              <View style={tw`flex-row justify-between items-center mb-1.5`}>
-                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
-                <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+        {scanResult === 'repair' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
+                <Ionicons name="construct" size={50} color="#ED1C24" />
               </View>
-              <View style={tw`flex-row justify-between items-center mb-1.5`}>
-                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>AMT Terakhir:</Text>
-                <Text style={tw`text-xs text-amber-900 font-bold`}>{lastHandover?.amt1 || '-'}</Text>
-              </View>
-              <View style={tw`flex-row justify-between items-center`}>
-                <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Durasi Gantung:</Text>
-                <Text style={tw`text-xs text-red-600 font-bold`}>± {Math.floor(hangingElapsedHours)} Jam Lalu</Text>
-              </View>
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Truk Dalam{"\n"}Perbaikan!</Text>
+              <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan.</Text>
+
+              <TouchableOpacity
+                style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
+                onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi || data }); }}
+              >
+                <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-red-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-              style={tw`w-full bg-[#00A651] p-4 rounded-2xl items-center shadow-lg shadow-green-500/30 mb-3`}
-              onPress={handleForceReleaseAndStart}
-            >
-              <Text style={tw`text-white font-extrabold text-[14px]`}>Tutup Shift Paksa & Mulai Baru</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-gray-600 font-bold text-[14px]`}>Batal / Kembali ke Beranda</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      )}
+        )}
 
-      {scanResult === 'error' && (
-        <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
-          <View style={tw`bg-white w-full max-w-sm rounded-[32px] p-8 items-center shadow-2xl relative overflow-hidden border border-red-100`}>
-            {/* Background Decorative Accents */}
-            <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
-            <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+        {scanResult === 'repair_minor' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-yellow-400 relative`}>
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <View style={tw`w-24 h-24 bg-yellow-100 rounded-full items-center justify-center mb-6 shadow-lg shadow-yellow-200`}>
+                <Ionicons name="warning" size={50} color="#F59E0B" />
+              </View>
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Kerusakan Minor</Text>
+              <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini memiliki catatan kerusakan minor, namun masih bisa digunakan.</Text>
 
-            {/* Tombol Silang (X) */}
-            <TouchableOpacity 
-              style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
-              onPress={() => setScanResult(null)}
-            >
-              <Ionicons name="close" size={22} color="#4B5563" />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`w-full bg-blue-600 p-4 rounded-2xl items-center shadow-lg mb-3`}
+                onPress={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi }); }}
+              >
+                <Text style={tw`text-white font-bold text-[15px]`}>Verifikasi Sudah Diperbaiki</Text>
+              </TouchableOpacity>
 
-            <View style={tw`w-20 h-20 bg-red-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-red-200 border-2 border-red-100 z-10`}>
-              <Ionicons name="alert-circle" size={44} color="#ED1C24" />
+              <TouchableOpacity
+                style={tw`w-full bg-green-500 p-4 rounded-2xl items-center shadow-lg mb-3`}
+                onPress={() => {
+                  setScanResult(nextScanResult);
+                }}
+              >
+                <Text style={tw`text-white font-bold text-[15px]`}>Lanjut Pekerjaan</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`w-full bg-gray-100 p-4 rounded-2xl items-center border border-gray-200`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-gray-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={tw`bg-red-100 px-3.5 py-1 rounded-full mb-2.5 z-10`}>
-              <Text style={tw`text-red-800 font-black text-[10px] uppercase tracking-wider`}>PERINGATAN SISTEM</Text>
-            </View>
-
-            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center z-10`}>{errorTitle || 'Scan Gagal'}</Text>
-            <Text style={tw`text-gray-500 text-center mb-6 font-medium text-xs leading-5 z-10 px-2`}>
-              {errorMessage || 'Kode Barcode tidak valid atau data kendaraan tidak ditemukan.'}
-            </Text>
-
-            <TouchableOpacity
-              style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/30 z-10 mb-2.5`}
-              onPress={() => setScanResult(null)}
-            >
-              <Text style={tw`text-white font-bold text-base`}>Scan Ulang Barcode</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200 z-10`}
-              onPress={() => { setScanResult(null); navigation.goBack(); }}
-            >
-              <Text style={tw`text-gray-600 font-bold text-sm`}>Kembali ke Beranda</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      )}
+        )}
+
+        {scanResult === 'maintenance' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-red-100 relative`}>
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <View style={tw`w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6 shadow-lg shadow-red-200`}>
+                <Ionicons name="lock-closed" size={50} color="#ED1C24" />
+              </View>
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center`}>Kendaraan{"\n"}Diblokir</Text>
+              <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam status MAINTENANCE total. Tidak dapat digunakan untuk operasional.</Text>
+              <TouchableOpacity
+                style={tw`w-full bg-red-600 p-4 rounded-2xl items-center shadow-lg shadow-red-500/30`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-white font-bold text-lg`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {scanResult === 'shift_gantung' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-7 items-center shadow-2xl border-4 border-amber-300 relative`}>
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+
+              <View style={tw`w-20 h-20 bg-amber-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-amber-200 border-2 border-amber-200`}>
+                <Ionicons name="time" size={44} color="#D97706" />
+              </View>
+
+              <View style={tw`bg-amber-100 px-3 py-1 rounded-full mb-2`}>
+                <Text style={tw`text-amber-800 font-bold text-[10px] uppercase tracking-wider`}>SHIFT GANTUNG TERDETEKSI</Text>
+              </View>
+
+              <Text style={tw`text-xl font-black text-gray-800 mb-2 text-center`}>Shift Belum Diakhiri</Text>
+
+              <Text style={tw`text-gray-500 text-center mb-4 font-medium text-xs leading-5`}>
+                Sesi pekerjaan sebelumnya dimulai lebih dari {Math.floor(hangingElapsedHours)} jam yang lalu dan belum diakhiri oleh supir sebelumnya.
+              </Text>
+
+              <View style={tw`w-full bg-amber-50 rounded-2xl p-3 border border-amber-200/80 mb-5`}>
+                <View style={tw`flex-row justify-between items-center mb-1.5`}>
+                  <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Truk:</Text>
+                  <Text style={tw`text-xs text-amber-900 font-extrabold`}>{scannedNoPolisi}</Text>
+                </View>
+                <View style={tw`flex-row justify-between items-center mb-1.5`}>
+                  <Text style={tw`text-xs text-amber-900/70 font-semibold`}>AMT Terakhir:</Text>
+                  <Text style={tw`text-xs text-amber-900 font-bold`}>{lastHandover?.amt1 || '-'}</Text>
+                </View>
+                <View style={tw`flex-row justify-between items-center`}>
+                  <Text style={tw`text-xs text-amber-900/70 font-semibold`}>Durasi Gantung:</Text>
+                  <Text style={tw`text-xs text-red-600 font-bold`}>± {Math.floor(hangingElapsedHours)} Jam Lalu</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={tw`w-full bg-[#00A651] p-4 rounded-2xl items-center shadow-lg shadow-green-500/30 mb-3`}
+                onPress={handleForceReleaseAndStart}
+              >
+                <Text style={tw`text-white font-extrabold text-[14px]`}>Tutup Shift Paksa & Mulai Baru</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-gray-600 font-bold text-[14px]`}>Batal / Kembali ke Beranda</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {scanResult === 'error' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[32px] p-8 items-center shadow-2xl relative overflow-hidden border border-red-100`}>
+              {/* Background Decorative Accents */}
+              <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
+              <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-orange-50 rounded-full`} />
+
+              {/* Tombol Silang (X) */}
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={22} color="#4B5563" />
+              </TouchableOpacity>
+
+              <View style={tw`w-20 h-20 bg-red-50 rounded-full items-center justify-center mb-4 shadow-lg shadow-red-200 border-2 border-red-100 z-10`}>
+                <Ionicons name="alert-circle" size={44} color="#ED1C24" />
+              </View>
+
+              <View style={tw`bg-red-100 px-3.5 py-1 rounded-full mb-2.5 z-10`}>
+                <Text style={tw`text-red-800 font-black text-[10px] uppercase tracking-wider`}>PERINGATAN SISTEM</Text>
+              </View>
+
+              <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center z-10`}>{errorTitle || 'Scan Gagal'}</Text>
+              <Text style={tw`text-gray-500 text-center mb-6 font-medium text-xs leading-5 z-10 px-2`}>
+                {errorMessage || 'Kode Barcode tidak valid atau data kendaraan tidak ditemukan.'}
+              </Text>
+
+              <TouchableOpacity
+                style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/30 z-10 mb-2.5`}
+                onPress={() => setScanResult(null)}
+              >
+                <Text style={tw`text-white font-bold text-base`}>Scan Ulang Barcode</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200 z-10`}
+                onPress={() => { setScanResult(null); navigation.goBack(); }}
+              >
+                <Text style={tw`text-gray-600 font-bold text-sm`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

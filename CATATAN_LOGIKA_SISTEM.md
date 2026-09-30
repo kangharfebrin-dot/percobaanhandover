@@ -299,3 +299,4 @@ Pada tanggal 28 September 2026, dilakukan audit mendalam berfokus pada **siklus 
 ---
 *Catatan ini diperbarui pada tanggal 28 September 2026 setelah seluruh perbaikan audit logika sistem lolos pengujian regresi otomatis (13/13 Test Passed).*
 
+di dalam pengisian handover tolong yang bawahnya c yang bawahnya foto kanan kiri itu tolong kasih catatan dan juga akan nambah di crud cheklist jadi bisa kiyta edit.

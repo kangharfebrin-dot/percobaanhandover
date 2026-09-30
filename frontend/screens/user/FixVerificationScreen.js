@@ -11,6 +11,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 
 export default function FixVerificationScreen({ route, navigation }) {
   const { noPolisi, issueId, handoverId } = route.params || {};
@@ -194,7 +195,7 @@ export default function FixVerificationScreen({ route, navigation }) {
       Toast.show({
         type: 'info',
         text1: 'Peringatan',
-        text2: 'Tidak ada item yang diverifikasi sebagai BAIK.'
+        text2: 'Tidak ada item yang diverifikasi sebagai NORMAL.'
       });
       return;
     }
@@ -302,16 +303,13 @@ export default function FixVerificationScreen({ route, navigation }) {
         />
       )}
       <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-        <LinearGradient colors={['#0055A5', '#003366']} style={tw`px-6 py-4 rounded-b-3xl shadow-lg z-10`}>
-          <View style={tw`flex-row items-center justify-between mt-2`}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`bg-white/20 p-2 rounded-full`}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={tw`text-white text-xl font-bold`}>Verifikasi Perbaikan</Text>
-            <View style={tw`w-10`} />
-          </View>
-          <Text style={tw`text-white/80 text-center mt-2 font-medium`}>Truk: {issue?.handover?.noPolisi || noPolisi}</Text>
-        </LinearGradient>
+        <WebNavbar
+          user={user}
+          activeMenu={'FixVerification'}
+          title="Verifikasi Perbaikan"
+          subtitle={`Truk: ${issue?.handover?.noPolisi || noPolisi}`}
+          onBack={() => navigation.goBack()}
+        />
 
         <ScrollView style={tw`flex-1 px-4 py-6 max-w-4xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
         {brokenItems.length === 0 ? (
@@ -333,9 +331,9 @@ export default function FixVerificationScreen({ route, navigation }) {
         ) : (
           brokenItems.map((item, index) => {
             const isCategoryB = item.category === 'B' || item.name.toLowerCase().includes('buku saku');
-            const statusPrevLabel = isCategoryB ? 'STATUS SEBELUMNYA: TIDAK ADA' : 'STATUS SEBELUMNYA: RUSAK';
-            const btnDoneLabel = isCategoryB ? 'SUDAH ADA' : 'SUDAH DIPERBAIKI';
-            const btnNotDoneLabel = isCategoryB ? 'BELUM ADA' : 'BELUM DIPERBAIKI';
+            const statusPrevLabel = 'STATUS SEBELUMNYA: ISU';
+            const btnDoneLabel = 'NORMAL';
+            const btnNotDoneLabel = 'ISU';
             const noteLabel = isCategoryB ? 'Catatan Kelengkapan' : 'Catatan Perbaikan';
             const notePlaceholder = isCategoryB ? 'Contoh: Buku saku AMT sudah dibawa dan lengkap...' : 'Contoh: Komponen sudah diganti/diperbaiki...';
             const photoLabel = isCategoryB ? 'Bukti Foto (Opsional)' : 'Bukti Foto';

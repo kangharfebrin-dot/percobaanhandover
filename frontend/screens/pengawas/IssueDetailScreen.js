@@ -10,6 +10,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 
 export default function IssueDetailScreen({ route, navigation }) {
   const targetId = route.params?.issueId || route.params?.handoverId || route.params?.actionId || route.params?.id;
@@ -280,12 +281,13 @@ export default function IssueDetailScreen({ route, navigation }) {
         )}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Header */}
-          <View style={tw`flex-row items-center px-5 py-4 bg-white shadow-sm border-b border-gray-100`}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
-              <Ionicons name="arrow-back" size={24} color="#ED1C24" />
-            </TouchableOpacity>
-            <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
-          </View>
+          <WebNavbar
+            user={currentUser}
+            activeMenu={'IssueList'}
+            title="Detail Isu Kendaraan"
+            subtitle="Isu Tidak Ditemukan"
+            onBack={() => navigation.goBack()}
+          />
 
           {/* Empty State Card */}
           <View style={tw`flex-1 items-center justify-center p-6`}>
@@ -334,33 +336,29 @@ export default function IssueDetailScreen({ route, navigation }) {
         )}
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-          {/* Header */}
-          <View style={tw`flex-row items-center justify-between px-5 py-4 bg-white shadow-sm z-20 border-b border-gray-100`}>
-            <View style={tw`flex-row items-center flex-1`}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4`}>
-                <Ionicons name="arrow-back" size={24} color="#ED1C24" />
-              </TouchableOpacity>
-              <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-black text-gray-800 tracking-tight`}>Detail Isu Kendaraan</Text>
-                <Text style={tw`text-sm font-bold text-gray-500`}>{issue.handover?.noPolisi || 'Kendaraan'}</Text>
-              </View>
-            </View>
-
-            {/* Quick link ke Handover Detail */}
-            {issue.handoverId && (
-              <TouchableOpacity 
-                style={tw`flex-row items-center bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100`}
-                onPress={() => navigation.navigate('HandoverDetail', { 
-                  handoverId: issue.handoverId, 
-                  handover: issue.handover,
-                  noPolisi: issue.handover?.noPolisi 
-                })}
-              >
-                <Feather name="file-text" size={14} color="#0055A5" />
-                <Text style={tw`text-xs font-bold text-[#0055A5] ml-1.5`}>Lihat Handover</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* Header diganti WebNavbar untuk konsistensi */}
+          <WebNavbar
+            user={currentUser}
+            activeMenu={'IssueList'}
+            title="Detail Isu Kendaraan"
+            subtitle={issue.handover?.noPolisi || 'Kendaraan'}
+            onBack={() => navigation.goBack()}
+            rightAction={
+              issue.handoverId ? (
+                <TouchableOpacity 
+                  style={tw`flex-row items-center bg-white/90 px-4 py-2 rounded-xl border border-blue-100 shadow-sm mr-2`}
+                  onPress={() => navigation.navigate('HandoverDetail', { 
+                    handoverId: issue.handoverId, 
+                    handover: issue.handover,
+                    noPolisi: issue.handover?.noPolisi 
+                  })}
+                >
+                  <Feather name="file-text" size={16} color="#0055A5" />
+                  <Text style={tw`text-xs font-bold text-[#0055A5] ml-2`}>Lihat Handover</Text>
+                </TouchableOpacity>
+              ) : null
+            }
+          />
 
           <ScrollView contentContainerStyle={tw`p-5 pb-36 max-w-5xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
           {/* Status Banner */}

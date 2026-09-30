@@ -1,10 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Platform, Animated, Image } from 'react-native';
 import tw from 'twrnc';
 import { Ionicons, Feather } from '@expo/vector-icons';
-
-const GLASS_BG = 'rgba(255, 255, 255, 0.7)';
-const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 export default function WebSidebar({ user, activeMenu, navigation, handleLogout, unreadNotificationsCount = 0 }) {
   if (Platform.OS !== 'web' || !user) return null;
@@ -14,16 +11,64 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
   const isManagement = isSuperAdmin || isAdmin;
   const isPengawas = user.role === 'PENGAWAS';
 
+  // Referensi dan state untuk dynamic scroll indicator (Ukuran pas untuk zoom 100%)
+  const scrollViewRef = useRef(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [contentHeight, setContentHeight] = useState(1);
+  const [visibleHeight, setVisibleHeight] = useState(1);
+  const [trackHeight, setTrackHeight] = useState(350);
+
+  // Tinggi kapsul 3-warna yang ideal dan proporsional pada zoom standar 100%
+  const thumbHeight = Math.max(90, Math.min(130, Math.round((visibleHeight / Math.max(1, contentHeight)) * trackHeight)));
+  const maxScroll = Math.max(1, contentHeight - visibleHeight);
+  const maxThumbTravel = Math.max(0, trackHeight - thumbHeight);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && scrollViewRef.current) {
+      const savedScroll = sessionStorage.getItem('sidebarScrollY');
+      if (savedScroll) {
+        setTimeout(() => {
+          if (scrollViewRef.current?.scrollTo) {
+            scrollViewRef.current.scrollTo({ y: parseFloat(savedScroll), animated: false });
+          } else if (scrollViewRef.current?.getNode) {
+            scrollViewRef.current.getNode().scrollTo({ y: parseFloat(savedScroll), animated: false });
+          }
+        }, 100);
+      }
+    }
+  }, [contentHeight]);
+
+  const thumbTranslateY = scrollY.interpolate({
+    inputRange: [0, maxScroll],
+    outputRange: [0, maxThumbTravel],
+    extrapolate: 'clamp',
+  });
+
+  const handleTrackClick = (e) => {
+    if (Platform.OS !== 'web' || !scrollViewRef.current) return;
+    try {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      const ratio = Math.max(0, Math.min(1, (clickY - thumbHeight / 2) / Math.max(1, rect.height - thumbHeight)));
+      const targetY = ratio * maxScroll;
+      if (typeof scrollViewRef.current.scrollTo === 'function') {
+        scrollViewRef.current.scrollTo({ y: targetY, animated: true });
+      } else if (scrollViewRef.current.getNode && typeof scrollViewRef.current.getNode().scrollTo === 'function') {
+        scrollViewRef.current.getNode().scrollTo({ y: targetY, animated: true });
+      }
+    } catch (err) {}
+  };
+
   const getRoleLabel = () => {
     if (isSuperAdmin) return 'Super Admin';
     if (isAdmin) return 'Admin';
     if (isPengawas) return 'Pengawas';
-    return 'Awak Mobil Tangki';
+    return 'Pekerja';
   };
 
   const getInitials = () => {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'AD';
-    if (user.role === 'PENGAWAS') return 'PS';
+    if (isSuperAdmin || isAdmin) return 'AD';
+    if (isPengawas) return 'PS';
     const parts = (user.name || '').trim().split(' ');
     if (parts.length > 1) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -31,237 +76,309 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
     return (user.name || 'U').substring(0, 2).toUpperCase();
   };
 
+  const renderSectionHeader = (title) => (
+    <View style={tw`flex-row items-center my-2.5 px-1`}>
+      <View style={tw`flex-1 h-[1px] bg-gray-200/90`} />
+      <Text style={tw`px-2.5 text-[10.5px] font-bold text-gray-400 uppercase tracking-wider`}>
+        {title}
+      </Text>
+      <View style={tw`flex-1 h-[1px] bg-gray-200/90`} />
+    </View>
+  );
+
+  const renderMenuItem = ({ label, iconComponent, active, onPress, badge }) => (
+    <TouchableOpacity
+      style={[
+        tw`flex-row items-center justify-between px-3 py-2.5 mb-1.5 rounded-[16px] border`,
+        active ? {
+          backgroundColor: '#0055A5',
+          borderColor: '#00488C',
+          shadowColor: '#0055A5',
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 3,
+        } : {
+          backgroundColor: '#FFFFFF',
+          borderColor: '#F1F5F9',
+          shadowColor: '#000',
+          shadowOpacity: 0.04,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 1,
+        },
+        Platform.OS === 'web' ? { cursor: 'pointer', transition: 'all 0.15s ease' } : {}
+      ]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={tw`flex-row items-center flex-1`}>
+        {iconComponent}
+        <Text
+          style={[
+            tw`ml-3 text-[13px]`,
+            active ? tw`text-white font-extrabold` : tw`text-gray-800 font-bold`
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+      {badge}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={[
-      tw`w-72 my-6 ml-6 rounded-[40px] border border-white/50 overflow-hidden flex-col`,
+      tw`my-4 ml-4 flex-row items-stretch select-none`,
       {
-        backgroundColor: GLASS_BG,
-        ...glassStyle,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 30,
-        height: Platform.OS === 'web' ? 'calc(100vh - 48px)' : undefined,
-        maxHeight: Platform.OS === 'web' ? 'calc(100vh - 48px)' : undefined,
+        height: Platform.OS === 'web' ? 'calc(100vh - 32px)' : undefined,
+        maxHeight: Platform.OS === 'web' ? 'calc(100vh - 32px)' : undefined,
       }
     ]}>
-      {/* Profile Card - Fixed Header (Informasi admin tetap terlihat) */}
-      <View style={tw`pt-8 px-6 pb-5 items-center border-b border-gray-100/80`}>
-        <View style={tw`w-20 h-20 bg-blue-600 rounded-[26px] items-center justify-center mb-3 shadow-xl shadow-blue-500/30 rotate-3`}>
-          <Text style={tw`text-2xl font-black text-white -rotate-3`}>{getInitials()}</Text>
+      {/* 1. Main Sidebar Card - Ukuran ramping & proporsional (295px) untuk Zoom 100% */}
+      <View style={[
+        tw`bg-white rounded-[32px] border border-gray-100 flex-col overflow-hidden relative`,
+        {
+          width: 260,
+          shadowColor: '#000',
+          shadowOpacity: 0.07,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 5,
+        }
+      ]}>
+        {/* Faint Pertamina Brand Ribbons Watermark at bottom */}
+        <View style={[tw`absolute bottom-0 left-0 right-0 h-36 overflow-hidden pointer-events-none opacity-20`, { zIndex: 0 }]}>
+          <View style={[tw`absolute -bottom-10 -left-10 w-56 h-8 bg-[#0055A5] -rotate-25 rounded-full`]} />
+          <View style={[tw`absolute -bottom-4 -left-4 w-56 h-8 bg-[#ED1C24] -rotate-25 rounded-full`]} />
+          <View style={[tw`absolute bottom-2 left-2 w-56 h-8 bg-[#52B848] -rotate-25 rounded-full`]} />
         </View>
-        <Text style={tw`text-xl font-black text-gray-800 text-center tracking-tight`}>{user.name}</Text>
-        <View style={tw`bg-blue-100 mt-2 px-3 py-1 rounded-full`}>
-          <Text style={tw`text-[11px] text-[#0055A5] font-black uppercase tracking-widest`}>{getRoleLabel()}</Text>
-        </View>
-      </View>
 
-      {/* Menu Navigasi - Scrollable Container */}
-      <View style={tw`flex-1 bg-slate-50/20`}>
-        <ScrollView
+        {/* Header: Logo Pertamina */}
+        <View style={tw`pt-5 pb-2 items-center justify-center flex-row z-10`}>
+          <Image
+            source={require('../assets/logo.png')}
+            style={{ width: 34, height: 34 }}
+            resizeMode="contain"
+          />
+          <Text style={tw`text-[17px] font-black tracking-wider text-gray-900 ml-2.5`}>
+            PERTAMINA
+          </Text>
+        </View>
+
+        {/* Profile Card */}
+        <View style={[
+          tw`mx-3.5 mt-1 mb-2 bg-white rounded-[22px] p-3.5 items-center border border-gray-100/90 z-10`,
+          {
+            shadowColor: '#000',
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }
+        ]}>
+          <View style={tw`w-12 h-12 rounded-full bg-[#1E5EAA] items-center justify-center mb-1.5 shadow-sm`}>
+            <Text style={tw`text-base font-black text-white tracking-wide`}>
+              {getInitials()}
+            </Text>
+          </View>
+          <Text style={tw`text-[15px] font-black text-gray-800 text-center tracking-tight`} numberOfLines={1}>
+            {user.name || 'User'}
+          </Text>
+          <View style={tw`bg-[#EBF3FC] mt-1 px-3 py-0.5 rounded-full`}>
+            <Text style={tw`text-[10px] text-[#475569] font-black uppercase tracking-widest`}>
+              {getRoleLabel().toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        {/* Scrollable Navigation Menu */}
+        <Animated.ScrollView
+          ref={scrollViewRef}
           style={[
-            tw`flex-1`,
+            tw`flex-1 z-10`,
             Platform.OS === 'web' ? {
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#CBD5E1 transparent',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
             } : {}
           ]}
-          contentContainerStyle={tw`p-4 pt-3 pb-8`}
-          showsVerticalScrollIndicator={true}
+          contentContainerStyle={tw`pl-3.5 pr-5.5 pt-1 pb-5`}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { 
+              useNativeDriver: false,
+              listener: (event) => {
+                if (Platform.OS === 'web') {
+                  sessionStorage.setItem('sidebarScrollY', event.nativeEvent.contentOffset.y.toString());
+                }
+              }
+            }
+          )}
+          scrollEventThrottle={16}
+          onContentSizeChange={(_, h) => setContentHeight(h)}
+          onLayout={(e) => setVisibleHeight(e.nativeEvent.layout.height)}
         >
           {/* Section: Menu Utama */}
-          <View style={tw`flex-row items-center mb-2.5 px-2`}>
-            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-            <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Menu Utama</Text>
-            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-          </View>
+          {renderSectionHeader('MENU UTAMA')}
 
-          {/* 1. Beranda */}
-          <TouchableOpacity
-            style={[
-              tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                activeMenu === 'Home'
-                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                  : 'bg-white/70 border-gray-200/80 shadow-sm'
-              }`,
-              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-            ]}
-            onPress={() => {
-              if (user.role === 'SUPER_ADMIN') navigation.replace('AdminDashboard');
-              else if (user.role === 'PENGAWAS' || user.role === 'ADMIN') navigation.replace('PengawasDashboard');
-              else navigation.replace('UserDashboard');
-            }}
-          >
-            <Feather name="grid" size={20} color={activeMenu === 'Home' ? 'white' : '#0055A5'} />
-            <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Home' ? 'text-white' : 'text-gray-700'}`}>Beranda</Text>
-          </TouchableOpacity>
+          {/* Beranda */}
+          {renderMenuItem({
+            label: 'Beranda',
+            iconComponent: <Feather name="grid" size={20} color={activeMenu === 'Home' ? '#FFFFFF' : '#0055A5'} />,
+            active: activeMenu === 'Home',
+            onPress: () => {
+              if (isSuperAdmin || isAdmin) navigation.navigate('AdminDashboard');
+              else if (isPengawas) navigation.navigate('PengawasDashboard');
+              else navigation.navigate('UserDashboard');
+            }
+          })}
 
-          {/* 2. Log Riwayat */}
-          <TouchableOpacity
-            style={[
-              tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                activeMenu === 'History'
-                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                  : 'bg-white/70 border-gray-200/80 shadow-sm'
-              }`,
-              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-            ]}
-            onPress={() => navigation.replace('History')}
-          >
-            <Feather name="file-text" size={20} color={activeMenu === 'History' ? 'white' : '#4B5563'} />
-            <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'History' ? 'text-white' : 'text-gray-700'}`}>Log Riwayat</Text>
-          </TouchableOpacity>
+          {/* Riwayat Handover */}
+          {renderMenuItem({
+            label: 'Riwayat Handover',
+            iconComponent: <Feather name="file-text" size={20} color={activeMenu === 'History' ? '#FFFFFF' : '#991B1B'} />,
+            active: activeMenu === 'History',
+            onPress: () => navigation.navigate('History')
+          })}
 
-          {/* Section: Manajemen (isManagement) */}
-          {isManagement && (
+          {/* Section: Manajemen */}
+          {(isManagement || isPengawas) && (
             <>
-              <View style={tw`flex-row items-center mt-3 mb-2.5 px-2`}>
-                <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-                <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Manajemen</Text>
-                <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-              </View>
+              {renderSectionHeader('MANAJEMEN')}
 
-              {/* 3. Manajer Checklist */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'Checklist'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('ChecklistManager')}
-              >
-                <Feather name="check-square" size={20} color={activeMenu === 'Checklist' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Checklist' ? 'text-white' : 'text-gray-700'}`}>Manajer Checklist</Text>
-              </TouchableOpacity>
+              {/* Manajer Checklist (Khusus Admin / Super Admin) */}
+              {isManagement && renderMenuItem({
+                label: 'Manajer Checklist',
+                iconComponent: <Feather name="check-square" size={20} color={activeMenu === 'Checklist' ? '#FFFFFF' : '#991B1B'} />,
+                active: activeMenu === 'Checklist',
+                onPress: () => navigation.navigate('ChecklistManager')
+              })}
 
-              {/* 4. Daftar Kendaraan */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'VehicleList'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('VehicleList')}
-              >
-                <Feather name="truck" size={20} color={activeMenu === 'VehicleList' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'VehicleList' ? 'text-white' : 'text-gray-700'}`}>Daftar Kendaraan</Text>
-              </TouchableOpacity>
+              {/* Daftar Kendaraan */}
+              {renderMenuItem({
+                label: 'Daftar Kendaraan',
+                iconComponent: <Feather name="truck" size={20} color={activeMenu === 'VehicleList' ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'VehicleList',
+                onPress: () => navigation.navigate('VehicleList')
+              })}
 
-              {/* 5. Daftar Kendala */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'IssueList'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('IssueList')}
-              >
-                <Feather name="alert-triangle" size={20} color={activeMenu === 'IssueList' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'IssueList' ? 'text-white' : 'text-gray-700'}`}>Daftar Kendala</Text>
-              </TouchableOpacity>
+              {/* Isu Ditemukan */}
+              {renderMenuItem({
+                label: 'Isu Ditemukan',
+                iconComponent: <Feather name="alert-triangle" size={20} color={activeMenu === 'IssueList' ? '#FFFFFF' : '#991B1B'} />,
+                active: activeMenu === 'IssueList',
+                onPress: () => navigation.navigate('IssueList')
+              })}
 
-              {/* 6. Daftar Pekerja */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'WorkerList'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('WorkerList')}
-              >
-                <Feather name="users" size={20} color={activeMenu === 'WorkerList' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'WorkerList' ? 'text-white' : 'text-gray-700'}`}>Daftar Pekerja</Text>
-              </TouchableOpacity>
+              {/* Daftar Pekerja */}
+              {renderMenuItem({
+                label: 'Daftar Pekerja',
+                iconComponent: <Feather name="users" size={20} color={activeMenu === 'WorkerList' ? '#FFFFFF' : '#991B1B'} />,
+                active: activeMenu === 'WorkerList',
+                onPress: () => navigation.navigate('WorkerList')
+              })}
 
-              {/* 7. Daftar Pengawas */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'PengawasList'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('PengawasList')}
-              >
-                <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'PengawasList' ? 'text-white' : 'text-gray-700'}`}>Daftar Pengawas</Text>
-              </TouchableOpacity>
+              {/* Daftar Pengawas (Khusus Admin / Super Admin) */}
+              {isManagement && renderMenuItem({
+                label: 'Daftar Pengawas',
+                iconComponent: <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'PengawasList',
+                onPress: () => navigation.navigate('PengawasList')
+              })}
 
-              {/* 8. Daftar Admin */}
-              <TouchableOpacity
-                style={[
-                  tw`flex-row items-center p-3.5 mb-2 rounded-2xl border ${
-                    activeMenu === 'AdminList'
-                      ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                      : 'bg-white/70 border-gray-200/80 shadow-sm'
-                  }`,
-                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                ]}
-                onPress={() => navigation.replace('AdminList')}
-              >
-                <Feather name="user-check" size={20} color={activeMenu === 'AdminList' ? 'white' : '#4B5563'} />
-                <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'AdminList' ? 'text-white' : 'text-gray-700'}`}>Daftar Admin</Text>
-              </TouchableOpacity>
+              {/* Daftar Admin (Khusus Admin / Super Admin) */}
+              {isManagement && renderMenuItem({
+                label: 'Daftar Admin',
+                iconComponent: <Feather name="user-check" size={20} color={activeMenu === 'AdminList' ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'AdminList',
+                onPress: () => navigation.navigate('AdminList')
+              })}
             </>
           )}
 
           {/* Section: Komunikasi */}
-          <View style={tw`flex-row items-center mt-3 mb-2.5 px-2`}>
-            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-            <Text style={tw`px-2 text-[10px] font-black text-gray-400 uppercase tracking-wider`}>Komunikasi</Text>
-            <View style={tw`flex-1 h-[1px] bg-gray-200/80`} />
-          </View>
+          {renderSectionHeader('KOMUNIKASI')}
 
-          {/* 8. Pesan */}
+          {/* Pesan & Notifikasi */}
+          {renderMenuItem({
+            label: 'Pesan & Notifikasi',
+            iconComponent: <Ionicons name="chatbubble-ellipses-outline" size={20} color={activeMenu === 'Messages' ? '#FFFFFF' : '#0055A5'} />,
+            active: activeMenu === 'Messages',
+            onPress: () => navigation.navigate('MessageCenter'),
+            badge: unreadNotificationsCount > 0 ? (
+              <View style={tw`w-5 h-5 rounded-full bg-[#ED1C24] items-center justify-center`}>
+                <Text style={tw`text-white text-[11px] font-black`}>
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                </Text>
+              </View>
+            ) : null
+          })}
+
+          {/* Slogan / Tagline */}
+          <Text style={tw`text-[11.5px] font-bold text-gray-400 tracking-wider text-center mt-3.5 mb-2`}>
+            Energi untuk Negeri
+          </Text>
+
+          {/* Sign Out Button */}
           <TouchableOpacity
             style={[
-              tw`flex-row items-center justify-between p-3.5 mb-2 rounded-2xl border ${
-                activeMenu === 'Messages'
-                  ? 'bg-[#0055A5] border-[#00488C] shadow-md shadow-blue-500/30'
-                  : 'bg-white/70 border-gray-200/80 shadow-sm'
-              }`,
-              Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              tw`flex-row items-center px-3.5 py-3 rounded-[18px] bg-white border border-gray-100 mb-1.5`,
+              {
+                shadowColor: '#000',
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                shadowOffset: { width: 0, height: 1 },
+                elevation: 1,
+              },
+              Platform.OS === 'web' ? { cursor: 'pointer', transition: 'all 0.15s ease' } : {}
             ]}
-            onPress={() => navigation.replace('MessageCenter')}
+            onPress={handleLogout || (() => {})}
+            activeOpacity={0.8}
           >
-            <View style={tw`flex-row items-center`}>
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color={activeMenu === 'Messages' ? 'white' : '#4B5563'} />
-              <Text style={tw`ml-3.5 font-bold text-[14px] ${activeMenu === 'Messages' ? 'text-white' : 'text-gray-700'}`}>Pesan</Text>
-            </View>
-            {unreadNotificationsCount > 0 && (
-              <View style={tw`bg-red-500 px-2 py-0.5 rounded-full`}>
-                <Text style={tw`text-white text-xs font-bold`}>{unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}</Text>
-              </View>
-            )}
+            <Feather name="log-out" size={20} color="#991B1B" />
+            <Text style={tw`ml-3.5 font-bold text-[14px] text-[#991B1B]`}>
+              Sign Out
+            </Text>
           </TouchableOpacity>
+        </Animated.ScrollView>
 
-          {/* Section: Sesi & Logout */}
-          <View style={tw`mt-3 pt-3 border-t border-gray-200/80`}>
-            <TouchableOpacity
-              style={[
-                tw`flex-row items-center p-3.5 rounded-2xl bg-red-50/80 border border-red-200/70 shadow-sm`,
-                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-              ]}
-              onPress={handleLogout || (() => {})}
-            >
-              <Feather name="log-out" size={20} color="#ED1C24" />
-              <Text style={tw`ml-3.5 font-bold text-[14px] text-[#ED1C24]`}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+        {/* 2. Scrollbar Track 3-Warna Pertamina Proporsional (Zoom 100%) */}
+        <View
+          style={[
+            tw`absolute top-48 bottom-6 rounded-full overflow-hidden flex-col items-center justify-start z-30`,
+            {
+              right: 6,
+              width: 8,
+              backgroundColor: 'rgba(241, 245, 249, 0.8)',
+              borderColor: 'rgba(226, 232, 240, 0.7)',
+              borderWidth: 1,
+            },
+            Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+          ]}
+          onLayout={(e) => setTrackHeight(e.nativeEvent.layout.height)}
+          onClick={handleTrackClick}
+        >
+          <Animated.View
+            style={[
+              tw`rounded-full overflow-hidden flex-col`,
+              {
+                width: 8,
+                height: thumbHeight,
+                transform: [{ translateY: thumbTranslateY }],
+                shadowColor: '#0055A5',
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                shadowOffset: { width: 0, height: 1 },
+                elevation: 3,
+              }
+            ]}
+          >
+            <View style={tw`flex-1 bg-[#ED1C24]`} />
+            <View style={tw`flex-1 bg-[#0055A5]`} />
+            <View style={tw`flex-1 bg-[#52B848]`} />
+          </Animated.View>
+        </View>
       </View>
     </View>
   );

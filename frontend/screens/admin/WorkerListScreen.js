@@ -1,4 +1,5 @@
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -241,27 +242,38 @@ export default function WorkerListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-          <View style={tw`flex-row items-center z-30`}>
-            <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-              <Ionicons name="arrow-back" size={24} color="#0055A5" />
-            </TouchableOpacity>
-            <View>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pekerja</Text>
-              <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Awak Mobil Tangki (AMT)</Text>
+        {isLargeScreen ? (
+          <WebNavbar
+            user={user}
+            title="Daftar Pekerja"
+            subtitle="Kelola Akun Awak Mobil Tangki (AMT)"
+            navigation={navigation}
+            showBack={true}
+            rightAction={
+              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+                <TouchableOpacity
+                  onPress={openAddModal}
+                  style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+                >
+                  <Feather name="user-plus" size={18} color="white" />
+                  <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Pekerja</Text>
+                </TouchableOpacity>
+              ) : null
+            }
+          />
+        ) : (
+          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            <View style={tw`flex-row items-center z-30`}>
+              <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+              </TouchableOpacity>
+              <View>
+                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pekerja</Text>
+                <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Awak Mobil Tangki (AMT)</Text>
+              </View>
             </View>
           </View>
-
-          {isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-            <TouchableOpacity
-              onPress={openAddModal}
-              style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
-            >
-              <Feather name="user-plus" size={18} color="white" />
-              <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Pekerja</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        )}
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           <View style={tw`px-6 pt-2`}>

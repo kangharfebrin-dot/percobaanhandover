@@ -1,4 +1,5 @@
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Easing, ScrollView, Dimensions } from 'react-native';
@@ -275,27 +276,36 @@ export default function AdminListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Header Card */}
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <View style={tw`flex-row items-center z-30`}>
-              <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <View>
-                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Daftar Administrator</Text>
-                <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Admin & Hak Akses Sistem</Text>
+          {isLargeScreen ? (
+            <WebNavbar
+              user={user}
+              title="Daftar Administrator"
+              subtitle="Kelola Akun Admin & Hak Akses Sistem"
+              navigation={navigation}
+              showBack={true}
+              rightAction={
+                <TouchableOpacity
+                  onPress={openAddModal}
+                  style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+                >
+                  <Feather name="user-plus" size={18} color="white" />
+                  <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Admin</Text>
+                </TouchableOpacity>
+              }
+            />
+          ) : (
+            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+              <View style={tw`flex-row items-center z-30`}>
+                <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm`}>
+                  <Ionicons name="arrow-back" size={24} color="#0055A5" />
+                </TouchableOpacity>
+                <View>
+                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Daftar Administrator</Text>
+                  <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Admin & Hak Akses Sistem</Text>
+                </View>
               </View>
             </View>
-
-            {isLargeScreen && (
-              <TouchableOpacity
-                onPress={openAddModal}
-                style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
-              >
-                <Feather name="user-plus" size={18} color="white" />
-                <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Admin</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          )}
 
           {/* Search & Filter Bar */}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>

@@ -166,7 +166,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   };
 
   useEffect(() => {
-    
+
     const loadWorkers = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
@@ -238,7 +238,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         if (userStr) {
           const user = JSON.parse(userStr);
           setUserRole(user.role || 'USER');
-          
+
           if (type === 'akhiri' && lastHandover) {
             // Sepaket otomatis terisi dari scan mulai!
             if (lastHandover.amt1) {
@@ -558,7 +558,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     // 2. Validasi Wajib Isi Semua Checklist
     const emptyItem = items.find(item => item.status === null);
     if (emptyItem) {
-      showValidationError("Form Belum Lengkap", `Anda belum mengecek item:\n"${emptyItem.name}"\n\nHarap pilih [BAIK] atau [RUSAK]!`);
+      showValidationError("Form Belum Lengkap", `Anda belum mengecek item:\n"${emptyItem.name}"\n\nHarap pilih [NORMAL] atau [ISU]!`);
       return;
     }
 
@@ -702,7 +702,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                 style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isBaik ? 'text-white' : 'text-gray-500'}`}>
-                  {item.category === 'A' ? 'BAIK' : 'ADA'}
+                  NORMAL
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -717,7 +717,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                 style={tw`py-3 px-2 items-center justify-center border ${isRusak ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
                 <Text style={tw`font-bold ${isRusak ? 'text-white' : 'text-gray-500'}`}>
-                  {item.category === 'A' ? 'RUSAK' : 'TIDAK ADA'}
+                  ISU
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -805,298 +805,298 @@ export default function HandoverFormScreen({ route, navigation }) {
 
       <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
         <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
-        <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
-          <View style={tw`w-full flex-row items-center justify-between`}>
-            <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={() => goToDashboard()} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
-                <Ionicons name="arrow-back" size={24} color="white" />
-              </TouchableOpacity>
-              <View>
-                <Text style={tw`text-3xl font-extrabold text-white tracking-tight`}>Form Handover</Text>
-                <Text style={tw`text-blue-100 font-medium text-sm mt-1 flex-row items-center`}>
-                  <Ionicons name="location" size={14} color="#93C5FD" /> Area TBBM Pertamina
-                </Text>
-              </View>
-            </View>
-            <View style={tw`bg-white/20 p-3 rounded-2xl border border-white/30`}>
-              <Ionicons name="document-text" size={28} color="white" />
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
-
-      <ScrollView 
-        style={tw`flex-1`} 
-        contentContainerStyle={tw`w-full px-4 pt-8 pb-10`} 
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Info Perjalanan */}
-        <View style={tw`bg-white p-6 rounded-3xl mb-8 shadow-md border border-gray-100`}>
-          <View style={tw`flex-row items-center justify-between mb-5`}>
-            <View style={tw`flex-row items-center flex-shrink-0 mr-2`}>
-              <View style={tw`bg-blue-50 p-2.5 rounded-2xl mr-2.5`}>
-                <Ionicons name="car-sport" size={20} color="#0055A5" />
-              </View>
-              <Text style={tw`text-gray-800 font-extrabold text-base tracking-tight`}>Info Perjalanan</Text>
-            </View>
-
-            {/* GPS Detail di Samping Info Perjalanan */}
-            <TouchableOpacity
-              onPress={() => fetchLocation(false)}
-              disabled={gpsLoading}
-              activeOpacity={0.7}
-              style={tw`flex-row items-center bg-white border ${location ? 'border-emerald-200' : 'border-amber-200'} px-3 py-2 rounded-2xl shadow-sm`}
-            >
-              <View style={tw`w-7 h-7 rounded-xl ${location ? 'bg-emerald-500' : 'bg-amber-500'} items-center justify-center mr-2.5 flex-shrink-0 shadow-sm`}>
-                {gpsLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" style={{ transform: [{ scale: 0.65 }] }} />
-                ) : (
-                  <Ionicons name={location ? "location" : "navigate"} size={13} color="#FFFFFF" />
-                )}
-              </View>
-              <View style={tw`justify-center`}>
-                <View style={tw`flex-row items-center`}>
-                  <Text style={tw`text-xs font-black ${location ? 'text-emerald-800' : 'text-amber-800'} tracking-tight`}>
-                    {location ? 'GPS Terdeteksi' : (gpsLoading ? 'Mencari...' : 'GPS Mencari')}
+          <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
+            <View style={tw`w-full flex-row items-center justify-between`}>
+              <View style={tw`flex-row items-center`}>
+                <TouchableOpacity onPress={() => goToDashboard()} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
+                  <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <View>
+                  <Text style={tw`text-3xl font-extrabold text-white tracking-tight`}>Form Handover</Text>
+                  <Text style={tw`text-blue-100 font-medium text-sm mt-1 flex-row items-center`}>
+                    <Ionicons name="location" size={14} color="#93C5FD" /> Area TBBM Pertamina
                   </Text>
-                  {!gpsLoading && (
-                    <Feather name="refresh-cw" size={9} color={location ? "#059669" : "#D97706"} style={tw`ml-1.5 opacity-60`} />
+                </View>
+              </View>
+              <View style={tw`bg-white/20 p-3 rounded-2xl border border-white/30`}>
+                <Ionicons name="document-text" size={28} color="white" />
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        <ScrollView
+          style={tw`flex-1`}
+          contentContainerStyle={tw`w-full px-4 pt-8 pb-10`}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Info Perjalanan */}
+          <View style={tw`bg-white p-6 rounded-3xl mb-8 shadow-md border border-gray-100`}>
+            <View style={tw`flex-row items-center justify-between mb-5`}>
+              <View style={tw`flex-row items-center flex-shrink-0 mr-2`}>
+                <View style={tw`bg-blue-50 p-2.5 rounded-2xl mr-2.5`}>
+                  <Ionicons name="car-sport" size={20} color="#0055A5" />
+                </View>
+                <Text style={tw`text-gray-800 font-extrabold text-base tracking-tight`}>Info Perjalanan</Text>
+              </View>
+
+              {/* GPS Detail di Samping Info Perjalanan */}
+              <TouchableOpacity
+                onPress={() => fetchLocation(false)}
+                disabled={gpsLoading}
+                activeOpacity={0.7}
+                style={tw`flex-row items-center bg-white border ${location ? 'border-emerald-200' : 'border-amber-200'} px-3 py-2 rounded-2xl shadow-sm`}
+              >
+                <View style={tw`w-7 h-7 rounded-xl ${location ? 'bg-emerald-500' : 'bg-amber-500'} items-center justify-center mr-2.5 flex-shrink-0 shadow-sm`}>
+                  {gpsLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ transform: [{ scale: 0.65 }] }} />
+                  ) : (
+                    <Ionicons name={location ? "location" : "navigate"} size={13} color="#FFFFFF" />
                   )}
                 </View>
-                <Text style={tw`text-[10px] font-bold text-gray-500 font-mono mt-0.5`}>
-                  {location 
-                    ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` 
-                    : (gpsError || 'Ketuk periksa')}
-                </Text>
+                <View style={tw`justify-center`}>
+                  <View style={tw`flex-row items-center`}>
+                    <Text style={tw`text-xs font-black ${location ? 'text-emerald-800' : 'text-amber-800'} tracking-tight`}>
+                      {location ? 'GPS Terdeteksi' : (gpsLoading ? 'Mencari...' : 'GPS Mencari')}
+                    </Text>
+                    {!gpsLoading && (
+                      <Feather name="refresh-cw" size={9} color={location ? "#059669" : "#D97706"} style={tw`ml-1.5 opacity-60`} />
+                    )}
+                  </View>
+                  <Text style={tw`text-[10px] font-bold text-gray-500 font-mono mt-0.5`}>
+                    {location
+                      ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+                      : (gpsError || 'Ketuk periksa')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>No Polisi Kendaraan</Text>
+            <TextInput
+              style={tw`p-4 rounded-2xl border mb-5 font-bold text-base shadow-sm ${initialNoPolisi ? 'bg-gray-200 border-gray-300 text-gray-600' : 'bg-slate-50 border-slate-200 text-black'}`}
+              value={noPolisi}
+              onChangeText={setNoPolisi}
+              placeholder="Ketik Plat Nomor (Sesuai Kendaraan)"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+              editable={!initialNoPolisi}
+            />
+
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>Waktu Jam / Shift</Text>
+            <TouchableOpacity
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5 flex-row justify-between items-center shadow-sm`}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Text style={tw`text-black font-extrabold text-lg`}>{shift}</Text>
+              <View style={tw`bg-blue-100 p-2 rounded-xl`}>
+                <Ionicons name="time" size={20} color="#0055A5" />
               </View>
             </TouchableOpacity>
-          </View>
 
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>No Polisi Kendaraan</Text>
-          <TextInput
-            style={tw`p-4 rounded-2xl border mb-5 font-bold text-base shadow-sm ${initialNoPolisi ? 'bg-gray-200 border-gray-300 text-gray-600' : 'bg-slate-50 border-slate-200 text-black'}`}
-            value={noPolisi}
-            onChangeText={setNoPolisi}
-            placeholder="Ketik Plat Nomor (Sesuai Kendaraan)"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="characters"
-            editable={!initialNoPolisi}
-          />
-
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>Waktu Jam / Shift</Text>
-          <TouchableOpacity
-            style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5 flex-row justify-between items-center shadow-sm`}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={tw`text-black font-extrabold text-lg`}>{shift}</Text>
-            <View style={tw`bg-blue-100 p-2 rounded-xl`}>
-              <Ionicons name="time" size={20} color="#0055A5" />
-            </View>
-          </TouchableOpacity>
-
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
-          <View style={tw`mb-5`}>
-            <TextInput
-              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
-              placeholder="Nama AMT 1"
-              value={amt1}
-              editable={!isAmt1Locked}
-              onChangeText={handleSearchAmt1}
-              onFocus={() => {
-                if (!isAmt1Locked) {
-                  setShowWorkers2(false);
-                  const filtered = workers
-                    .filter(w => isAmt1Jabatan(w.jabatan) && (amt1.length === 0 || w.name.toLowerCase().includes(amt1.toLowerCase())))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-                  setFilteredWorkers1(filtered);
-                  setShowWorkers1(true);
-                }
-              }}
-            />
-            {showWorkers1 && filteredWorkers1.length > 0 && !isAmt1Locked && (
-              <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
-                <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
-                  <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 1)</Text>
-                  <TouchableOpacity onPress={() => setShowWorkers1(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView 
-                  nestedScrollEnabled={true} 
-                  keyboardShouldPersistTaps="handled"
-                  style={{ maxHeight: 200 }}
-                  showsVerticalScrollIndicator={true}
-                >
-                  {filteredWorkers1.map(w => (
-                    <TouchableOpacity 
-                      key={w.id} 
-                      style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`} 
-                      onPress={() => selectAmt1(w.name)}
-                    >
-                      <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
-                      <View style={tw`bg-blue-100 px-2 py-0.5 rounded-md`}>
-                        <Text style={tw`text-xs font-bold text-[#0055A5]`}>{w.jabatan || 'AMT I'}</Text>
-                      </View>
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
+            <View style={tw`mb-5`}>
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
+                placeholder="Nama AMT 1"
+                value={amt1}
+                editable={!isAmt1Locked}
+                onChangeText={handleSearchAmt1}
+                onFocus={() => {
+                  if (!isAmt1Locked) {
+                    setShowWorkers2(false);
+                    const filtered = workers
+                      .filter(w => isAmt1Jabatan(w.jabatan) && (amt1.length === 0 || w.name.toLowerCase().includes(amt1.toLowerCase())))
+                      .sort((a, b) => a.name.localeCompare(b.name));
+                    setFilteredWorkers1(filtered);
+                    setShowWorkers1(true);
+                  }
+                }}
+              />
+              {showWorkers1 && filteredWorkers1.length > 0 && !isAmt1Locked && (
+                <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
+                  <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
+                    <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 1)</Text>
+                    <TouchableOpacity onPress={() => setShowWorkers1(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="close-circle" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
-          <View style={tw`mb-5`}>
-            <TextInput
-              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}
-              placeholder="Nama AMT 2"
-              value={amt2}
-              editable={!isAmt2Locked}
-              onChangeText={handleSearchAmt2}
-              onFocus={() => {
-                if (!isAmt2Locked) {
-                  setShowWorkers1(false);
-                  const filtered = workers
-                    .filter(w => isAmt2Jabatan(w.jabatan) && (amt2.length === 0 || w.name.toLowerCase().includes(amt2.toLowerCase())))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-                  setFilteredWorkers2(filtered);
-                  setShowWorkers2(true);
-                }
-              }}
-            />
-            {showWorkers2 && filteredWorkers2.length > 0 && !isAmt2Locked && (
-              <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
-                <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
-                  <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 2)</Text>
-                  <TouchableOpacity onPress={() => setShowWorkers2(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView 
-                  nestedScrollEnabled={true} 
-                  keyboardShouldPersistTaps="handled"
-                  style={{ maxHeight: 200 }}
-                  showsVerticalScrollIndicator={true}
-                >
-                  {filteredWorkers2.map(w => (
-                    <TouchableOpacity 
-                      key={w.id} 
-                      style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`} 
-                      onPress={() => selectAmt2(w.name)}
-                    >
-                      <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
-                      <View style={tw`bg-indigo-100 px-2 py-0.5 rounded-md`}>
-                        <Text style={tw`text-xs font-bold text-indigo-700`}>{w.jabatan || 'AMT II'}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          <View style={tw`flex-row justify-between items-center mb-2`}>
-            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider`}>{type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'}</Text>
-            {previousOdometer ? (
-              <Text style={tw`text-[11px] font-bold text-blue-600`}>Sebelumnya: {previousOdometer.toLocaleString('id-ID')} km</Text>
-            ) : null}
-          </View>
-          <TextInput
-            style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm`}
-            placeholder="Misal: 150000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={odoMeter}
-            onChangeText={setOdoMeter}
-          />
-        </View>
-
-        {/* Dynamic Checklist Categories (B5) */}
-        {Object.keys(categoryGroups).sort().map(cat => {
-          const meta = getCategoryMeta(cat);
-          return (
-            <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
-              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
-                  <Ionicons name={meta.icon} size={24} color={meta.color} />
-                </View>
-                <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
-              </LinearGradient>
-              {categoryGroups[cat].map(renderChecklistItem)}
-            </View>
-          );
-        })}
-
-        {/* Area Foto 4 Sisi */}
-        <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8 p-5`}>
-          <View style={tw`flex-row items-center mb-5`}>
-            <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
-              <Ionicons name="camera" size={24} color="#ED1C24" />
-            </View>
-            <Text style={tw`font-extrabold text-lg text-gray-800`}>C. Foto Kendaraan Wajib</Text>
-          </View>
-
-          <View style={tw`flex-row flex-wrap justify-between gap-y-4`}>
-            {REQUIRED_PHOTOS.map(side => (
-              <TouchableOpacity
-                key={side}
-                style={tw`w-[48%] aspect-square bg-slate-50 rounded-2xl border-2 ${photos[side] ? 'border-green-500 shadow-md' : 'border-dashed border-slate-300'} justify-center items-center overflow-hidden`}
-                onPress={() => openCameraFor(side)}
-              >
-                {photos[side] ? (
-                  <View style={tw`w-full h-full relative`}>
-                    <Image source={{ uri: photos[side].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-
-                    {/* Thumbnail Watermark */}
-                    <View style={tw`absolute top-1 left-1 right-1`}>
-                      <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
-                      <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
-                    </View>
-
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-3`} pointerEvents="none">
-                      <Ionicons name="checkmark-circle" size={24} color="#2ECC71" style={tw`mb-1 shadow-lg`} />
-                      <Text style={tw`text-white font-extrabold text-[10px] tracking-wider shadow-lg`}>{side.toUpperCase()}</Text>
-                    </LinearGradient>
                   </View>
-                ) : (
-                  <>
-                    <View style={tw`bg-white p-3 rounded-full shadow-sm mb-3`}>
-                      <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ maxHeight: 200 }}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {filteredWorkers1.map(w => (
+                      <TouchableOpacity
+                        key={w.id}
+                        style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`}
+                        onPress={() => selectAmt1(w.name)}
+                      >
+                        <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
+                        <View style={tw`bg-blue-100 px-2 py-0.5 rounded-md`}>
+                          <Text style={tw`text-xs font-bold text-[#0055A5]`}>{w.jabatan || 'AMT I'}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
+            <View style={tw`mb-5`}>
+              <TextInput
+                style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}
+                placeholder="Nama AMT 2"
+                value={amt2}
+                editable={!isAmt2Locked}
+                onChangeText={handleSearchAmt2}
+                onFocus={() => {
+                  if (!isAmt2Locked) {
+                    setShowWorkers1(false);
+                    const filtered = workers
+                      .filter(w => isAmt2Jabatan(w.jabatan) && (amt2.length === 0 || w.name.toLowerCase().includes(amt2.toLowerCase())))
+                      .sort((a, b) => a.name.localeCompare(b.name));
+                    setFilteredWorkers2(filtered);
+                    setShowWorkers2(true);
+                  }
+                }}
+              />
+              {showWorkers2 && filteredWorkers2.length > 0 && !isAmt2Locked && (
+                <View style={tw`mt-2 bg-white border border-blue-200 rounded-2xl shadow-sm overflow-hidden`}>
+                  <View style={tw`px-4 py-2.5 bg-blue-50/80 border-b border-blue-100 flex-row justify-between items-center`}>
+                    <Text style={tw`text-xs font-bold text-[#0055A5]`}>Pilih Awak Mobil Tangki (AMT 2)</Text>
+                    <TouchableOpacity onPress={() => setShowWorkers2(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ maxHeight: 200 }}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {filteredWorkers2.map(w => (
+                      <TouchableOpacity
+                        key={w.id}
+                        style={tw`p-3.5 border-b border-gray-100 flex-row justify-between items-center active:bg-blue-50`}
+                        onPress={() => selectAmt2(w.name)}
+                      >
+                        <Text style={tw`font-bold text-gray-800 text-sm`}>{w.name}</Text>
+                        <View style={tw`bg-indigo-100 px-2 py-0.5 rounded-md`}>
+                          <Text style={tw`text-xs font-bold text-indigo-700`}>{w.jabatan || 'AMT II'}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <View style={tw`flex-row justify-between items-center mb-2`}>
+              <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider`}>{type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'}</Text>
+              {previousOdometer ? (
+                <Text style={tw`text-[11px] font-bold text-blue-600`}>Sebelumnya: {previousOdometer.toLocaleString('id-ID')} km</Text>
+              ) : null}
+            </View>
+            <TextInput
+              style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm`}
+              placeholder="Misal: 150000"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={odoMeter}
+              onChangeText={setOdoMeter}
+            />
+          </View>
+
+          {/* Dynamic Checklist Categories (B5) */}
+          {Object.keys(categoryGroups).sort().map(cat => {
+            const meta = getCategoryMeta(cat);
+            return (
+              <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name={meta.icon} size={24} color={meta.color} />
+                  </View>
+                  <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
+                </LinearGradient>
+                {categoryGroups[cat].map(renderChecklistItem)}
+              </View>
+            );
+          })}
+
+          {/* Area Foto 4 Sisi */}
+          <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8 p-5`}>
+            <View style={tw`flex-row items-center mb-5`}>
+              <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
+                <Ionicons name="camera" size={24} color="#ED1C24" />
+              </View>
+              <Text style={tw`font-extrabold text-lg text-gray-800`}>C. Foto Kendaraan Wajib</Text>
+            </View>
+
+            <View style={tw`flex-row flex-wrap justify-between gap-y-4`}>
+              {REQUIRED_PHOTOS.map(side => (
+                <TouchableOpacity
+                  key={side}
+                  style={tw`w-[48%] aspect-square bg-slate-50 rounded-2xl border-2 ${photos[side] ? 'border-green-500 shadow-md' : 'border-dashed border-slate-300'} justify-center items-center overflow-hidden`}
+                  onPress={() => openCameraFor(side)}
+                >
+                  {photos[side] ? (
+                    <View style={tw`w-full h-full relative`}>
+                      <Image source={{ uri: photos[side].uri }} style={tw`w-full h-full`} resizeMode="cover" />
+
+                      {/* Thumbnail Watermark */}
+                      <View style={tw`absolute top-1 left-1 right-1`}>
+                        <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
+                        <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
+                      </View>
+
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-3`} pointerEvents="none">
+                        <Ionicons name="checkmark-circle" size={24} color="#2ECC71" style={tw`mb-1 shadow-lg`} />
+                        <Text style={tw`text-white font-extrabold text-[10px] tracking-wider shadow-lg`}>{side.toUpperCase()}</Text>
+                      </LinearGradient>
                     </View>
-                    <Text style={tw`text-gray-600 text-sm font-extrabold tracking-wider`}>{side}</Text>
-                    <Text style={tw`text-gray-400 text-xs font-medium mt-1`}>Ketuk untuk foto</Text>
-                  </>
+                  ) : (
+                    <>
+                      <View style={tw`bg-white p-3 rounded-full shadow-sm mb-3`}>
+                        <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
+                      </View>
+                      <Text style={tw`text-gray-600 text-sm font-extrabold tracking-wider`}>{side}</Text>
+                      <Text style={tw`text-gray-400 text-xs font-medium mt-1`}>Ketuk untuk foto</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={tw`h-6`} />
+        </ScrollView>
+
+        {/* Tombol Submit Utama */}
+        <View style={[tw`p-5 bg-white border-t border-gray-200 pb-10`, { elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.1, shadowRadius: 10 }]}>
+          <View style={tw`w-full`}>
+            <TouchableOpacity
+              style={tw`rounded-2xl overflow-hidden shadow-xl ${loading ? 'opacity-70' : ''}`}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`p-5 items-center flex-row justify-center`}>
+                {loading ? (
+                  <ActivityIndicator color="white" style={tw`mr-3`} />
+                ) : (
+                  <Ionicons name="paper-plane" size={24} color="white" style={tw`mr-3`} />
                 )}
-              </TouchableOpacity>
-            ))}
+                <Text style={tw`text-white font-extrabold text-xl tracking-wide`}>
+                  {loading ? "MEMPROSES..." : (type === 'akhiri' ? 'AKHIRI PERJALANAN' : 'MULAI PERJALANAN')}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </View>
-
-        <View style={tw`h-6`} />
-      </ScrollView>
-
-      {/* Tombol Submit Utama */}
-      <View style={[tw`p-5 bg-white border-t border-gray-200 pb-10`, { elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.1, shadowRadius: 10 }]}>
-        <View style={tw`w-full`}>
-          <TouchableOpacity
-            style={tw`rounded-2xl overflow-hidden shadow-xl ${loading ? 'opacity-70' : ''}`}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`p-5 items-center flex-row justify-center`}>
-              {loading ? (
-                <ActivityIndicator color="white" style={tw`mr-3`} />
-              ) : (
-                <Ionicons name="paper-plane" size={24} color="white" style={tw`mr-3`} />
-              )}
-              <Text style={tw`text-white font-extrabold text-xl tracking-wide`}>
-                {loading ? "MEMPROSES..." : (type === 'akhiri' ? 'AKHIRI PERJALANAN' : 'MULAI PERJALANAN')}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
       </View>
 
       {/* MODAL LOADING */}

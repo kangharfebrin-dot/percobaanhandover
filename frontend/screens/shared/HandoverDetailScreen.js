@@ -10,6 +10,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -232,12 +233,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
             />
           )}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-            <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
-            </View>
+            <WebNavbar
+              user={user}
+              activeMenu={'History'}
+              title="Detail Handover"
+              subtitle="Memuat riwayat..."
+              onBack={() => navigation.goBack()}
+            />
             <View style={tw`flex-1 items-center justify-center p-6`}>
               <ActivityIndicator size="large" color="#0055A5" />
               <Text style={tw`mt-4 text-base font-bold text-gray-600`}>Memuat riwayat handover...</Text>
@@ -261,12 +263,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
             />
           )}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-            <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
-            </View>
+            <WebNavbar
+              user={user}
+              activeMenu={'History'}
+              title="Detail Handover"
+              subtitle="Data Tidak Ditemukan"
+              onBack={() => navigation.goBack()}
+            />
             <View style={tw`flex-1 items-center justify-center p-6`}>
               <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
                 <Ionicons name="alert-circle" size={36} color="#ED1C24" />
@@ -365,10 +368,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
               {/* Status Badge */}
               <View style={tw`px-3 py-1 rounded-full ${isBaik ? 'bg-green-100' : 'bg-red-100'}`}>
                 <Text style={tw`text-xs font-bold ${isBaik ? 'text-green-700' : 'text-red-600'}`}>
-                  {item.category === 'A'
-                    ? (isBaik ? 'BAIK' : 'RUSAK')
-                    : (isBaik ? 'ADA' : 'TIDAK ADA')
-                  }
+                  {isBaik ? 'NORMAL' : 'ISU'}
                 </Text>
               </View>
 
@@ -453,279 +453,277 @@ export default function HandoverDetailScreen({ route, navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Navbar */}
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-3 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Detail Handover</Text>
+          <WebNavbar
+            user={user}
+            activeMenu={'History'}
+            title="Detail Handover"
+            subtitle={`Truk: ${handover?.noPolisi || '-'}`}
+            onBack={() => navigation.goBack()}
+            rightAction={
+              isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+                <View style={tw`flex-row items-center gap-2.5`}>
+                  <TouchableOpacity onPress={handleExportPdf} disabled={exporting} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                    <Ionicons name="document-outline" size={16} color="white" />
+                    <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleExportExcel} disabled={exporting} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                    <Ionicons name="document-text" size={16} color="white" />
+                    <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            }
+          />
+
+          <ScrollView contentContainerStyle={tw`px-6 pt-2 pb-32 w-full max-w-4xl mx-auto`} showsVerticalScrollIndicator={false}>
+
+            {/* Header Card */}
+            <View style={tw`bg-white p-6 rounded-3xl mb-5 shadow-md border border-gray-100`}>
+              <View style={tw`flex-row justify-between items-start mb-4`}>
+                <View style={[tw`flex-row items-center flex-1 mr-3`, { minWidth: 0 }]}>
+                  <View style={[tw`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`, { flexShrink: 0 }]}>
+                    <Ionicons
+                      name={isNormal ? 'checkmark-circle' : (isResolved ? 'checkmark-done-circle' : 'warning')}
+                      size={32}
+                      color={isNormal ? '#00A651' : (isResolved ? '#0055A5' : '#ED1C24')}
+                    />
+                  </View>
+                  <View style={[tw`flex-1`, { minWidth: 0 }]}>
+                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>{handover.noPolisi}</Text>
+                    <View style={tw`flex-row items-center flex-wrap gap-2 mt-1.5`}>
+                      <Text style={tw`text-sm text-gray-600 font-bold`}>Shift {handover.shift}</Text>
+                      {handover.type ? (
+                        <View style={tw`px-2.5 py-0.5 rounded-full ${handover.type === 'mulai' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'} flex-row items-center`}>
+                          <Ionicons
+                            name={handover.type === 'mulai' ? 'play-circle' : 'checkmark-done-circle'}
+                            size={13}
+                            color={handover.type === 'mulai' ? '#0055A5' : '#7C3AED'}
+                            style={tw`mr-1`}
+                          />
+                          <Text style={tw`text-xs font-bold ${handover.type === 'mulai' ? 'text-[#0055A5]' : 'text-purple-700'}`}>
+                            {handover.type === 'mulai' ? 'Mulai Perjalanan' : 'Akhiri Perjalanan'}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+                <View style={[tw`px-4 py-2 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`, { flexShrink: 0 }]}>
+                  <Text style={tw`text-xs font-black ${isNormal ? 'text-green-700' : (isResolved ? 'text-blue-700' : 'text-white')}`}>
+                    {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={tw`bg-gray-50 rounded-2xl p-4`}>
+                <View style={tw`flex-row items-center mb-3`}>
+                  <View style={tw`bg-blue-100 p-2 rounded-xl mr-3`}>
+                    <Ionicons name="calendar" size={18} color="#0055A5" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider`}>Tanggal & Waktu</Text>
+                    <Text style={tw`text-sm font-bold text-gray-800`}>{new Date(handover.timestamp || handover.createdAt || Date.now()).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</Text>
+                  </View>
+                </View>
+
+                {handover.locationLat && handover.locationLng && (
+                  <View style={tw`flex-row items-center mb-3`}>
+                    <View style={tw`bg-green-100 p-2 rounded-xl mr-3`}>
+                      <Ionicons name="location" size={18} color="#00A651" />
+                    </View>
+                    <View>
+                      <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider`}>Lokasi GPS</Text>
+                      <Text style={tw`text-sm font-bold text-gray-800`}>{handover.locationLat.toFixed(5)}, {handover.locationLng.toFixed(5)}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Awak Mobil Tangki (AMT) & Pelapor */}
+                <View style={tw`mt-2 pt-3 border-t border-gray-200/70`}>
+                  <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider mb-2.5`}>Awak Mobil Tangki (AMT)</Text>
+                  <View style={tw`flex-row flex-wrap gap-2.5`}>
+                    {handover.amt1 ? (
+                      <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
+                        <View style={tw`w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-2.5`}>
+                          <Ionicons name="person" size={16} color="#0055A5" />
+                        </View>
+                        <View>
+                          <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 1 (Driver Utama)</Text>
+                          <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt1}</Text>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    {handover.amt2 ? (
+                      <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
+                        <View style={tw`w-8 h-8 rounded-full bg-indigo-100 items-center justify-center mr-2.5`}>
+                          <Ionicons name="person" size={16} color="#4F46E5" />
+                        </View>
+                        <View>
+                          <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 2 (Driver Pendamping)</Text>
+                          <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt2}</Text>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    {/* Diinput Oleh */}
+                    <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mb-1`}>
+                      <View style={tw`w-8 h-8 rounded-full bg-emerald-100 items-center justify-center mr-2.5`}>
+                        <Ionicons name="create-outline" size={16} color="#059669" />
+                      </View>
+                      <View>
+                        <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>Diinput Oleh</Text>
+                        <Text style={tw`text-xs font-black text-gray-800`}>
+                          {handover.user?.name || '-'} {handover.user?.jabatan ? `(${handover.user.jabatan})` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </View>
 
-            {/* Tombol Export Desktop Web (Hanya Admin) */}
-            {isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-              <View style={tw`flex-row items-center gap-2.5 z-30`}>
-                <TouchableOpacity onPress={handleExportPdf} disabled={exporting} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
-                  <Ionicons name="document-outline" size={16} color="white" />
-                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleExportExcel} disabled={exporting} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
-                  <Ionicons name="document-text" size={16} color="white" />
-                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
-                </TouchableOpacity>
+            {/* Kategori A */}
+            {itemsA.length > 0 && (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`bg-green-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name="construct" size={24} color="#00A651" />
+                  </View>
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`font-extrabold text-lg text-gray-800`}>A. Perlengkapan Tangki</Text>
+                    <Text style={tw`text-xs text-gray-400 font-medium mt-0.5`}>{itemsA.filter(i => i.isGood).length}/{itemsA.length} item normal</Text>
+                  </View>
+                  <View style={tw`px-3 py-1.5 rounded-full ${itemsA.every(i => i.isGood) ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <Text style={tw`text-xs font-bold ${itemsA.every(i => i.isGood) ? 'text-green-700' : 'text-red-600'}`}>
+                      {itemsA.every(i => i.isGood) ? 'SEMUA NORMAL' : `${itemsA.filter(i => !i.isGood).length} ISU`}
+                    </Text>
+                  </View>
+                </LinearGradient>
+                {itemsA.map((item, idx) => renderChecklistItem(item, idx))}
               </View>
             )}
 
-          </View>
-
-        <ScrollView contentContainerStyle={tw`px-6 pt-2 pb-32 w-full max-w-4xl mx-auto`} showsVerticalScrollIndicator={false}>
-
-          {/* Header Card */}
-          <View style={tw`bg-white p-6 rounded-3xl mb-5 shadow-md border border-gray-100`}>
-            <View style={tw`flex-row justify-between items-start mb-4`}>
-              <View style={[tw`flex-row items-center flex-1 mr-3`, { minWidth: 0 }]}>
-                <View style={[tw`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-100')}`, { flexShrink: 0 }]}>
-                  <Ionicons
-                    name={isNormal ? 'checkmark-circle' : (isResolved ? 'checkmark-done-circle' : 'warning')}
-                    size={32}
-                    color={isNormal ? '#00A651' : (isResolved ? '#0055A5' : '#ED1C24')}
-                  />
-                </View>
-                <View style={[tw`flex-1`, { minWidth: 0 }]}>
-                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>{handover.noPolisi}</Text>
-                  <View style={tw`flex-row items-center flex-wrap gap-2 mt-1.5`}>
-                    <Text style={tw`text-sm text-gray-600 font-bold`}>Shift {handover.shift}</Text>
-                    {handover.type ? (
-                      <View style={tw`px-2.5 py-0.5 rounded-full ${handover.type === 'mulai' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'} flex-row items-center`}>
-                        <Ionicons 
-                          name={handover.type === 'mulai' ? 'play-circle' : 'checkmark-done-circle'} 
-                          size={13} 
-                          color={handover.type === 'mulai' ? '#0055A5' : '#7C3AED'} 
-                          style={tw`mr-1`} 
-                        />
-                        <Text style={tw`text-xs font-bold ${handover.type === 'mulai' ? 'text-[#0055A5]' : 'text-purple-700'}`}>
-                          {handover.type === 'mulai' ? 'Mulai Perjalanan' : 'Akhiri Perjalanan'}
-                        </Text>
-                      </View>
-                    ) : null}
+            {/* Kategori B */}
+            {itemsB.length > 0 && (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`bg-blue-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name="person-circle" size={24} color="#0055A5" />
                   </View>
-                </View>
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`font-extrabold text-lg text-gray-800`}>B. Perlengkapan AMT</Text>
+                    <Text style={tw`text-xs text-gray-400 font-medium mt-0.5`}>{itemsB.filter(i => i.isGood).length}/{itemsB.length} item normal</Text>
+                  </View>
+                  <View style={tw`px-3 py-1.5 rounded-full ${itemsB.every(i => i.isGood) ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <Text style={tw`text-xs font-bold ${itemsB.every(i => i.isGood) ? 'text-green-700' : 'text-red-600'}`}>
+                      {itemsB.every(i => i.isGood) ? 'SEMUA NORMAL' : `${itemsB.filter(i => !i.isGood).length} ISU`}
+                    </Text>
+                  </View>
+                </LinearGradient>
+                {itemsB.map((item, idx) => renderChecklistItem(item, idx))}
               </View>
-              <View style={[tw`px-4 py-2 rounded-full ${isNormal ? 'bg-green-100' : (isResolved ? 'bg-blue-100' : 'bg-red-500')}`, { flexShrink: 0 }]}>
-                <Text style={tw`text-xs font-black ${isNormal ? 'text-green-700' : (isResolved ? 'text-blue-700' : 'text-white')}`}>
-                  {isNormal ? 'NORMAL' : (isResolved ? 'SELESAI' : 'ISU')}
-                </Text>
-              </View>
-            </View>
+            )}
 
-            <View style={tw`bg-gray-50 rounded-2xl p-4`}>
-              <View style={tw`flex-row items-center mb-3`}>
-                <View style={tw`bg-blue-100 p-2 rounded-xl mr-3`}>
-                  <Ionicons name="calendar" size={18} color="#0055A5" />
-                </View>
-                <View>
-                  <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider`}>Tanggal & Waktu</Text>
-                  <Text style={tw`text-sm font-bold text-gray-800`}>{new Date(handover.timestamp || handover.createdAt || Date.now()).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</Text>
-                </View>
-              </View>
-
-              {handover.locationLat && handover.locationLng && (
-                <View style={tw`flex-row items-center mb-3`}>
-                  <View style={tw`bg-green-100 p-2 rounded-xl mr-3`}>
-                    <Ionicons name="location" size={18} color="#00A651" />
+            {/* Kategori C */}
+            {itemsC.length > 0 && (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`bg-amber-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name="speedometer" size={24} color="#D97706" />
                   </View>
-                  <View>
-                    <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider`}>Lokasi GPS</Text>
-                    <Text style={tw`text-sm font-bold text-gray-800`}>{handover.locationLat.toFixed(5)}, {handover.locationLng.toFixed(5)}</Text>
+                  <Text style={tw`font-extrabold text-lg text-gray-800`}>C. Info Tambahan</Text>
+                </LinearGradient>
+                {itemsC.map((item, idx) => (
+                  <View key={item.id || idx} style={tw`py-4 px-5 flex-row items-center border-b border-gray-100`}>
+                    <View style={tw`w-10 h-10 rounded-full items-center justify-center mr-3 bg-amber-50`}>
+                      <Ionicons name="information-circle" size={24} color="#D97706" />
+                    </View>
+                    <Text style={tw`font-bold text-base text-gray-800 flex-1`}>{item.name}</Text>
                   </View>
-                </View>
-              )}
-
-              {/* Awak Mobil Tangki (AMT) & Pelapor */}
-              <View style={tw`mt-2 pt-3 border-t border-gray-200/70`}>
-                <Text style={tw`text-xs text-gray-400 font-bold uppercase tracking-wider mb-2.5`}>Awak Mobil Tangki (AMT)</Text>
-                <View style={tw`flex-row flex-wrap gap-2.5`}>
-                  {handover.amt1 ? (
-                    <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
-                      <View style={tw`w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-2.5`}>
-                        <Ionicons name="person" size={16} color="#0055A5" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 1 (Driver Utama)</Text>
-                        <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt1}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {handover.amt2 ? (
-                    <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mr-2 mb-1`}>
-                      <View style={tw`w-8 h-8 rounded-full bg-indigo-100 items-center justify-center mr-2.5`}>
-                        <Ionicons name="person" size={16} color="#4F46E5" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>AMT 2 (Driver Pendamping)</Text>
-                        <Text style={tw`text-xs font-black text-gray-800`}>{handover.amt2}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {/* Diinput Oleh */}
-                  <View style={tw`flex-row items-center bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm mb-1`}>
-                    <View style={tw`w-8 h-8 rounded-full bg-emerald-100 items-center justify-center mr-2.5`}>
-                      <Ionicons name="create-outline" size={16} color="#059669" />
-                    </View>
-                    <View>
-                      <Text style={tw`text-[10px] text-gray-400 font-bold uppercase`}>Diinput Oleh</Text>
-                      <Text style={tw`text-xs font-black text-gray-800`}>
-                        {handover.user?.name || '-'} {handover.user?.jabatan ? `(${handover.user.jabatan})` : ''}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Kategori A */}
-          {itemsA.length > 0 && (
-            <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
-              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                <View style={tw`bg-green-100 p-2 rounded-xl mr-3 shadow-sm`}>
-                  <Ionicons name="construct" size={24} color="#00A651" />
-                </View>
-                <View style={tw`flex-1`}>
-                  <Text style={tw`font-extrabold text-lg text-gray-800`}>A. Perlengkapan Tangki</Text>
-                  <Text style={tw`text-xs text-gray-400 font-medium mt-0.5`}>{itemsA.filter(i => i.isGood).length}/{itemsA.length} item baik</Text>
-                </View>
-                <View style={tw`px-3 py-1.5 rounded-full ${itemsA.every(i => i.isGood) ? 'bg-green-100' : 'bg-red-100'}`}>
-                  <Text style={tw`text-xs font-bold ${itemsA.every(i => i.isGood) ? 'text-green-700' : 'text-red-600'}`}>
-                    {itemsA.every(i => i.isGood) ? 'SEMUA BAIK' : `${itemsA.filter(i => !i.isGood).length} ISU`}
-                  </Text>
-                </View>
-              </LinearGradient>
-              {itemsA.map((item, idx) => renderChecklistItem(item, idx))}
-            </View>
-          )}
-
-          {/* Kategori B */}
-          {itemsB.length > 0 && (
-            <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
-              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                <View style={tw`bg-blue-100 p-2 rounded-xl mr-3 shadow-sm`}>
-                  <Ionicons name="person-circle" size={24} color="#0055A5" />
-                </View>
-                <View style={tw`flex-1`}>
-                  <Text style={tw`font-extrabold text-lg text-gray-800`}>B. Perlengkapan AMT</Text>
-                  <Text style={tw`text-xs text-gray-400 font-medium mt-0.5`}>{itemsB.filter(i => i.isGood).length}/{itemsB.length} item lengkap</Text>
-                </View>
-                <View style={tw`px-3 py-1.5 rounded-full ${itemsB.every(i => i.isGood) ? 'bg-green-100' : 'bg-red-100'}`}>
-                  <Text style={tw`text-xs font-bold ${itemsB.every(i => i.isGood) ? 'text-green-700' : 'text-red-600'}`}>
-                    {itemsB.every(i => i.isGood) ? 'SEMUA ADA' : `${itemsB.filter(i => !i.isGood).length} ISU`}
-                  </Text>
-                </View>
-              </LinearGradient>
-              {itemsB.map((item, idx) => renderChecklistItem(item, idx))}
-            </View>
-          )}
-
-          {/* Kategori C */}
-          {itemsC.length > 0 && (
-            <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
-              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                <View style={tw`bg-amber-100 p-2 rounded-xl mr-3 shadow-sm`}>
-                  <Ionicons name="speedometer" size={24} color="#D97706" />
-                </View>
-                <Text style={tw`font-extrabold text-lg text-gray-800`}>C. Info Tambahan</Text>
-              </LinearGradient>
-              {itemsC.map((item, idx) => (
-                <View key={item.id || idx} style={tw`py-4 px-5 flex-row items-center border-b border-gray-100`}>
-                  <View style={tw`w-10 h-10 rounded-full items-center justify-center mr-3 bg-amber-50`}>
-                    <Ionicons name="information-circle" size={24} color="#D97706" />
-                  </View>
-                  <Text style={tw`font-bold text-base text-gray-800 flex-1`}>{item.name}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Foto Kendaraan */}
-          {generalPhotos.length > 0 && (
-            <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
-              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
-                  <Ionicons name="camera" size={24} color="#ED1C24" />
-                </View>
-                <Text style={tw`font-extrabold text-lg text-gray-800`}>Foto Kendaraan</Text>
-              </LinearGradient>
-              <View style={tw`flex-row flex-wrap p-4 gap-3`}>
-                {generalPhotos.map((photo, idx) => (
-                  <TouchableOpacity
-                    key={photo.id || idx}
-                    style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm relative`}
-                    onPress={() => {
-                      setSelectedPhoto(photo);
-                      setPhotoRotation(0);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: `${API_URL}/${photo.thumbnailUrl || photo.previewUrl || photo.url}` }}
-                      style={tw`w-full h-full`}
-                      resizeMode="cover"
-                    />
-                    <View style={tw`absolute top-2 right-2 bg-black/50 px-2 py-1 rounded-full flex-row items-center border border-white/20`}>
-                      <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
-                      <Text style={tw`text-white text-[10px] font-bold`}>Preview</Text>
-                    </View>
-                    <View style={tw`absolute bottom-0 left-0 right-0 bg-black/60 py-2 px-3`}>
-                      <Text style={tw`text-white text-xs font-bold`}>{photo.type || `Foto ${idx + 1}`}</Text>
-                    </View>
-                  </TouchableOpacity>
                 ))}
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Issue Status Card */}
-          {handover.issue && (
-            <View style={tw`bg-white rounded-3xl shadow-md border overflow-hidden mb-5 ${isResolved ? 'border-blue-200' : 'border-red-200'}`}>
-              <LinearGradient colors={isResolved ? ['#EFF6FF', '#DBEAFE'] : ['#FEF2F2', '#FEE2E2']} style={tw`p-5 flex-row items-center`}>
-                <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-4 ${isResolved ? 'bg-blue-100' : 'bg-red-100'}`}>
-                  <Ionicons
-                    name={isResolved ? 'checkmark-done-circle' : 'alert-circle'}
-                    size={28}
-                    color={isResolved ? '#0055A5' : '#ED1C24'}
-                  />
+            {/* Foto Kendaraan */}
+            {generalPhotos.length > 0 && (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name="camera" size={24} color="#ED1C24" />
+                  </View>
+                  <Text style={tw`font-extrabold text-lg text-gray-800`}>Foto Kendaraan</Text>
+                </LinearGradient>
+                <View style={tw`flex-row flex-wrap p-4 gap-3`}>
+                  {generalPhotos.map((photo, idx) => (
+                    <TouchableOpacity
+                      key={photo.id || idx}
+                      style={tw`w-[47%] aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm relative`}
+                      onPress={() => {
+                        setSelectedPhoto(photo);
+                        setPhotoRotation(0);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: `${API_URL}/${photo.thumbnailUrl || photo.previewUrl || photo.url}` }}
+                        style={tw`w-full h-full`}
+                        resizeMode="cover"
+                      />
+                      <View style={tw`absolute top-2 right-2 bg-black/50 px-2 py-1 rounded-full flex-row items-center border border-white/20`}>
+                        <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
+                        <Text style={tw`text-white text-[10px] font-bold`}>Preview</Text>
+                      </View>
+                      <View style={tw`absolute bottom-0 left-0 right-0 bg-black/60 py-2 px-3`}>
+                        <Text style={tw`text-white text-xs font-bold`}>{photo.type || `Foto ${idx + 1}`}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <View style={tw`flex-1`}>
-                  <Text style={tw`font-black text-base ${isResolved ? 'text-blue-800' : 'text-red-800'}`}>
-                    {isResolved ? 'Isu Telah Diselesaikan' : 'Isu Sedang Ditangani'}
-                  </Text>
-                  {isResolved && handover.issue.resolvedAt && (
-                    <Text style={tw`text-xs text-blue-500 font-medium mt-1`}>
-                      Diselesaikan: {new Date(handover.issue.resolvedAt).toLocaleString('id-ID')}
+              </View>
+            )}
+
+            {/* Issue Status Card */}
+            {handover.issue && (
+              <View style={tw`bg-white rounded-3xl shadow-md border overflow-hidden mb-5 ${isResolved ? 'border-blue-200' : 'border-red-200'}`}>
+                <LinearGradient colors={isResolved ? ['#EFF6FF', '#DBEAFE'] : ['#FEF2F2', '#FEE2E2']} style={tw`p-5 flex-row items-center`}>
+                  <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-4 ${isResolved ? 'bg-blue-100' : 'bg-red-100'}`}>
+                    <Ionicons
+                      name={isResolved ? 'checkmark-done-circle' : 'alert-circle'}
+                      size={28}
+                      color={isResolved ? '#0055A5' : '#ED1C24'}
+                    />
+                  </View>
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`font-black text-base ${isResolved ? 'text-blue-800' : 'text-red-800'}`}>
+                      {isResolved ? 'Isu Telah Diselesaikan' : 'Isu Sedang Ditangani'}
                     </Text>
-                  )}
-                  {!isResolved && (
-                    <Text style={tw`text-xs text-red-500 font-medium mt-1`}>
-                      Menunggu tindak lanjut dari pengawas/admin
-                    </Text>
-                  )}
-                </View>
-              </LinearGradient>
-            </View>
+                    {isResolved && handover.issue.resolvedAt && (
+                      <Text style={tw`text-xs text-blue-500 font-medium mt-1`}>
+                        Diselesaikan: {new Date(handover.issue.resolvedAt).toLocaleString('id-ID')}
+                      </Text>
+                    )}
+                    {!isResolved && (
+                      <Text style={tw`text-xs text-red-500 font-medium mt-1`}>
+                        Menunggu tindak lanjut dari pengawas/admin
+                      </Text>
+                    )}
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
+
+          </ScrollView>
+
+          {/* Tombol Ekspor Floating (Mobile Only - Hanya Admin) */}
+          {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+            <TouchableOpacity
+              style={tw`absolute bottom-8 right-6 z-40 bg-[#0055A5] px-5 py-3.5 rounded-full flex-row items-center shadow-2xl shadow-blue-600/50 border border-white/40 active:scale-95`}
+              onPress={() => setShowExportModal(true)}
+            >
+              <Feather name="download" size={18} color="white" />
+              <Text style={tw`text-white font-black text-sm ml-2 tracking-wide`}>Ekspor Detail</Text>
+            </TouchableOpacity>
           )}
-
-        </ScrollView>
-
-        {/* Tombol Ekspor Floating (Mobile Only - Hanya Admin) */}
-        {!isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-          <TouchableOpacity
-            style={tw`absolute bottom-8 right-6 z-40 bg-[#0055A5] px-5 py-3.5 rounded-full flex-row items-center shadow-2xl shadow-blue-600/50 border border-white/40 active:scale-95`}
-            onPress={() => setShowExportModal(true)}
-          >
-            <Feather name="download" size={18} color="white" />
-            <Text style={tw`text-white font-black text-sm ml-2 tracking-wide`}>Ekspor Detail</Text>
-          </TouchableOpacity>
-        )}
         </View>
       </SafeAreaView>
 
