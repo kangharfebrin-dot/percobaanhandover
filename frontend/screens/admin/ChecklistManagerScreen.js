@@ -49,7 +49,7 @@ export default function ChecklistManagerScreen({ navigation }) {
   };
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  
+
   const slideAnim = React.useRef(new Animated.Value(0)).current;
   const [activeMenu, setActiveMenu] = useState('Checklist');
   const [previousMenu, setPreviousMenu] = useState('Checklist');
@@ -71,7 +71,7 @@ export default function ChecklistManagerScreen({ navigation }) {
     setActiveMenu('Logout');
     setIsLogoutVisible(true);
   };
-  
+
   const handleCancelLogout = () => {
     setIsLogoutVisible(false);
     setActiveMenu(previousMenu);
@@ -81,9 +81,9 @@ export default function ChecklistManagerScreen({ navigation }) {
     setIsLogoutVisible(false);
     navigation.replace('Login');
   };
-const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  
+
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('A');
   const [newSeverity, setNewSeverity] = useState('Minor');
@@ -123,7 +123,7 @@ const [modalVisible, setModalVisible] = useState(false);
         Animated.timing(orb1TranslateY, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
     ).start();
-    
+
     loadItems();
     loadUser();
     return () => subscription?.remove();
@@ -177,14 +177,14 @@ const [modalVisible, setModalVisible] = useState(false);
     }
   };
 
-    const handleDelete = (id) => {
+  const handleDelete = (id) => {
     const it = items.find(i => i.id === id);
     setItemToDelete(it);
     setConfirmModalVisible(true);
   };
 
   const confirmDelete = async () => {
-    if(!itemToDelete) return;
+    if (!itemToDelete) return;
     try {
       await axios.delete(`${API_URL}/api/checklists/${itemToDelete.id}`);
       setConfirmModalVisible(false);
@@ -246,63 +246,63 @@ const [modalVisible, setModalVisible] = useState(false);
       </Animated.View>
 
       <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
-        
+
         {isLargeScreen && (
-          <WebSidebar 
-            user={user} 
-            activeMenu={'Checklist'} 
-            navigation={navigation} 
-            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
-            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          <WebSidebar
+            user={user}
+            activeMenu={'Checklist'}
+            navigation={navigation}
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })}
+            unreadNotificationsCount={unreadNotificationsCount || 0}
           />
         )}
 
         {/* MAIN CONTENT AREA */}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-        {isLargeScreen ? (
-          <WebNavbar
-            user={user}
-            title="Manajer Checklist"
-            subtitle="Kustomisasi parameter inspeksi & form serah terima"
-            navigation={navigation}
-            showBack={true}
-            rightAction={
-              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
-                <TouchableOpacity onPress={openAddModal} style={tw`flex-row items-center bg-[#00A651] px-4 py-2.5 rounded-2xl shadow-md`}>
-                  <Ionicons name="add-circle-outline" size={20} color="white" />
-                  <Text style={tw`text-white font-bold text-sm ml-1.5`}>Tambah Item</Text>
+          {isLargeScreen ? (
+            <WebNavbar
+              user={user}
+              title="Manajer Checklist"
+              subtitle="Kustomisasi parameter inspeksi & form serah terima"
+              navigation={navigation}
+              showBack={true}
+              rightAction={
+                (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+                  <TouchableOpacity onPress={openAddModal} style={tw`flex-row items-center bg-[#00A651] px-4 py-2.5 rounded-2xl shadow-md`}>
+                    <Ionicons name="add-circle-outline" size={20} color="white" />
+                    <Text style={tw`text-white font-bold text-sm ml-1.5`}>Tambah Item</Text>
+                  </TouchableOpacity>
+                ) : null
+              }
+            />
+          ) : (
+            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+              <View style={tw`flex-row items-center`}>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                  <Ionicons name="arrow-back" size={24} color="#00A651" />
                 </TouchableOpacity>
-              ) : null
-            }
-          />
-        ) : (
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: {width: 0, height: 10} }]}>
-            <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#00A651" />
-              </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
+                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
+              </View>
+              {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+                <TouchableOpacity onPress={openAddModal}>
+                  <Ionicons name="add-circle" size={28} color="#00A651" />
+                </TouchableOpacity>
+              )}
             </View>
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-              <TouchableOpacity onPress={openAddModal}>
-                 <Ionicons name="add-circle" size={28} color="#00A651" />
-              </TouchableOpacity>
-            )}
+          )}
+
+          <View style={tw`px-6 mb-2`}>
+            <Text style={tw`text-gray-500 font-medium text-sm`}>Edit pertanyaan yang akan muncul di Form Handover AMT secara real-time.</Text>
           </View>
-        )}
 
-        <View style={tw`px-6 mb-2`}>
-          <Text style={tw`text-gray-500 font-medium text-sm`}>Edit pertanyaan yang akan muncul di Form Handover AMT secara real-time.</Text>
+          <FlatList
+            contentContainerStyle={tw`p-6 pb-40 w-full max-w-4xl mx-auto`}
+            data={items}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            initialNumToRender={100}
+          />
         </View>
-
-        <FlatList
-          contentContainerStyle={tw`p-6 pb-40 w-full max-w-4xl mx-auto`}
-          data={items}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          initialNumToRender={100}
-        />
-      </View>
       </SafeAreaView>
 
       {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
@@ -316,12 +316,12 @@ const [modalVisible, setModalVisible] = useState(false);
             <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
               <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
                 {!isLogoutVisible && (<Animated.View style={[tw`h-full w-[64px]`]}>
-                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                 </Animated.View>)}
               </View>
               <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
                 {!isLogoutVisible && (<Animated.View style={[tw`h-full w-[64px]`]}>
-                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
+                  <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
                 </Animated.View>)}
               </View>
               <Feather name="check-square" size={26} color={!isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
@@ -342,22 +342,22 @@ const [modalVisible, setModalVisible] = useState(false);
           )}
 
           <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
-              {activeMenu === 'Logout' && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
-            </TouchableOpacity>
+            {activeMenu === 'Logout' && (
+              <>
+                <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
+                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                  </Animated.View>
+                </View>
+                <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
+                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
+                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
+                  </Animated.View>
+                </View>
+              </>
+            )}
+            <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -366,20 +366,20 @@ const [modalVisible, setModalVisible] = useState(false);
         <View style={tw`flex-1 justify-center bg-black/60 px-4`}>
           <View style={tw`bg-white rounded-[25px] p-6 shadow-2xl w-full max-w-sm self-center`}>
             <Text style={tw`text-2xl font-black text-gray-800 mb-4`}>{editingItem ? 'Edit Item' : 'Tambah Item'}</Text>
-            
+
             <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Nama Pengecekan</Text>
-            <TextInput 
-              style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold mb-4`} 
-              placeholder="Misal: Periksa APAR" 
-              value={newName} 
-              onChangeText={setNewName} 
+            <TextInput
+              style={tw`bg-slate-50 p-4 rounded-xl border border-slate-200 text-black font-bold mb-4`}
+              placeholder="Misal: Periksa APAR"
+              value={newName}
+              onChangeText={setNewName}
             />
 
             <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Kategori (A/B/C)</Text>
             <View style={tw`flex-row gap-2 mb-4`}>
               {['A', 'B', 'C'].map(cat => (
-                <TouchableOpacity 
-                  key={cat} 
+                <TouchableOpacity
+                  key={cat}
                   style={tw`flex-1 py-3 rounded-lg border ${newCategory === cat ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'} items-center`}
                   onPress={() => setNewCategory(cat)}
                 >
@@ -391,8 +391,8 @@ const [modalVisible, setModalVisible] = useState(false);
             <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Keparahan (Tingkat Isu)</Text>
             <View style={tw`flex-row gap-2 mb-8`}>
               {['Minor', 'Major'].map(sev => (
-                <TouchableOpacity 
-                  key={sev} 
+                <TouchableOpacity
+                  key={sev}
                   style={tw`flex-1 py-3 rounded-lg border ${newSeverity === sev ? (sev === 'Major' ? 'bg-red-600 border-red-600' : 'bg-amber-500 border-amber-500') : 'bg-white border-gray-300'} items-center`}
                   onPress={() => setNewSeverity(sev)}
                 >
@@ -413,8 +413,8 @@ const [modalVisible, setModalVisible] = useState(false);
         </View>
       </Modal>
 
-    <ConfirmModal visible={confirmModalVisible} title="Hapus Item" message={itemToDelete ? `Yakin ingin menghapus form pengecekan ${itemToDelete.name}?` : ''} onConfirm={confirmDelete} onCancel={() => setConfirmModalVisible(false)} />
-      
+      <ConfirmModal visible={confirmModalVisible} title="Hapus Item" message={itemToDelete ? `Yakin ingin menghapus form pengecekan ${itemToDelete.name}?` : ''} onConfirm={confirmDelete} onCancel={() => setConfirmModalVisible(false)} />
+
       {/* Modal Kustom Notifikasi */}
       <Modal
         animationType="fade"
@@ -441,7 +441,7 @@ const [modalVisible, setModalVisible] = useState(false);
         </View>
       </Modal>
 
-    
+
       {/* Logout Modal */}
       <Modal
         visible={isLogoutVisible}
@@ -475,6 +475,6 @@ const [modalVisible, setModalVisible] = useState(false);
           </View>
         </View>
       </Modal>
-</View>
+    </View>
   );
 }
