@@ -153,6 +153,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
         status,
         amt1: amt1 || null,
         amt2: amt2 || null,
+        notes: req.body.notes || null,
         locationLat: locationLat ? parseFloat(locationLat) : null,
         locationLng: locationLng ? parseFloat(locationLng) : null,
         items: {

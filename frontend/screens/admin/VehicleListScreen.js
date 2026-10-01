@@ -23,12 +23,23 @@ export default function VehicleListScreen({ navigation }) {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [returnToManageModal, setReturnToManageModal] = useState(false);
 
   useEffect(() => {
     const onChange = ({ window }) => setScreenWidth(window.width);
     const subscription = Dimensions.addEventListener('change', onChange);
     return () => subscription?.remove();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (returnToManageModal) {
+        setManageModalVisible(true);
+        setReturnToManageModal(false);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, returnToManageModal]);
 
   const isLargeScreen = Platform.OS === 'web' && screenWidth > 768;
   const numCols = isLargeScreen ? 3 : 1;
@@ -470,9 +481,9 @@ export default function VehicleListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* FILTER MODAL */}
-      <Modal visible={isFilterVisible} transparent={true} animationType="slide" onRequestClose={() => setIsFilterVisible(false)}>
-        <View style={tw`flex-1 justify-end bg-black/40`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl`}>
+      <Modal visible={isFilterVisible} transparent={true} animationType="fade" onRequestClose={() => setIsFilterVisible(false)}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
+          <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full max-w-md`}>
             <View style={tw`flex-row justify-between items-center mb-6`}>
               <Text style={tw`text-2xl font-black text-gray-800`}>Filter Kendaraan</Text>
               <TouchableOpacity onPress={() => setIsFilterVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
@@ -494,11 +505,11 @@ export default function VehicleListScreen({ navigation }) {
 
       {/* MANAGE VEHICLE MODAL (For ADMIN & PENGAWAS) */}
       {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'PENGAWAS') && (
-        <Modal visible={manageModalVisible && !fullScreenBarcode} transparent={true} animationType="slide" onRequestClose={() => setManageModalVisible(false)}>
-          <View style={tw`flex-1 justify-end bg-black/60`}>
+        <Modal visible={manageModalVisible && !fullScreenBarcode} transparent={true} animationType="fade" onRequestClose={() => setManageModalVisible(false)}>
+          <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
             {selectedVehicle && (
               user?.role === 'PENGAWAS' ? (
-                <View style={tw`bg-white w-full rounded-t-[35px] shadow-2xl overflow-hidden`}>
+                <View style={tw`bg-white w-full max-w-md rounded-[35px] shadow-2xl overflow-hidden`}>
                   <LinearGradient colors={['#00A651', '#007A3B']} style={tw`px-6 pt-8 pb-10`}>
                     <View style={tw`flex-row justify-between items-start mb-2`}>
                       <View>
@@ -557,7 +568,7 @@ export default function VehicleListScreen({ navigation }) {
 
                     <TouchableOpacity
                       style={tw`w-full bg-[#0055A5] p-5 rounded-2xl flex-row justify-center items-center shadow-lg shadow-blue-500/40`}
-                      onPress={() => { setManageModalVisible(false); navigation.navigate('History', { noPolisi: selectedVehicle.noPolisi }); }}
+                      onPress={() => { setManageModalVisible(false); setReturnToManageModal(true); navigation.navigate('History', { noPolisi: selectedVehicle.noPolisi }); }}
                     >
                       <Feather name="file-text" size={20} color="white" />
                       <Text style={tw`text-white font-black text-lg ml-3 tracking-wide`}>Lihat Riwayat Inspeksi</Text>
@@ -565,7 +576,7 @@ export default function VehicleListScreen({ navigation }) {
                   </View>
                 </View>
               ) : (
-                <View style={tw`bg-white w-full rounded-t-[30px] p-6 shadow-2xl`}>
+                <View style={tw`bg-white w-full max-w-md rounded-[30px] p-6 shadow-2xl overflow-hidden`}>
                   <View style={tw`flex-row justify-between items-center mb-6 border-b border-gray-100 pb-4`}>
                     <View>
                       <Text style={tw`text-xl font-black text-gray-800`}>Detail Kendaraan</Text>
@@ -614,7 +625,7 @@ export default function VehicleListScreen({ navigation }) {
                   <View style={tw`flex-row justify-between`}>
                     <TouchableOpacity
                       style={tw`bg-green-50 p-4 rounded-xl items-center flex-1 mr-2 border border-green-200`}
-                      onPress={() => { setManageModalVisible(false); navigation.navigate('History', { noPolisi: selectedVehicle.noPolisi }); }}
+                      onPress={() => { setManageModalVisible(false); setReturnToManageModal(true); navigation.navigate('History', { noPolisi: selectedVehicle.noPolisi }); }}
                     >
                       <Text style={tw`text-green-700 font-bold`}>Lihat Riwayat</Text>
                     </TouchableOpacity>
@@ -640,13 +651,13 @@ export default function VehicleListScreen({ navigation }) {
 
       {/* ADD / EDIT VEHICLE MODAL (ONLY FOR ADMIN) */}
       {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-        <Modal visible={addModalVisible} transparent={true} animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`flex-1 justify-end bg-black/60`}>
-            <View style={[tw`bg-white rounded-t-[30px] shadow-2xl`, { maxHeight: '90%' }]}>
-              <ScrollView contentContainerStyle={tw`p-6 pb-12`} showsVerticalScrollIndicator={false}>
+        <Modal visible={addModalVisible} transparent={true} animationType="fade" onRequestClose={() => setAddModalVisible(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
+            <View style={[tw`bg-white rounded-[30px] shadow-2xl w-full max-w-md`, { maxHeight: '90%' }]}>
+              <ScrollView contentContainerStyle={tw`p-6`} showsVerticalScrollIndicator={false}>
                 <View style={tw`flex-row justify-between items-center mb-6`}>
                   <Text style={tw`text-2xl font-black text-gray-800`}>{isEditMode ? 'Edit Kendaraan' : 'Tambah Kendaraan'}</Text>
-                  <TouchableOpacity onPress={() => setAddModalVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setAddModalVisible(false); if (isEditMode) setManageModalVisible(true); }} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
 
                 <View style={tw`mb-4`}>

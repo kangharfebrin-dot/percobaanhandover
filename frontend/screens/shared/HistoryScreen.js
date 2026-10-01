@@ -517,9 +517,13 @@ export default function HistoryScreen({ route, navigation }) {
         {!isNormal && (
           <View style={tw`mt-2 bg-red-50 p-3 rounded-xl border border-red-100`}>
             <Text style={tw`text-red-800 font-bold mb-1 text-sm`}>Detail Kendala:</Text>
-            {item.items.filter(i => !i.isGood).map((issue, idx) => (
-              <Text key={idx} style={tw`text-red-600 text-xs my-1`}>• {issue.name}</Text>
-            ))}
+            {item.items.filter(i => !i.isGood).map((issue, idx) => {
+              const showSeverity = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS');
+              const displayName = showSeverity ? issue.name : issue.name.replace(/\s*\[MAJOR\]|\s*\[MINOR\]/gi, '').trim();
+              return (
+                <Text key={idx} style={tw`text-red-600 text-xs my-1`}>• {displayName}</Text>
+              );
+            })}
           </View>
         )}
 
@@ -577,7 +581,7 @@ export default function HistoryScreen({ route, navigation }) {
         {isLargeScreen ? (
           <WebNavbar
             user={user}
-            title="Riwayat Handover"
+            title="Lihat Seluruh Laporan"
             navigation={navigation}
             showBack={true}
             rightAction={
@@ -603,7 +607,7 @@ export default function HistoryScreen({ route, navigation }) {
               <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
                 <Ionicons name="arrow-back" size={24} color="#0055A5" />
               </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Riwayat Handover</Text>
+              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Lihat Seluruh Laporan</Text>
             </View>
           </View>
         )}

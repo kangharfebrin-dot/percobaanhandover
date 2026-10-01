@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView, KeyboardAvoidingView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,7 +97,9 @@ export default function PengawasListScreen({ navigation }) {
   const fetchPengawass = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/pengawas`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API_BASE}/pengawas`, { headers });
       setPengawass(res.data);
     } catch (error) {
       console.log('Error fetching pengawass:', error.message);
@@ -108,8 +110,8 @@ export default function PengawasListScreen({ navigation }) {
 
   const filteredPengawass = pengawass.filter((item) => {
     const searchLower = searchQuery.toLowerCase().trim();
-    const matchesSearch = item.name.toLowerCase().includes(searchLower) ||
-                          item.username.toLowerCase().includes(searchLower);
+    const matchesSearch = (item.name || '').toLowerCase().includes(searchLower) ||
+                          (item.username || '').toLowerCase().includes(searchLower);
                           
     let matchesJabatan = true;
     if (filterJabatan !== 'Semua') {
@@ -119,9 +121,9 @@ export default function PengawasListScreen({ navigation }) {
     return matchesSearch && matchesJabatan;
   }).sort((a, b) => {
     if (sortBy === 'Abjad') {
-      return a.name.localeCompare(b.name);
+      return (a.name || '').localeCompare(b.name || '');
     } else if (sortBy === 'NIP') {
-      return a.username.localeCompare(b.username);
+      return (a.username || '').localeCompare(b.username || '');
     }
     return 0;
   });
@@ -353,10 +355,11 @@ export default function PengawasListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* MANAGE PENGAWAS MODAL (ADD / EDIT) */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
-        <View style={tw`flex-1 justify-end bg-black/60`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
-            <View style={tw`flex-row justify-between items-center mb-6`}>
+      <Modal visible={manageModalVisible} transparent={true} animationType="fade" onRequestClose={closeManageModal}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`w-full max-w-xl`}>
+            <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full mx-auto max-h-[90%]`}>
+              <View style={tw`flex-row justify-between items-center mb-6`}>
               <View>
                 <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Ubah Data Pengawas' : 'Tambah Pengawas Baru'}</Text>
                 <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan operasional dan persetujuan checklist</Text>
@@ -461,7 +464,8 @@ export default function PengawasListScreen({ navigation }) {
                 )}
               </View>
             </ScrollView>
-          </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ScrollView, KeyboardAvoidingView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,7 +97,9 @@ export default function WorkerListScreen({ navigation }) {
   const fetchWorkers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/workers`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API_BASE}/workers`, { headers });
       setWorkers(res.data);
     } catch (error) {
       console.log('Error fetching workers:', error.message);
@@ -106,7 +108,7 @@ export default function WorkerListScreen({ navigation }) {
     }
   };
 
-  const filteredWorkers = useMemo(() => { return workers.filter((item) => { const searchLower = (searchQuery || '').toLowerCase().trim(); const matchesSearch = (item.name || '').toLowerCase().includes(searchLower) || (item.username || '').toLowerCase().includes(searchLower); let matchesJabatan = true; if (filterJabatan !== 'Semua') { matchesJabatan = item.jabatan === filterJabatan; } return matchesSearch && matchesJabatan; }).sort((a, b) => { if (sortBy === 'Abjad') { return a.name.localeCompare(b.name); } else if (sortBy === 'NIP') { return a.username.localeCompare(b.username); } return 0; }); }, [workers, searchQuery, filterJabatan, sortBy]);
+  const filteredWorkers = useMemo(() => { return workers.filter((item) => { const searchLower = (searchQuery || '').toLowerCase().trim(); const matchesSearch = (item.name || '').toLowerCase().includes(searchLower) || (item.username || '').toLowerCase().includes(searchLower); let matchesJabatan = true; if (filterJabatan !== 'Semua') { matchesJabatan = item.jabatan === filterJabatan; } return matchesSearch && matchesJabatan; }).sort((a, b) => { if (sortBy === 'Abjad') { return (a.name || '').localeCompare(b.name || ''); } else if (sortBy === 'NIP') { return (a.username || '').localeCompare(b.username || ''); } return 0; }); }, [workers, searchQuery, filterJabatan, sortBy]);
 
   const openAddModal = () => {
     setSelectedWorker(null);
@@ -354,10 +356,11 @@ export default function WorkerListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* MANAGE WORKER MODAL (ADD / EDIT) */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
-        <View style={tw`flex-1 justify-end bg-black/60`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
-            <View style={tw`flex-row justify-between items-center mb-6`}>
+      <Modal visible={manageModalVisible} transparent={true} animationType="fade" onRequestClose={closeManageModal}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`w-full max-w-xl`}>
+            <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full mx-auto max-h-[90%]`}>
+              <View style={tw`flex-row justify-between items-center mb-6`}>
               <View>
                 <Text style={tw`text-2xl font-black text-gray-800`}>{selectedWorker ? 'Ubah Data Pekerja' : 'Tambah Pekerja Baru'}</Text>
                 <Text style={tw`text-xs font-bold text-gray-500`}>Akses operasional checklist kendaraan dan serah terima shift</Text>
@@ -474,7 +477,8 @@ export default function WorkerListScreen({ navigation }) {
                 )}
               </View>
             </ScrollView>
-          </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

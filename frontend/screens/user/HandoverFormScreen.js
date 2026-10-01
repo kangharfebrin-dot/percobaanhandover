@@ -134,14 +134,19 @@ export default function HandoverFormScreen({ route, navigation }) {
         return { title: 'A. Perlengkapan Tangki', icon: 'construct', color: '#00A651', bg: 'bg-green-100' };
       case 'B':
         return { title: 'B. Perlengkapan AMT', icon: 'person-circle', color: '#0055A5', bg: 'bg-blue-100' };
+      case 'C':
+        return { title: 'Catatan Tambahan', icon: 'clipboard', color: '#6366F1', bg: 'bg-indigo-100' };
+      case 'D':
+        return { title: 'D. Catatan Lain-lain', icon: 'list', color: '#6366F1', bg: 'bg-indigo-100' };
       default:
-        return { title: `Kategori ${cat}`, icon: 'shield-checkmark', color: '#6366F1', bg: 'bg-indigo-100' };
+        return { title: `Kategori ${cat}`, icon: 'list', color: '#6366F1', bg: 'bg-indigo-100' };
     }
   };
 
   // Camera & Photo State
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
+  const [notes, setNotes] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState(null);
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
@@ -149,6 +154,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activePhotoType, setActivePhotoType] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [catatanFoto, setCatatanFoto] = useState(''); // Catatan umum untuk section C (foto)
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState('USER');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -606,7 +612,13 @@ export default function HandoverFormScreen({ route, navigation }) {
         name: i.name + (i.status === 'RUSAK' && i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
       }));
       finalItems.push({ category: 'C', name: `Odo Meter: ${odoMeter}`, isGood: true });
+      if (catatanFoto && catatanFoto.trim()) {
+        finalItems.push({ category: 'C', name: `Catatan Foto: ${catatanFoto.trim()}`, isGood: true });
+      }
       formData.append('items', JSON.stringify(finalItems));
+      if (notes && notes.trim()) {
+        formData.append('notes', notes.trim());
+      }
 
       let currentLoc = location;
       if (!currentLoc) {
@@ -618,7 +630,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         formData.append('locationLng', currentLoc.longitude);
       }
 
-      Object.keys(photos).forEach(key => {
+      for (const key of Object.keys(photos)) {
         const p = photos[key];
         if (p) {
           // Determine the friendly name for the backend
@@ -627,7 +639,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             const idx = parseInt(key.split('_')[1]);
             // JANGAN KIRIM foto kerusakan jika item tersebut statusnya BUKAN RUSAK!
             if (!items[idx] || items[idx].status !== 'RUSAK') {
-              return;
+              continue;
             }
             const itemName = items[idx]?.name.replace(/[^a-zA-Z0-9 ]/g, "").trim();
             photoName = `Kerusakan_${itemName}.jpg`;
@@ -637,9 +649,19 @@ export default function HandoverFormScreen({ route, navigation }) {
           const match = /\.(\w+)$/.exec(filename);
           const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-          formData.append('photos', { uri: p.uri, name: photoName, type });
+          if (Platform.OS === 'web') {
+            try {
+              const res = await fetch(p.uri);
+              const blob = await res.blob();
+              formData.append('photos', blob, photoName);
+            } catch (err) {
+              console.log("Failed to append web photo:", err);
+            }
+          } else {
+            formData.append('photos', { uri: p.uri, name: photoName, type });
+          }
         }
-      });
+      }
 
       const token = await AsyncStorage.getItem('token');
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1012,8 +1034,8 @@ export default function HandoverFormScreen({ route, navigation }) {
             />
           </View>
 
-          {/* Dynamic Checklist Categories (B5) */}
-          {Object.keys(categoryGroups).sort().map(cat => {
+          {/* Dynamic Checklist Categories (A & B) */}
+          {Object.keys(categoryGroups).sort().filter(cat => cat === 'A' || cat === 'B').map(cat => {
             const meta = getCategoryMeta(cat);
             return (
               <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
@@ -1071,7 +1093,72 @@ export default function HandoverFormScreen({ route, navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Catatan umum untuk section C */}
+            <View style={tw`mt-4 border-t border-gray-100 pt-4`}>
+              <View style={tw`flex-row items-center justify-between mb-2`}>
+                <Text style={tw`text-xs font-black text-gray-600 uppercase tracking-wider`}>Catatan Foto Kendaraan</Text>
+                <View style={tw`bg-gray-100 px-2 py-0.5 rounded-full`}>
+                  <Text style={tw`text-[10px] font-bold text-gray-400`}>OPSIONAL</Text>
+                </View>
+              </View>
+              <TextInput
+                style={[tw`bg-gray-50 rounded-2xl p-4 text-sm text-gray-800 border border-gray-200`, { minHeight: 90, textAlignVertical: 'top', fontFamily: 'System' }]}
+                placeholder="Contoh: baret kecil di panel kanan, kondisi ban aus, dll."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                maxLength={500}
+                value={catatanFoto}
+                onChangeText={setCatatanFoto}
+              />
+              {catatanFoto.length > 0 && (
+                <Text style={tw`text-[11px] text-gray-400 text-right mt-1 font-medium`}>{catatanFoto.length}/500</Text>
+              )}
+            </View>
           </View>
+
+          {/* Catatan Umum Handover */}
+          <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8 p-5`}>
+            <View style={tw`flex-row items-center justify-between mb-4`}>
+              <View style={tw`flex-row items-center`}>
+                <View style={tw`bg-gray-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                  <Ionicons name="document-text" size={24} color="#4B5563" />
+                </View>
+                <Text style={tw`font-extrabold text-lg text-gray-800`}>Catatan Umum</Text>
+              </View>
+              <View style={tw`bg-gray-100 px-2 py-0.5 rounded-full`}>
+                <Text style={tw`text-[10px] font-bold text-gray-400`}>OPSIONAL</Text>
+              </View>
+            </View>
+            <TextInput
+              style={[tw`bg-gray-50 rounded-2xl p-4 text-sm text-gray-800 border border-gray-200`, { minHeight: 120, textAlignVertical: 'top', fontFamily: 'System' }]}
+              placeholder="Tambahkan catatan umum terkait serah terima kendaraan di sini..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              maxLength={1000}
+              value={notes}
+              onChangeText={setNotes}
+            />
+            {notes.length > 0 && (
+              <Text style={tw`text-[11px] text-gray-400 text-right mt-1 font-medium`}>{notes.length}/1000</Text>
+            )}
+          </View>
+
+          {/* Dynamic Checklist Categories (Catatan Tambahan - C, D, dst) */}
+          {Object.keys(categoryGroups).sort().filter(cat => cat !== 'A' && cat !== 'B').map(cat => {
+            const meta = getCategoryMeta(cat);
+            return (
+              <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name={meta.icon} size={24} color={meta.color} />
+                  </View>
+                  <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
+                </LinearGradient>
+                {categoryGroups[cat].map(renderChecklistItem)}
+              </View>
+            );
+          })}
 
           <View style={tw`h-6`} />
         </ScrollView>

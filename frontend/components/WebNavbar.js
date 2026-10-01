@@ -10,6 +10,7 @@ export default function WebNavbar({
   subtitle,
   navigation,
   showBack = false,
+  onBack,
   rightAction,
   style,
 }) {
@@ -45,14 +46,14 @@ export default function WebNavbar({
     return 'SELAMAT MALAM,';
   };
 
-  // Inisial avatar yang elegan
+  // Inisial avatar yang elegan (menggunakan zero-width space \u200B agar Chrome tidak auto-translate 'AD' ke 'IKLAN')
   const getInitials = () => {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'AD';
-    if (user.role === 'PENGAWAS') return 'PS';
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'A\u200BD';
+    if (user.role === 'PENGAWAS') return 'P\u200BS';
     if (!user.name) return 'PT';
     const parts = user.name.trim().split(' ');
     if (parts.length > 1) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+      return (parts[0][0] + '\u200B' + parts[1][0]).toUpperCase();
     }
     return user.name.substring(0, 2).toUpperCase();
   };
@@ -93,7 +94,9 @@ export default function WebNavbar({
             {(showBack || (navigation && navigation.canGoBack && navigation.canGoBack())) && (
               <TouchableOpacity
                 onPress={() => {
-                  if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                  if (onBack) {
+                    onBack();
+                  } else if (navigation && navigation.canGoBack && navigation.canGoBack()) {
                     navigation.goBack();
                   } else if (navigation && typeof navigation.replace === 'function') {
                     navigation.replace(user.role === 'PENGAWAS' ? 'PengawasDashboard' : user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
@@ -106,11 +109,11 @@ export default function WebNavbar({
               </TouchableOpacity>
             )}
             <View>
-              <Text style={tw`text-xl font-black text-[#1A2E44] tracking-tight leading-tight`} numberOfLines={1}>
+              <Text style={tw`text-xl font-black text-[#1A2E44] tracking-tight leading-tight`} numberOfLines={1} className="notranslate" translate="no">
                 {title}
               </Text>
               {subtitle ? (
-                <Text style={tw`text-xs font-bold text-[#4B637B] mt-0.5 tracking-normal`} numberOfLines={1}>
+                <Text style={tw`text-xs font-bold text-[#4B637B] mt-0.5 tracking-normal`} numberOfLines={1} className="notranslate" translate="no">
                   {subtitle}
                 </Text>
               ) : null}
@@ -134,7 +137,7 @@ export default function WebNavbar({
                 />
               </Animated.View>
               <View style={tw`w-[38px] h-[38px] rounded-full bg-white items-center justify-center shadow-inner`}>
-                <Text style={tw`text-[#1A2E44] font-black text-base tracking-widest`}>
+                <Text style={tw`text-[#1A2E44] font-black text-base tracking-widest`} className="notranslate" translate="no">
                   {getInitials()}
                 </Text>
               </View>

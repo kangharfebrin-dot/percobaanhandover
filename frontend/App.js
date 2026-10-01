@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TextLogo from './components/TextLogo';
-import { View, Image, Text, ActivityIndicator, Animated, Easing, StyleSheet } from 'react-native';
+import { View, Image, Text, ActivityIndicator, Animated, Easing, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -103,7 +103,7 @@ export default function App() {
         const userStr = await AsyncStorage.getItem('user');
         let token = await AsyncStorage.getItem('token');
         const refreshToken = await AsyncStorage.getItem('refreshToken');
-        
+
         if (userStr && token) {
           // Validasi apakah token JWT sudah kadaluarsa
           if (isTokenExpired(token)) {
@@ -132,7 +132,7 @@ export default function App() {
 
           const user = JSON.parse(userStr);
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
+
           if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
             setInitialRoute('AdminDashboard');
           } else if (user.role === 'PENGAWAS') {
@@ -183,8 +183,8 @@ export default function App() {
   if (!initialRoute) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-        <Animated.View style={{ 
-          opacity: fadeAnim, 
+        <Animated.View style={{
+          opacity: fadeAnim,
           transform: [{ scale: scaleAnim }],
           alignItems: 'center'
         }}>
@@ -197,11 +197,11 @@ export default function App() {
   return (
     <NavigationContainer>
       <StatusBar style="dark" />
-      <Stack.Navigator 
-        initialRouteName={initialRoute} 
-        screenOptions={{ 
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{
           headerShown: false,
-          animation: 'fade_from_bottom', // Smooth premium transition
+          animation: Platform.OS === 'web' ? 'none' : 'fade_from_bottom', // Instant on web, smooth transition on mobile
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />

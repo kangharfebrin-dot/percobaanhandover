@@ -1,42 +1,126 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Platform, Animated, Image } from 'react-native';
 import tw from 'twrnc';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config';
 
 export default function WebSidebar({ user, activeMenu, navigation, handleLogout, unreadNotificationsCount = 0 }) {
   if (Platform.OS !== 'web' || !user) return null;
 
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
+
+  const [internalUnreadCount, setInternalUnreadCount] = useState(unreadNotificationsCount || 0);
+
+  useEffect(() => {
+    setInternalUnreadCount(unreadNotificationsCount);
+  }, [unreadNotificationsCount]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUnread = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) return;
+        const res = await axios.get(`${API_URL}/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (isMounted && res.data && res.data.notifications) {
+           setInternalUnreadCount(res.data.notifications.filter(n => !n.isRead).length);
+        }
+      } catch (error) {
+         console.log('Sidebar notification error:', error.message);
+      }
+    };
+    
+    if (user) {
+      fetchUnread();
+    }
+    
+    let unsubscribe;
+    if (navigation && navigation.addListener) {
+       unsubscribe = navigation.addListener('focus', () => {
+         if (user) fetchUnread();
+       });
+    }
+
+    return () => {
+       isMounted = false;
+       if (unsubscribe) unsubscribe();
+    };
+  }, [user, navigation]);
   const isAdmin = user.role === 'ADMIN';
   const isManagement = isSuperAdmin || isAdmin;
   const isPengawas = user.role === 'PENGAWAS';
 
-  // Referensi dan state untuk dynamic scroll indicator (Ukuran pas untuk zoom 100%)
+  // Baca posisi scroll terakhir dari sessionStorage agar sidebar tidak loncat ke atas
+  const getSavedScrollY = () => {
+    if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
+      try {
+        const val = sessionStorage.getItem('sidebarScrollY');
+        if (val) return parseFloat(val) || 0;
+      } catch (_) {}
+    }
+    return 0;
+  };
+
+  const initialScrollY = useRef(getSavedScrollY()).current;
+  const currentScrollY = useRef(initialScrollY);
+  const scrollY = useRef(new Animated.Value(initialScrollY)).current;
   const scrollViewRef = useRef(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [contentHeight, setContentHeight] = useState(1);
-  const [visibleHeight, setVisibleHeight] = useState(1);
+  const isRestored = useRef(initialScrollY <= 0);
+
+  // Inisialisasi dimensi realistis agar indikator scrollbar tidak berkedip
+  const [contentHeight, setContentHeight] = useState(700);
+  const [visibleHeight, setVisibleHeight] = useState(550);
   const [trackHeight, setTrackHeight] = useState(350);
 
   // Tinggi kapsul 3-warna yang ideal dan proporsional pada zoom standar 100%
-  const thumbHeight = Math.max(90, Math.min(130, Math.round((visibleHeight / Math.max(1, contentHeight)) * trackHeight)));
+  const thumbHeight = Math.max(40, Math.min(60, Math.round((visibleHeight / Math.max(1, contentHeight)) * trackHeight)));
   const maxScroll = Math.max(1, contentHeight - visibleHeight);
   const maxThumbTravel = Math.max(0, trackHeight - thumbHeight);
 
-  React.useEffect(() => {
-    if (Platform.OS === 'web' && scrollViewRef.current) {
-      const savedScroll = sessionStorage.getItem('sidebarScrollY');
-      if (savedScroll) {
-        setTimeout(() => {
-          if (scrollViewRef.current?.scrollTo) {
-            scrollViewRef.current.scrollTo({ y: parseFloat(savedScroll), animated: false });
-          } else if (scrollViewRef.current?.getNode) {
-            scrollViewRef.current.getNode().scrollTo({ y: parseFloat(savedScroll), animated: false });
-          }
-        }, 100);
-      }
+  // Restore posisi scroll secara instan sebelum browser paint (useLayoutEffect)
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'web' || initialScrollY <= 0) return;
+    const restore = () => {
+      try {
+        const inner = scrollViewRef.current?.getNode ? scrollViewRef.current.getNode() : scrollViewRef.current;
+        const domNode = inner?.getScrollableNode ? inner.getScrollableNode() : null;
+        if (domNode && domNode.scrollTop !== initialScrollY) {
+          domNode.scrollTop = initialScrollY;
+        }
+        if (inner?.scrollTo) {
+          inner.scrollTo({ y: initialScrollY, animated: false });
+        }
+      } catch (_) {}
+    };
+
+    restore();
+    const raf1 = requestAnimationFrame(() => {
+      restore();
+      isRestored.current = true;
+    });
+    const raf2 = requestAnimationFrame(() => requestAnimationFrame(restore));
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [initialScrollY]);
+
+  // Helper navigasi: simpan posisi scroll saat ini lalu pindah halaman
+  const navigateTo = useCallback((routeName) => {
+    if (Platform.OS === 'web') {
+      try {
+        const inner = scrollViewRef.current?.getNode ? scrollViewRef.current.getNode() : scrollViewRef.current;
+        const domNode = inner?.getScrollableNode ? inner.getScrollableNode() : null;
+        const y = domNode?.scrollTop ?? currentScrollY.current ?? 0;
+        sessionStorage.setItem('sidebarScrollY', y.toString());
+      } catch (_) {}
     }
-  }, [contentHeight]);
+    navigation.replace(routeName);
+  }, [navigation]);
 
   const thumbTranslateY = scrollY.interpolate({
     inputRange: [0, maxScroll],
@@ -56,7 +140,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
       } else if (scrollViewRef.current.getNode && typeof scrollViewRef.current.getNode().scrollTo === 'function') {
         scrollViewRef.current.getNode().scrollTo({ y: targetY, animated: true });
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const getRoleLabel = () => {
@@ -66,23 +150,24 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
     return 'Pekerja';
   };
 
+  // Zero-width space (\u200B) diselipkan agar Google Translate TIDAK menerjemahkan 'AD' menjadi 'IKLAN'
   const getInitials = () => {
-    if (isSuperAdmin || isAdmin) return 'AD';
-    if (isPengawas) return 'PS';
+    if (isSuperAdmin || isAdmin) return 'A\u200BD';
+    if (isPengawas) return 'P\u200BS';
     const parts = (user.name || '').trim().split(' ');
     if (parts.length > 1) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+      return (parts[0][0] + '\u200B' + parts[1][0]).toUpperCase();
     }
     return (user.name || 'U').substring(0, 2).toUpperCase();
   };
 
   const renderSectionHeader = (title) => (
     <View style={tw`flex-row items-center my-2.5 px-1`}>
-      <View style={tw`flex-1 h-[1px] bg-gray-200/90`} />
+      <View style={tw`flex-1 h-[2px] bg-gray-200/90`} />
       <Text style={tw`px-2.5 text-[10.5px] font-bold text-gray-400 uppercase tracking-wider`}>
         {title}
       </Text>
-      <View style={tw`flex-1 h-[1px] bg-gray-200/90`} />
+      <View style={tw`flex-1 h-[2px] bg-gray-200/90`} />
     </View>
   );
 
@@ -119,6 +204,8 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
             tw`ml-3 text-[13px]`,
             active ? tw`text-white font-extrabold` : tw`text-gray-800 font-bold`
           ]}
+          className="notranslate"
+          translate="no"
         >
           {label}
         </Text>
@@ -178,7 +265,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
           }
         ]}>
           <View style={tw`w-12 h-12 rounded-full bg-[#1E5EAA] items-center justify-center mb-1.5 shadow-sm`}>
-            <Text style={tw`text-base font-black text-white tracking-wide`}>
+            <Text style={tw`text-base font-black text-white tracking-wide`} className="notranslate" translate="no">
               {getInitials()}
             </Text>
           </View>
@@ -195,6 +282,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
         {/* Scrollable Navigation Menu */}
         <Animated.ScrollView
           ref={scrollViewRef}
+          contentOffset={{ x: 0, y: initialScrollY }}
           style={[
             tw`flex-1 z-10`,
             Platform.OS === 'web' ? {
@@ -204,17 +292,18 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
           ]}
           contentContainerStyle={tw`pl-3.5 pr-5.5 pt-1 pb-5`}
           showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { 
-              useNativeDriver: false,
-              listener: (event) => {
-                if (Platform.OS === 'web') {
-                  sessionStorage.setItem('sidebarScrollY', event.nativeEvent.contentOffset.y.toString());
-                }
-              }
+          onScroll={(event) => {
+            const y = event.nativeEvent.contentOffset.y;
+            if (!isRestored.current && Math.abs(y - initialScrollY) > 50) {
+              // Ignore spurious initial onScroll events (usually 0) before we restore
+              return;
             }
-          )}
+            scrollY.setValue(y);
+            currentScrollY.current = y;
+            if (Platform.OS === 'web') {
+              sessionStorage.setItem('sidebarScrollY', y.toString());
+            }
+          }}
           scrollEventThrottle={16}
           onContentSizeChange={(_, h) => setContentHeight(h)}
           onLayout={(e) => setVisibleHeight(e.nativeEvent.layout.height)}
@@ -228,18 +317,18 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
             iconComponent: <Feather name="grid" size={20} color={activeMenu === 'Home' ? '#FFFFFF' : '#0055A5'} />,
             active: activeMenu === 'Home',
             onPress: () => {
-              if (isSuperAdmin || isAdmin) navigation.navigate('AdminDashboard');
-              else if (isPengawas) navigation.navigate('PengawasDashboard');
-              else navigation.navigate('UserDashboard');
+              if (isSuperAdmin || isAdmin) navigateTo('AdminDashboard');
+              else if (isPengawas) navigateTo('PengawasDashboard');
+              else navigateTo('UserDashboard');
             }
           })}
 
-          {/* Riwayat Handover */}
+          {/* Lihat Seluruh Laporan */}
           {renderMenuItem({
-            label: 'Riwayat Handover',
+            label: 'Lihat Seluruh Laporan',
             iconComponent: <Feather name="file-text" size={20} color={activeMenu === 'History' ? '#FFFFFF' : '#991B1B'} />,
             active: activeMenu === 'History',
-            onPress: () => navigation.navigate('History')
+            onPress: () => navigateTo('History')
           })}
 
           {/* Section: Manajemen */}
@@ -252,7 +341,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Manajer Checklist',
                 iconComponent: <Feather name="check-square" size={20} color={activeMenu === 'Checklist' ? '#FFFFFF' : '#991B1B'} />,
                 active: activeMenu === 'Checklist',
-                onPress: () => navigation.navigate('ChecklistManager')
+                onPress: () => navigateTo('ChecklistManager')
               })}
 
               {/* Daftar Kendaraan */}
@@ -260,7 +349,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Daftar Kendaraan',
                 iconComponent: <Feather name="truck" size={20} color={activeMenu === 'VehicleList' ? '#FFFFFF' : '#0055A5'} />,
                 active: activeMenu === 'VehicleList',
-                onPress: () => navigation.navigate('VehicleList')
+                onPress: () => navigateTo('VehicleList')
               })}
 
               {/* Isu Ditemukan */}
@@ -268,7 +357,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Isu Ditemukan',
                 iconComponent: <Feather name="alert-triangle" size={20} color={activeMenu === 'IssueList' ? '#FFFFFF' : '#991B1B'} />,
                 active: activeMenu === 'IssueList',
-                onPress: () => navigation.navigate('IssueList')
+                onPress: () => navigateTo('IssueList')
               })}
 
               {/* Daftar Pekerja */}
@@ -276,7 +365,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Daftar Pekerja',
                 iconComponent: <Feather name="users" size={20} color={activeMenu === 'WorkerList' ? '#FFFFFF' : '#991B1B'} />,
                 active: activeMenu === 'WorkerList',
-                onPress: () => navigation.navigate('WorkerList')
+                onPress: () => navigateTo('WorkerList')
               })}
 
               {/* Daftar Pengawas (Khusus Admin / Super Admin) */}
@@ -284,7 +373,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Daftar Pengawas',
                 iconComponent: <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? '#FFFFFF' : '#0055A5'} />,
                 active: activeMenu === 'PengawasList',
-                onPress: () => navigation.navigate('PengawasList')
+                onPress: () => navigateTo('PengawasList')
               })}
 
               {/* Daftar Admin (Khusus Admin / Super Admin) */}
@@ -292,7 +381,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 label: 'Daftar Admin',
                 iconComponent: <Feather name="user-check" size={20} color={activeMenu === 'AdminList' ? '#FFFFFF' : '#0055A5'} />,
                 active: activeMenu === 'AdminList',
-                onPress: () => navigation.navigate('AdminList')
+                onPress: () => navigateTo('AdminList')
               })}
             </>
           )}
@@ -305,11 +394,11 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
             label: 'Pesan & Notifikasi',
             iconComponent: <Ionicons name="chatbubble-ellipses-outline" size={20} color={activeMenu === 'Messages' ? '#FFFFFF' : '#0055A5'} />,
             active: activeMenu === 'Messages',
-            onPress: () => navigation.navigate('MessageCenter'),
-            badge: unreadNotificationsCount > 0 ? (
+            onPress: () => navigateTo('MessageCenter'),
+            badge: internalUnreadCount > 0 ? (
               <View style={tw`w-5 h-5 rounded-full bg-[#ED1C24] items-center justify-center`}>
                 <Text style={tw`text-white text-[11px] font-black`}>
-                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  {internalUnreadCount > 99 ? '99+' : internalUnreadCount}
                 </Text>
               </View>
             ) : null
@@ -333,11 +422,18 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
               },
               Platform.OS === 'web' ? { cursor: 'pointer', transition: 'all 0.15s ease' } : {}
             ]}
-            onPress={handleLogout || (() => {})}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                try {
+                  sessionStorage.removeItem('sidebarScrollY');
+                } catch (_) {}
+              }
+              if (handleLogout) handleLogout();
+            }}
             activeOpacity={0.8}
           >
             <Feather name="log-out" size={20} color="#991B1B" />
-            <Text style={tw`ml-3.5 font-bold text-[14px] text-[#991B1B]`}>
+            <Text style={tw`ml-3.5 font-bold text-[14px] text-[#991B1B]`} className="notranslate" translate="no">
               Sign Out
             </Text>
           </TouchableOpacity>
@@ -348,8 +444,8 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
           style={[
             tw`absolute top-48 bottom-6 rounded-full overflow-hidden flex-col items-center justify-start z-30`,
             {
-              right: 6,
-              width: 8,
+              right: 5,
+              width: 5,
               backgroundColor: 'rgba(241, 245, 249, 0.8)',
               borderColor: 'rgba(226, 232, 240, 0.7)',
               borderWidth: 1,
@@ -363,7 +459,7 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
             style={[
               tw`rounded-full overflow-hidden flex-col`,
               {
-                width: 8,
+                width: 5,
                 height: thumbHeight,
                 transform: [{ translateY: thumbTranslateY }],
                 shadowColor: '#0055A5',

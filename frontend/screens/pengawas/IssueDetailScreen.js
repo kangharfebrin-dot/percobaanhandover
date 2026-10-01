@@ -12,6 +12,11 @@ import { API_URL } from '../../config';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
 
+const getPhotoUrl = (path) => {
+  if (!path) return `${API_URL}/uploads/default.png`;
+  const cleanPath = path.replace(/\\/g, '/');
+  return cleanPath.startsWith('http') ? cleanPath : `${API_URL}/${cleanPath.replace(/^\/+/, '')}`;
+};
 export default function IssueDetailScreen({ route, navigation }) {
   const targetId = route.params?.issueId || route.params?.handoverId || route.params?.actionId || route.params?.id;
   const targetNopol = route.params?.noPolisi;
@@ -281,7 +286,7 @@ export default function IssueDetailScreen({ route, navigation }) {
         )}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Header */}
-          <WebNavbar
+          <WebNavbar showBack={true}
             user={currentUser}
             activeMenu={'IssueList'}
             title="Detail Isu Kendaraan"
@@ -337,12 +342,12 @@ export default function IssueDetailScreen({ route, navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Header diganti WebNavbar untuk konsistensi */}
-          <WebNavbar
+          <WebNavbar showBack={true}
             user={currentUser}
             activeMenu={'IssueList'}
             title="Detail Isu Kendaraan"
             subtitle={issue.handover?.noPolisi || 'Kendaraan'}
-            onBack={() => navigation.goBack()}
+            onBack={() => navigation.navigate('MessageCenter')}
             rightAction={
               issue.handoverId ? (
                 <TouchableOpacity 
@@ -502,7 +507,7 @@ export default function IssueDetailScreen({ route, navigation }) {
                         style={tw`relative rounded-xl overflow-hidden shadow-sm`}
                       >
                         <Image 
-                          source={{ uri: `${API_URL}/${handoverPhoto.previewUrl || handoverPhoto.url}` }} 
+                          source={{ uri: getPhotoUrl(handoverPhoto.previewUrl || handoverPhoto.url) }}
                           style={tw`w-full h-48 rounded-xl bg-gray-100`} 
                           resizeMode="cover"
                         />
@@ -559,7 +564,7 @@ export default function IssueDetailScreen({ route, navigation }) {
                           style={tw`relative rounded-xl overflow-hidden shadow-sm`}
                         >
                           <Image 
-                            source={{ uri: `${API_URL}/${item.repairPhotoUrl}` }} 
+                            source={{ uri: getPhotoUrl(item.repairPhotoUrl) }}
                             style={tw`w-full h-48 rounded-xl bg-gray-100`} 
                             resizeMode="cover"
                           />
@@ -742,7 +747,7 @@ export default function IssueDetailScreen({ route, navigation }) {
               <View style={tw`w-full h-full justify-center items-center p-4 pt-24`}>
                 <View style={tw`w-full h-[80%] bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative justify-center items-center`}>
                   <Image
-                    source={{ uri: `${API_URL}/${selectedPreviewPhoto.url}` }}
+                    source={{ uri: getPhotoUrl(selectedPreviewPhoto.url) }}
                     style={[tw`w-full h-full`, { transform: [{ rotate: `${previewRotation}deg` }] }]}
                     resizeMode="contain"
                   />

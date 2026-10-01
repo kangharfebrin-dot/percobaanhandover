@@ -29,6 +29,7 @@ model Handover {
   amt1        String?  @db.VarChar(100)
   amt2        String?  @db.VarChar(100)
   timestamp   DateTime @default(now())
+  notes       String?  @db.Text
   userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -2,7 +2,7 @@ import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Easing, ScrollView, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Easing, ScrollView, Dimensions, KeyboardAvoidingView } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -113,9 +113,9 @@ export default function AdminListScreen({ navigation }) {
            (item.jabatan && item.jabatan.toLowerCase().includes(searchLower));
   }).sort((a, b) => {
     if (sortBy === 'Nama') {
-      return a.name.localeCompare(b.name);
+      return (a.name || '').localeCompare(b.name || '');
     } else if (sortBy === 'Username') {
-      return a.username.localeCompare(b.username);
+      return (a.username || '').localeCompare(b.username || '');
     }
     return 0;
   });
@@ -367,10 +367,11 @@ export default function AdminListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* MANAGE ADMIN MODAL (ADD / EDIT) */}
-      <Modal visible={manageModalVisible} transparent={true} animationType="slide" onRequestClose={closeManageModal}>
-        <View style={tw`flex-1 justify-end bg-black/60`}>
-          <View style={tw`bg-white rounded-t-[30px] p-6 shadow-2xl max-w-xl w-full mx-auto`}>
-            <View style={tw`flex-row justify-between items-center mb-6`}>
+      <Modal visible={manageModalVisible} transparent={true} animationType="fade" onRequestClose={closeManageModal}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`w-full max-w-xl`}>
+            <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full mx-auto max-h-[90%]`}>
+              <View style={tw`flex-row justify-between items-center mb-6`}>
               <View>
                 <Text style={tw`text-2xl font-black text-gray-800`}>{selectedAdmin ? 'Ubah Data Admin' : 'Tambah Admin Baru'}</Text>
                 <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan dan konfigurasi sistem</Text>
@@ -475,7 +476,8 @@ export default function AdminListScreen({ navigation }) {
                 )}
               </View>
             </ScrollView>
-          </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

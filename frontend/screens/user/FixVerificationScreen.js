@@ -13,6 +13,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
 
+const getPhotoUrl = (path) => {
+  if (!path) return `${API_URL}/uploads/default.png`;
+  const cleanPath = path.replace(/\\/g, '/');
+  return cleanPath.startsWith('http') ? cleanPath : `${API_URL}/${cleanPath.replace(/^\/+/, '')}`;
+};
+
 export default function FixVerificationScreen({ route, navigation }) {
   const { noPolisi, issueId, handoverId } = route.params || {};
   const [issue, setIssue] = useState(null);
@@ -303,7 +309,7 @@ export default function FixVerificationScreen({ route, navigation }) {
         />
       )}
       <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-        <WebNavbar
+        <WebNavbar showBack={true}
           user={user}
           activeMenu={'FixVerification'}
           title="Verifikasi Perbaikan"
@@ -383,7 +389,7 @@ export default function FixVerificationScreen({ route, navigation }) {
                         style={tw`relative rounded-xl overflow-hidden`}
                       >
                         <Image 
-                          source={{ uri: `${API_URL}/${damagePhoto.previewUrl || damagePhoto.url}` }} 
+                          source={{ uri: getPhotoUrl(damagePhoto.previewUrl || damagePhoto.url) }}
                           style={tw`w-full h-36 rounded-xl bg-gray-100`} 
                           resizeMode="cover" 
                         />
@@ -618,7 +624,7 @@ export default function FixVerificationScreen({ route, navigation }) {
             <View style={tw`w-full h-full justify-center items-center p-4 pt-24`}>
               <View style={tw`w-full h-[80%] bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative justify-center items-center`}>
                 <Image
-                  source={{ uri: selectedPreviewPhoto.url }}
+                  source={{ uri: getPhotoUrl(selectedPreviewPhoto.url) }}
                   style={[tw`w-full h-full`, { transform: [{ rotate: `${previewRotation}deg` }] }]}
                   resizeMode="contain"
                 />

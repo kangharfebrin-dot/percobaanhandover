@@ -375,15 +375,18 @@ export default function ChecklistManagerScreen({ navigation }) {
               onChangeText={setNewName}
             />
 
-            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Kategori (A/B/C)</Text>
-            <View style={tw`flex-row gap-2 mb-4`}>
-              {['A', 'B', 'C'].map(cat => (
+            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Kategori Checklist</Text>
+            <View style={tw`flex-col gap-2 mb-4`}>
+              {[
+                { id: 'A', label: 'A (Perlengkapan Tangki)' },
+                { id: 'B', label: 'B (Perlengkapan AMT)' }
+              ].map(cat => (
                 <TouchableOpacity
-                  key={cat}
-                  style={tw`flex-1 py-3 rounded-lg border ${newCategory === cat ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'} items-center`}
-                  onPress={() => setNewCategory(cat)}
+                  key={cat.id}
+                  style={tw`w-full py-3 px-4 rounded-lg border ${newCategory === cat.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'} flex-row items-center`}
+                  onPress={() => setNewCategory(cat.id)}
                 >
-                  <Text style={tw`font-bold ${newCategory === cat ? 'text-white' : 'text-gray-600'}`}>{cat}</Text>
+                  <Text style={tw`font-bold text-sm ${newCategory === cat.id ? 'text-white' : 'text-gray-600'}`}>{cat.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>

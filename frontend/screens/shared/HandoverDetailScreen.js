@@ -160,8 +160,9 @@ export default function HandoverDetailScreen({ route, navigation }) {
     }
   };
 
-  const fetchHandoverDetail = async () => {
-    if (!handoverId) {
+  const fetchHandoverDetail = async (idToFetch) => {
+    const targetId = idToFetch || handoverId || initialHandover?.id;
+    if (!targetId) {
       setFetchError('ID Riwayat handover tidak ditemukan.');
       setLoading(false);
       return;
@@ -170,7 +171,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
       setLoading(true);
       setFetchError(null);
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/handovers/${handoverId}`, {
+      const response = await fetch(`${API_URL}/api/handovers/${targetId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,10 +191,11 @@ export default function HandoverDetailScreen({ route, navigation }) {
   };
 
   useEffect(() => {
-    if (!initialHandover && handoverId) {
-      fetchHandoverDetail();
+    const id = handoverId || initialHandover?.id;
+    if (id) {
+      fetchHandoverDetail(id);
     }
-  }, [handoverId]);
+  }, [handoverId, initialHandover]);
 
   useEffect(() => {
     Animated.loop(
@@ -233,7 +235,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
             />
           )}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-            <WebNavbar
+            <WebNavbar showBack={true}
               user={user}
               activeMenu={'History'}
               title="Detail Handover"
@@ -263,7 +265,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
             />
           )}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-            <WebNavbar
+            <WebNavbar showBack={true}
               user={user}
               activeMenu={'History'}
               title="Detail Handover"
@@ -300,6 +302,15 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const isNormal = handover?.status === 'Siap Operasi (Normal)';
   const isResolved = handover?.issue && handover.issue.status === 'RESOLVED';
 
+  const getPhotoUrl = (photoObjOrString) => {
+    if (!photoObjOrString) return null;
+    let path = typeof photoObjOrString === 'string' 
+      ? photoObjOrString 
+      : (photoObjOrString.url || photoObjOrString.previewUrl || photoObjOrString.thumbnailUrl);
+    if (!path) return null;
+    return `${API_URL}/${path.replace(/\\/g, '/')}`;
+  };
+
   // Parse items by category
   const itemsA = (handover?.items || []).filter(i => i.category === 'A');
   const itemsB = (handover?.items || []).filter(i => i.category === 'B');
@@ -335,6 +346,10 @@ export default function HandoverDetailScreen({ route, navigation }) {
     const parsed = parseItemName(item.name);
     const isBaik = item.isGood;
 
+    // Sembunyikan keterangan Major/Minor untuk role USER/AMT
+    const showSeverity = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS');
+    const displayName = showSeverity ? parsed.name : parsed.name.replace(/\s*\[MAJOR\]|\s*\[MINOR\]/gi, '').trim();
+
     const cleanParsedName = parsed.name.replace(/[^a-zA-Z0-9 ]/g, "").trim().toLowerCase();
     const damagePhoto = photos.find(p => {
       if (!p.type || !p.type.toLowerCase().startsWith('kerusakan:')) return false;
@@ -361,7 +376,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
           {/* Item Details */}
           <View style={tw`flex-1`}>
             <Text style={tw`font-bold text-base ${isBaik ? 'text-gray-800' : 'text-red-700'}`}>
-              {parsed.name}
+              {displayName}
             </Text>
 
             <View style={tw`flex-row items-center mt-1.5 flex-wrap gap-2`}>
@@ -373,7 +388,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </View>
 
               {/* Severity Badge (only for non-good items) */}
-              {!isBaik && parsed.severity && (
+              {!isBaik && parsed.severity && showSeverity && (
                 <View style={tw`px-3 py-1 rounded-full ${parsed.severity.toUpperCase() === 'MAJOR' ? 'bg-red-500' : 'bg-yellow-400'}`}>
                   <Text style={tw`text-xs font-bold ${parsed.severity.toUpperCase() === 'MAJOR' ? 'text-white' : 'text-yellow-900'}`}>
                     {parsed.severity.toUpperCase()}
@@ -398,7 +413,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
                 </View>
                 <TouchableOpacity onPress={() => { setSelectedPhoto(damagePhoto); setPhotoRotation(0); }}>
-                  <Image source={{ uri: `${API_URL}/${damagePhoto.thumbnailUrl || damagePhoto.previewUrl || damagePhoto.url}` }} style={tw`w-full h-32 rounded-lg mt-1`} />
+                  <Image source={{ uri: getPhotoUrl(damagePhoto) }} style={tw`w-full h-32 rounded-lg mt-1`} />
                 </TouchableOpacity>
               </View>
             )}
@@ -415,7 +430,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                 ) : null}
                 {item.repairPhotoUrl ? (
                   <TouchableOpacity onPress={() => { setSelectedPhoto({ type: 'Perbaikan', url: item.repairPhotoUrl }); setPhotoRotation(0); }}>
-                    <Image source={{ uri: `${API_URL}/${item.repairPhotoUrl}` }} style={tw`w-full h-32 rounded-lg mt-2`} />
+                    <Image source={{ uri: getPhotoUrl(item.repairPhotoUrl) }} style={tw`w-full h-32 rounded-lg mt-2`} />
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -453,7 +468,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Navbar */}
-          <WebNavbar
+          <WebNavbar showBack={true}
             user={user}
             activeMenu={'History'}
             title="Detail Handover"
@@ -646,14 +661,15 @@ export default function HandoverDetailScreen({ route, navigation }) {
             )}
 
             {/* Foto Kendaraan */}
-            {generalPhotos.length > 0 && (
-              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
-                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                  <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
-                    <Ionicons name="camera" size={24} color="#ED1C24" />
-                  </View>
-                  <Text style={tw`font-extrabold text-lg text-gray-800`}>Foto Kendaraan</Text>
-                </LinearGradient>
+            <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+              <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                <View style={tw`bg-red-50 p-2 rounded-xl mr-3 shadow-sm`}>
+                  <Ionicons name="camera" size={24} color="#ED1C24" />
+                </View>
+                <Text style={tw`font-extrabold text-lg text-gray-800`}>Foto Kendaraan</Text>
+              </LinearGradient>
+              
+              {generalPhotos.length > 0 ? (
                 <View style={tw`flex-row flex-wrap p-4 gap-3`}>
                   {generalPhotos.map((photo, idx) => (
                     <TouchableOpacity
@@ -665,7 +681,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
                       }}
                     >
                       <Image
-                        source={{ uri: `${API_URL}/${photo.thumbnailUrl || photo.previewUrl || photo.url}` }}
+                        source={{ uri: getPhotoUrl(photo) }}
                         style={tw`w-full h-full`}
                         resizeMode="cover"
                       />
@@ -678,6 +694,26 @@ export default function HandoverDetailScreen({ route, navigation }) {
                       </View>
                     </TouchableOpacity>
                   ))}
+                </View>
+              ) : (
+                <View style={tw`p-6 items-center justify-center`}>
+                  <Ionicons name="images-outline" size={48} color="#CBD5E1" />
+                  <Text style={tw`text-gray-400 font-bold mt-2 text-center`}>Tidak ada foto kendaraan yang diunggah</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Catatan Umum */}
+            {handover.notes && (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                  <View style={tw`bg-gray-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                    <Ionicons name="document-text" size={24} color="#4B5563" />
+                  </View>
+                  <Text style={tw`font-extrabold text-lg text-gray-800`}>Catatan Umum</Text>
+                </LinearGradient>
+                <View style={tw`p-5 bg-gray-50`}>
+                  <Text style={tw`text-gray-700 text-sm leading-6`}>{handover.notes}</Text>
                 </View>
               </View>
             )}
@@ -839,7 +875,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
             <View style={tw`w-full h-full justify-center items-center p-4 pt-24`}>
               <View style={tw`w-full h-[80%] bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative justify-center items-center`}>
                 <Image
-                  source={{ uri: `${API_URL}/${selectedPhoto.previewUrl || selectedPhoto.url}` }}
+                  source={{ uri: getPhotoUrl(selectedPhoto) }}
                   style={[tw`w-full h-full`, { transform: [{ rotate: `${photoRotation}deg` }] }]}
                   resizeMode="contain"
                 />

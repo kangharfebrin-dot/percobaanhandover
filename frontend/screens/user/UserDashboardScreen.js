@@ -247,11 +247,11 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   const getInitials = () => {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'AD';
-    if (user.role === 'PENGAWAS') return 'PS';
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'A\u200BD';
+    if (user.role === 'PENGAWAS') return 'P\u200BS';
     const parts = user.name.trim().split(' ');
     if (parts.length > 1) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+      return (parts[0][0] + '\u200B' + parts[1][0]).toUpperCase();
     }
     return user.name.substring(0, 2).toUpperCase();
   };
@@ -401,7 +401,7 @@ export default function UserDashboardScreen({ navigation }) {
                     />
                   </Animated.View>
                   <View style={tw`w-[44px] h-[44px] rounded-full bg-white items-center justify-center`}>
-                    <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`}>{getInitials()}</Text>
+                    <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`} className="notranslate" translate="no">{getInitials()}</Text>
                   </View>
                 </View>
                 <View style={tw`flex-1 pr-24`}>
