@@ -5,8 +5,18 @@ const path = require('path');
 
 const prisma = new PrismaClient();
 
-const amtFile = path.join(__dirname, '../DAFTAR NAMA AMT 2026.xlsx');
-const vehicleFile = path.join(__dirname, '../Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
+const fs = require('fs');
+const amtFile = [
+  path.join(__dirname, '..', '..', 'data', 'DAFTAR NAMA AMT 2026.xlsx'),
+  path.join(__dirname, '..', '..', 'DAFTAR NAMA AMT 2026.xlsx'),
+  path.join(__dirname, '..', 'DAFTAR NAMA AMT 2026.xlsx')
+].find(p => fs.existsSync(p)) || path.join(__dirname, '..', '..', 'data', 'DAFTAR NAMA AMT 2026.xlsx');
+
+const vehicleFile = [
+  path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx'),
+  path.join(__dirname, '..', '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx'),
+  path.join(__dirname, '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx')
+].find(p => fs.existsSync(p)) || path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
 
 async function main() {
   console.log('Starting data reset and import...');

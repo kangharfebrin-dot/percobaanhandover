@@ -209,7 +209,15 @@ export default function VehicleListScreen({ navigation }) {
     fetchVehicles();
   }, []);
 
-  const filteredVehicles = useMemo(() => { return vehicles.filter((item) => { const matchesSearch = item.noPolisi.toLowerCase().includes(searchQuery.toLowerCase()); const status = item.dynamicStatus || item.status || 'Baik'; const matchesStatus = selectedStatus === 'Semua' || status === selectedStatus; return matchesSearch && matchesStatus; }); }, [vehicles, searchQuery, selectedStatus]);
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter((item) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = item.noPolisi.toLowerCase().includes(q) || (item.brand && item.brand.toLowerCase().includes(q));
+      const status = item.dynamicStatus || item.status || 'Baik';
+      const matchesStatus = selectedStatus === 'Semua' || status === selectedStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [vehicles, searchQuery, selectedStatus]);
 
   const openManageModal = (vehicle) => {
     setSelectedVehicle(vehicle);
@@ -370,7 +378,9 @@ export default function VehicleListScreen({ navigation }) {
           </View>
           <View style={tw`flex-1 pr-2`}>
             <Text style={tw`text-xl font-black ${isMaintenance ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
-            <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>{item.jenisKendaraan || 'Mobil Tanki'}{item.kapasitas ? ` • ${item.kapasitas} KL` : ''}</Text>
+            <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>
+              {item.brand ? `${item.brand} • ` : ''}{item.kapasitas ? `Mobil Tanki ${item.kapasitas} KL` : (item.jenisKendaraan || 'Mobil Tanki')}
+            </Text>
           </View>
         </View>
 
@@ -400,7 +410,7 @@ export default function VehicleListScreen({ navigation }) {
       </Animated.View>
 
       <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
-        {isLargeScreen && (
+        {isLargeScreen && user && (
           <WebSidebar
             user={user}
             activeMenu={'VehicleList'}
@@ -411,20 +421,41 @@ export default function VehicleListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        {isLargeScreen ? (
+        {isLargeScreen && user ? (
           <WebNavbar
             user={user}
             title="Daftar Kendaraan"
             subtitle="Monitoring & Kelola Armada Mobil Tangki"
             navigation={navigation}
             showBack={true}
+            rightAction={
+              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+                <TouchableOpacity
+                  onPress={openAddModal}
+                  style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+                >
+                  <MaterialCommunityIcons name="truck-plus" size={18} color="white" />
+                  <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Kendaraan</Text>
+                </TouchableOpacity>
+              ) : null
+            }
           />
         ) : (
-          <View style={[tw`flex-row items-center px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <TouchableOpacity onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('AdminDashboard'); }} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-              <Ionicons name="arrow-back" size={24} color="#0055A5" />
-            </TouchableOpacity>
-            <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Kendaraan</Text>
+          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
+            <View style={tw`flex-row items-center z-30`}>
+              <TouchableOpacity onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('AdminDashboard'); }} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
+                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+              </TouchableOpacity>
+              <View>
+                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Kendaraan</Text>
+                <Text style={tw`text-xs font-bold text-gray-500`}>Monitoring & Kelola Armada Mobil Tangki</Text>
+              </View>
+            </View>
+            {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+              <TouchableOpacity onPress={openAddModal} style={tw`p-2.5 bg-[#0055A5] rounded-2xl shadow-md flex-row items-center`}>
+                <MaterialCommunityIcons name="truck-plus" size={18} color="white" />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -432,7 +463,7 @@ export default function VehicleListScreen({ navigation }) {
           <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
             <View style={tw`flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mr-3`}>
               <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput style={tw`flex-1 ml-3 text-gray-800 font-medium`} placeholder="Cari Plat Nomor..." placeholderTextColor="#9CA3AF" value={searchQuery} onChangeText={setSearchQuery} />
+              <TextInput style={tw`flex-1 ml-3 text-gray-800 font-medium`} placeholder="Cari Plat Nomor atau Merk..." placeholderTextColor="#9CA3AF" value={searchQuery} onChangeText={setSearchQuery} />
             </View>
             <TouchableOpacity style={tw`bg-[#0055A5] p-3 rounded-2xl shadow-md shadow-blue-500/30`} onPress={() => setIsFilterVisible(true)}>
               <Feather name="filter" size={22} color="white" />
@@ -466,10 +497,10 @@ export default function VehicleListScreen({ navigation }) {
           />
         </View>
 
-        {/* Floating Action Button (Only for Admin) */}
-        {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+        {/* Floating Action Button (Only for Admin on Mobile) */}
+        {!isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
           <TouchableOpacity
-            style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-14 h-14 rounded-full items-center justify-center shadow-lg shadow-blue-500/30`}
+            style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-40`}
             onPress={openAddModal}
           >
             <Feather name="plus" size={28} color="white" />
@@ -525,8 +556,8 @@ export default function VehicleListScreen({ navigation }) {
                   <View style={tw`px-6 pt-6 pb-8 bg-white -mt-5 rounded-t-[25px]`}>
                     <View style={tw`flex-row justify-between mb-4`}>
                       <View style={tw`flex-1 mr-2 bg-gray-50 p-4 rounded-2xl border border-gray-100`}>
-                        <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Tipe / Kapasitas</Text>
-                        <Text style={tw`text-base font-black text-gray-800`}>{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
+                        <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Merk / Tipe / Kapasitas</Text>
+                        <Text style={tw`text-base font-black text-gray-800`}>{selectedVehicle.brand ? `${selectedVehicle.brand} • ` : ''}{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
                       </View>
                       <View style={tw`flex-1 ml-2 bg-gray-50 p-4 rounded-2xl border border-gray-100`}>
                         <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Status Saat Ini</Text>
@@ -589,8 +620,8 @@ export default function VehicleListScreen({ navigation }) {
 
                   <View style={tw`flex-row mb-6`}>
                     <View style={tw`flex-1 justify-center`}>
-                      <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Tipe / Kapasitas</Text>
-                      <Text style={tw`text-base font-black text-gray-800 mb-3`}>{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
+                      <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Merk / Tipe / Kapasitas</Text>
+                      <Text style={tw`text-base font-black text-gray-800 mb-3`}>{selectedVehicle.brand ? `${selectedVehicle.brand} • ` : ''}{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
 
                       <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Status Truk</Text>
                       <Text style={tw`text-base font-black ${selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'text-red-600' : 'text-green-600'} mb-3`}>

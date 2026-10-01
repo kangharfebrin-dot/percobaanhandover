@@ -21,8 +21,20 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
     if (error) return res.status(400).json({ error: error.details[0].message });
     const { name, category, severity } = value;
 
+    // Auto-generate sequential ID CHK-xx
+    const lastItem = await prisma.checklistItem.findFirst({
+      where: { id: { startsWith: 'CHK-' } },
+      orderBy: { id: 'desc' }
+    });
+    let nextNum = 1;
+    if (lastItem && lastItem.id) {
+      const match = lastItem.id.match(/CHK-(\d+)/);
+      if (match) nextNum = parseInt(match[1], 10) + 1;
+    }
+    const id = `CHK-${String(nextNum).padStart(2, '0')}`;
+
     const newItem = await prisma.checklistItem.create({
-      data: { name, category, severity: severity || 'Minor' }
+      data: { id, name, category, severity: severity || 'Minor' }
     });
     res.status(201).json(newItem);
   } catch (error) {

@@ -7,9 +7,10 @@ import axios from 'axios';
 import { API_URL } from '../config';
 
 export default function WebSidebar({ user, activeMenu, navigation, handleLogout, unreadNotificationsCount = 0 }) {
-  if (Platform.OS !== 'web' || !user) return null;
-
-  const isSuperAdmin = user.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
+  const isManagement = isSuperAdmin || isAdmin;
+  const isPengawas = user?.role === 'PENGAWAS';
 
   const [internalUnreadCount, setInternalUnreadCount] = useState(unreadNotificationsCount || 0);
 
@@ -50,9 +51,6 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
        if (unsubscribe) unsubscribe();
     };
   }, [user, navigation]);
-  const isAdmin = user.role === 'ADMIN';
-  const isManagement = isSuperAdmin || isAdmin;
-  const isPengawas = user.role === 'PENGAWAS';
 
   // Baca posisi scroll terakhir dari sessionStorage agar sidebar tidak loncat ke atas
   const getSavedScrollY = () => {
@@ -119,7 +117,11 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
         sessionStorage.setItem('sidebarScrollY', y.toString());
       } catch (_) {}
     }
-    navigation.replace(routeName);
+    if (navigation && typeof navigation.replace === 'function') {
+      navigation.replace(routeName);
+    } else if (navigation && typeof navigation.navigate === 'function') {
+      navigation.navigate(routeName);
+    }
   }, [navigation]);
 
   const thumbTranslateY = scrollY.interpolate({
@@ -142,6 +144,9 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
       }
     } catch (err) { }
   };
+
+  // Hanya tampil di web dan saat user terautentikasi (dieksekusi SETELAH seluruh React hooks selesai didaftarkan)
+  if (Platform.OS !== 'web' || !user) return null;
 
   const getRoleLabel = () => {
     if (isSuperAdmin) return 'Super Admin';

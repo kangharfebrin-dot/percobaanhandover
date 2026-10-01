@@ -20,6 +20,7 @@ backend/logs/
 *.db-journal
 
 # Excel, CSV & Temporary Data
+data/
 *.xlsx
 *.csv
 *.tmp

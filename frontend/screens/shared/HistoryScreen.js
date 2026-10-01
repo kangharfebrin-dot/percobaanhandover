@@ -221,6 +221,9 @@ export default function HistoryScreen({ route, navigation }) {
       if (startDate && endDate) {
         queryParams += `&startDate=${startDate}&endDate=${endDate}`;
       }
+      if (searchQuery && searchQuery.trim() !== '') {
+        queryParams += `&search=${encodeURIComponent(searchQuery.trim())}`;
+      }
       const url = `${API_URL}/api/reports/excel${queryParams}`;
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
@@ -274,6 +277,9 @@ export default function HistoryScreen({ route, navigation }) {
       if (selectedShift && selectedShift !== 'Semua') queryParams += `&shift=${selectedShift}`;
       if (startDate && endDate) {
         queryParams += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      if (searchQuery && searchQuery.trim() !== '') {
+        queryParams += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
       url = `${API_URL}/api/reports/pdf${queryParams}`;
       if (Platform.OS === 'web') {
@@ -565,7 +571,7 @@ export default function HistoryScreen({ route, navigation }) {
       <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
 
         
-        {isLargeScreen && (
+        {isLargeScreen && user && (
           <WebSidebar 
             user={user} 
             activeMenu={'History'} 
@@ -578,7 +584,7 @@ export default function HistoryScreen({ route, navigation }) {
         {/* MAIN CONTENT AREA */}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
         {/* STICKY NAVBAR (Floating Modern Style) */}
-        {isLargeScreen ? (
+        {isLargeScreen && user ? (
           <WebNavbar
             user={user}
             title="Lihat Seluruh Laporan"

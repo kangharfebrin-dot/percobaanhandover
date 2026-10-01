@@ -20,6 +20,7 @@ model ChecklistItem {
 
 model Handover {
   id          String   @id @default(cuid())
+  handoverNo  String?  @db.VarChar(50)
   noPolisi    String   @db.VarChar(50)
   shift       String
   status      String   @db.VarChar(50)

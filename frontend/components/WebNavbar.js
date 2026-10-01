@@ -14,9 +14,6 @@ export default function WebNavbar({
   rightAction,
   style,
 }) {
-  // Hanya tampil di web dan saat user terautentikasi
-  if (Platform.OS !== 'web' || !user) return null;
-
   // Animasi rotasi halus untuk border pelangi avatar (Pertamina tricolor)
   const spinAnim = useRef(new Animated.Value(0)).current;
 
@@ -31,6 +28,9 @@ export default function WebNavbar({
     loop.start();
     return () => loop.stop();
   }, [spinAnim]);
+
+  // Hanya tampil di web dan saat user terautentikasi (dieksekusi SETELAH hooks)
+  if (Platform.OS !== 'web' || !user) return null;
 
   const spinInterpolate = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -48,6 +48,7 @@ export default function WebNavbar({
 
   // Inisial avatar yang elegan (menggunakan zero-width space \u200B agar Chrome tidak auto-translate 'AD' ke 'IKLAN')
   const getInitials = () => {
+    if (!user) return 'PT';
     if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'A\u200BD';
     if (user.role === 'PENGAWAS') return 'P\u200BS';
     if (!user.name) return 'PT';
@@ -136,7 +137,7 @@ export default function WebNavbar({
                   style={tw`flex-1 w-full h-full`}
                 />
               </Animated.View>
-              <View style={tw`w-[38px] h-[38px] rounded-full bg-white items-center justify-center shadow-inner`}>
+              <View style={tw`w-[38px] h-[38px] rounded-full bg-white items-center justify-center border border-gray-100`}>
                 <Text style={tw`text-[#1A2E44] font-black text-base tracking-widest`} className="notranslate" translate="no">
                   {getInitials()}
                 </Text>
@@ -170,7 +171,8 @@ export default function WebNavbar({
             <View style={[tw`flex-row items-center pr-1 select-none`, rightAction ? tw`border-l border-gray-200/50 pl-4` : {}]}>
               <Image
                 source={require('../assets/exact_logo_handover.png')}
-                style={{ width: 130, height: 24, resizeMode: 'contain' }}
+                style={{ width: 130, height: 24 }}
+                resizeMode="contain"
               />
             </View>
           )}

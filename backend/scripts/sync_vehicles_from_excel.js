@@ -13,7 +13,10 @@ const QRCode = require('qrcode');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const vehicleFile = path.join(__dirname, '..', '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
+const vehicleFile = [
+  path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx'),
+  path.join(__dirname, '..', '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx')
+].find(p => fs.existsSync(p)) || path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
 const barcodesDir = path.join(__dirname, '..', 'barcodes');
 
 if (!fs.existsSync(barcodesDir)) {

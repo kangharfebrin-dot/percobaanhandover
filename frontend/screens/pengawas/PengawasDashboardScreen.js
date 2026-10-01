@@ -358,7 +358,7 @@ export default function PengawasDashboardScreen({ navigation }) {
       <SafeAreaView style={tw`flex-1 ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
 
         
-        {isLargeScreen && (
+        {isLargeScreen && user && (
           <WebSidebar 
             user={user} 
             activeMenu={'Home'} 
@@ -373,7 +373,7 @@ export default function PengawasDashboardScreen({ navigation }) {
         <View style={tw`flex-1 relative`}>
 
           {/* STICKY NAVBAR (Floating Modern Style) */}
-          {isLargeScreen ? (
+          {isLargeScreen && user ? (
             <WebNavbar user={user} />
           ) : (
             <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>

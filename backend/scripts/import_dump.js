@@ -5,7 +5,11 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function importSql() {
-  const sqlPath = path.resolve(__dirname, '../handover_pertamina.sql');
+  const sqlPath = [
+    path.resolve(__dirname, '../../data/handover_pertamina.sql'),
+    path.resolve(__dirname, '../../handover_pertamina.sql'),
+    path.resolve(__dirname, '../handover_pertamina.sql')
+  ].find(p => fs.existsSync(p)) || path.resolve(__dirname, '../../data/handover_pertamina.sql');
   console.log('Reading SQL file from:', sqlPath);
 
   if (!fs.existsSync(sqlPath)) {

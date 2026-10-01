@@ -1,6 +1,11 @@
 const xlsx = require('xlsx');
 const path = require('path');
-const vehicleFile = path.join(__dirname, '../Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
+const fs = require('fs');
+const vehicleFile = [
+  path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx'),
+  path.join(__dirname, '..', '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx'),
+  path.join(__dirname, '..', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx')
+].find(p => fs.existsSync(p)) || path.join(__dirname, '..', '..', 'data', 'Nomor Polisi Mobil Tanki dan Kapasitas.xlsx');
 
 try {
   const vehicleWorkbook = xlsx.readFile(vehicleFile);

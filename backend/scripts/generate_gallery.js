@@ -1,8 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const barcodesDir = path.join(__dirname, 'barcodes');
-const galleryPath = path.join(__dirname, 'barcodes_gallery.html');
+const barcodesDir = fs.existsSync(path.join(__dirname, 'barcodes'))
+  ? path.join(__dirname, 'barcodes')
+  : path.join(__dirname, '..', 'barcodes');
+const galleryPath = path.join(__dirname, '..', 'scratch', 'barcodes_gallery.html');
 
 const files = fs.readdirSync(barcodesDir).filter(f => f.endsWith('.png'));
 

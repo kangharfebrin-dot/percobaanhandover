@@ -2,9 +2,104 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
 const prisma = require('../config/prisma');
 
+// Helper to format date YYYY-MM-DD HH:mm
+const formatDate = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
+// Helper for formatted Indonesian date
+const formatDateIndo = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }) + ' WIB';
+};
+
+// Helper for short date in compact tables (e.g. 25/09/2026 12:45)
+const formatDateShort = (date) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year}\n${hours}:${minutes}`;
+};
+
+// Helper to format Kru AMT
+const formatAmtCrew = (h) => {
+  const amt1 = h.amt1?.trim();
+  const amt2 = h.amt2?.trim();
+  if (amt1 && amt2) {
+    return `${amt1} & ${amt2}`;
+  }
+  if (amt1) return amt1;
+  if (amt2) return amt2;
+  return h.user?.name || '-';
+};
+
+// Helper to format Kru AMT multiline for PDF tables
+const formatAmtCrewPdf = (h) => {
+  const amt1 = h.amt1?.trim();
+  const amt2 = h.amt2?.trim();
+  if (amt1 && amt2) {
+    return `AMT 1: ${amt1}\nAMT 2: ${amt2}`;
+  }
+  if (amt1) return `AMT 1: ${amt1}`;
+  if (amt2) return `AMT 2: ${amt2}`;
+  return h.user?.name || '-';
+};
+
+// Helper to parse checklist items category
+const getCategoryName = (cat) => {
+  if (cat === 'A') return 'A. Perlengkapan Tangki';
+  if (cat === 'B') return 'B. Perlengkapan AMT';
+  if (cat === 'C') return 'C. Info Tambahan';
+  return cat || '-';
+};
+
+// Helper to get official document handover number (HO-YYYYMMDD-XXXX)
+const getHandoverCode = (h, handoverNoMap, fallbackIdx = 1) => {
+  if (handoverNoMap && handoverNoMap.get(h.id)) {
+    return handoverNoMap.get(h.id);
+  }
+  if (h.handoverNo && h.handoverNo.trim()) {
+    return h.handoverNo.trim();
+  }
+  const d = new Date(h.timestamp || h.createdAt || Date.now());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const seq = String(fallbackIdx).padStart(4, '0');
+  return `HO-${year}${month}${day}-${seq}`;
+};
+
+/**
+ * ============================================================================
+ * EXPORT EXCEL CONTROLLER
+ * Menghasilkan berkas .xlsx resmi berstandar Pertamina dengan kelengkapan:
+ * (ID Handover, Tanggal & Waktu, No. Polisi, Kru AMT 1 & 2, Jabatan, Catatan, dsb.)
+ * ============================================================================
+ */
 const exportExcel = async (req, res) => {
   try {
-    const { status, shift, startDate, endDate, handoverId, id } = req.query;
+    const { status, shift, startDate, endDate, handoverId, id, search, q } = req.query;
 
     if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
@@ -17,7 +112,13 @@ const exportExcel = async (req, res) => {
     }
 
     if (status && status !== 'Semua') {
-      where.status = status;
+      if (status === 'Normal') {
+        where.status = 'Siap Operasi (Normal)';
+      } else if (status === 'Isu') {
+        where.status = { not: 'Siap Operasi (Normal)' };
+      } else {
+        where.status = status;
+      }
     }
     if (shift && shift !== 'Semua') {
       where.shift = shift;
@@ -33,56 +134,138 @@ const exportExcel = async (req, res) => {
       };
     }
 
+    const searchQuery = (search || q || '').trim();
+    if (searchQuery) {
+      where.OR = [
+        { noPolisi: { contains: searchQuery } },
+        { amt1: { contains: searchQuery } },
+        { amt2: { contains: searchQuery } },
+        { id: { contains: searchQuery } },
+        { notes: { contains: searchQuery } },
+        { user: { name: { contains: searchQuery } } }
+      ];
+    }
+
+    // Abaikan sesi dummy NOT_STARTED jika tidak ada filter status khusus
+    if (!where.status) {
+      where.status = { not: 'NOT_STARTED' };
+    }
+
     const handovers = await prisma.handover.findMany({
       where: where,
       orderBy: { timestamp: 'desc' },
       include: {
-        user: { select: { name: true, jabatan: true } },
+        user: { select: { id: true, name: true, jabatan: true, role: true } },
         items: true,
         issue: true
       }
     });
+
+    let handoverNoMap = new Map();
+    try {
+      const rawCodes = await prisma.$queryRaw`SELECT id, handoverNo FROM handover WHERE handoverNo IS NOT NULL`;
+      handoverNoMap = new Map(rawCodes.map(r => [r.id, r.handoverNo]));
+    } catch (e) {
+      console.warn('Could not load handoverNo mapping:', e.message);
+    }
+
     const workbook = new ExcelJS.Workbook();
-    
+    workbook.creator = 'Pertamina HandoverApp';
+    workbook.lastModifiedBy = req.user ? req.user.name : 'System';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const isSingle = handovers.length === 1 && !!targetId;
+
     // ============================================
-    // SHEET 1: Handover Report
+    // SHEET 1: Laporan Handover
     // ============================================
-    const reportSheet = workbook.addWorksheet('Handover Report');
-    
-    // Add title row
-    reportSheet.mergeCells('A1:J2');
+    const reportSheet = workbook.addWorksheet('Laporan Handover', {
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+    });
+
+    // Title Block
+    reportSheet.mergeCells('A1:T2');
     const titleCell = reportSheet.getCell('A1');
-    titleCell.value = 'DIGIHANDOVER – HANDOVER REPORT';
-    titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002060' } }; // Dark blue
-    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    // Spacer row
+    titleCell.value = 'DIGIHANDOVER – PERTAMINA PATRA NIAGA FUEL TERMINAL MAOS\nLAPORAN RESMI SERAH TERIMA KENDARAAN (HANDOVER REPORT)';
+    titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12, name: 'Calibri' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002060' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    reportSheet.getRow(1).height = 24;
+    reportSheet.getRow(2).height = 24;
+
+    // Subheader Info row
+    reportSheet.mergeCells('A3:T3');
+    const subTitleCell = reportSheet.getCell('A3');
+    let infoPeriode = 'Semua Periode Data Handover';
+    if (startDate && endDate) {
+      infoPeriode = `Periode: ${startDate} s.d. ${endDate}`;
+    } else if (isSingle) {
+      infoPeriode = `Laporan Tunggal Unit Handover ID: ${getHandoverCode(handovers[0], handoverNoMap, 1)}`;
+    }
+    subTitleCell.value = `${infoPeriode} | Waktu Ekspor: ${formatDateIndo(new Date())} | Oleh: ${req.user.name} (${req.user.role})`;
+    subTitleCell.font = { italic: true, size: 9, color: { argb: 'FF333333' } };
+    subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    reportSheet.getRow(3).height = 20;
+
+    // Spacer
     reportSheet.addRow([]);
 
-    reportSheet.getRow(4).values = [
-      'Tipe Handover', 'Shift', 'Lokasi', 'Status Kendaraan', 'Komponen/Area', 
-      'Kategori Temuan', 'Detail Temuan', 'Status Follow Up', 'Diverifikasi Oleh', 'Waktu Verifikasi'
+    // Header Row 5
+    reportSheet.getRow(5).values = [
+      'ID Handover',
+      'Tanggal & Waktu',
+      'No. Polisi',
+      'Kru AMT',
+      'AMT 1 (Driver Utama)',
+      'AMT 2 (Driver Pendamping)',
+      'Diinput Oleh',
+      'Jabatan',
+      'Tipe Handover',
+      'Shift',
+      'Status Kondisi',
+      'Status Operasional',
+      'Lokasi / GPS',
+      'Catatan Handover',
+      'Komponen Temuan',
+      'Kategori Temuan',
+      'Detail Kerusakan',
+      'Status Follow Up',
+      'Diverifikasi Oleh',
+      'Waktu Verifikasi'
     ];
-    
+
     reportSheet.columns = [
-      { key: 'tipe', width: 20 },
-      { key: 'shift', width: 10 },
-      { key: 'lokasi', width: 25 },
-      { key: 'statusKendaraan', width: 20 },
-      { key: 'komponen', width: 25 },
-      { key: 'kategori', width: 18 },
-      { key: 'detailTemuan', width: 30 },
-      { key: 'statusFollowUp', width: 20 },
+      { key: 'id', width: 28 },
+      { key: 'tanggal', width: 18 },
+      { key: 'noPolisi', width: 16 },
+      { key: 'kruAmt', width: 30 },
+      { key: 'amt1', width: 24 },
+      { key: 'amt2', width: 24 },
+      { key: 'diinputOleh', width: 22 },
+      { key: 'jabatan', width: 20 },
+      { key: 'tipe', width: 18 },
+      { key: 'shift', width: 12 },
+      { key: 'statusKondisi', width: 16 },
+      { key: 'statusOperasional', width: 25 },
+      { key: 'lokasi', width: 28 },
+      { key: 'notes', width: 32 },
+      { key: 'komponen', width: 28 },
+      { key: 'kategori', width: 16 },
+      { key: 'detailKerusakan', width: 35 },
+      { key: 'statusFollowUp', width: 18 },
       { key: 'diverifikasiOleh', width: 20 },
       { key: 'waktuVerifikasi', width: 20 }
     ];
 
-    // Style Header Row 4
-    reportSheet.getRow(4).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    reportSheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
-    reportSheet.getRow(4).alignment = { vertical: 'middle', horizontal: 'center' };
-    
+    const headerRow5 = reportSheet.getRow(5);
+    headerRow5.height = 28;
+    headerRow5.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    headerRow5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
+    headerRow5.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+    const detailTemuanData = [];
+    const allChecklistItemsData = [];
     let totalHandover = handovers.length;
     let kendaraanAdaTemuan = 0;
     let temuanMajor = 0;
@@ -90,24 +273,22 @@ const exportExcel = async (req, res) => {
     let followUpOpen = 0;
     let followUpClosed = 0;
 
-    const detailTemuanData = []; // To collect data for Sheet 2
-
-    handovers.forEach(h => {
+    handovers.forEach((h, hIdx) => {
       const isMulai = h.type === 'mulai';
       const tipeStr = isMulai ? 'Mulai Pekerjaan' : 'Akhiri Pekerjaan';
       const shiftStr = h.shift || '-';
-      const lokasiStr = h.locationLat && h.locationLng ? `Fuel Terminal Maos (${h.locationLat}, ${h.locationLng})` : 'Fuel Terminal Maos';
-      
-      const badItems = h.items.filter(i => !i.isGood);
+      const lokasiStr = h.locationLat && h.locationLng
+        ? `Fuel Terminal Maos (${h.locationLat.toFixed(5)}, ${h.locationLng.toFixed(5)})`
+        : 'Fuel Terminal Maos';
+
+      const badItems = h.items ? h.items.filter(i => !i.isGood) : [];
       const hasIssue = badItems.length > 0;
-      
       if (hasIssue) kendaraanAdaTemuan++;
-      
-      const statusKendaraan = hasIssue ? 'Ada Temuan' : 'Normal';
-      
+
+      const statusKondisi = hasIssue ? 'Ada Temuan' : 'Normal';
       const komponenArr = badItems.map(i => i.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim());
       const komponenStr = komponenArr.length > 0 ? komponenArr.join(', ') : '-';
-      
+
       let kategoriStr = '-';
       let majorCount = 0;
       let minorCount = 0;
@@ -115,50 +296,25 @@ const exportExcel = async (req, res) => {
         if (i.name.includes('[MAJOR]')) {
           majorCount++;
           temuanMajor++;
-        }
-        else if (i.name.includes('[MINOR]')) {
+        } else if (i.name.includes('[MINOR]')) {
           minorCount++;
           temuanMinor++;
         }
       });
-      
+
       if (majorCount > 0 && minorCount > 0) kategoriStr = 'Major & Minor';
       else if (majorCount > 0) kategoriStr = 'Major';
       else if (minorCount > 0) kategoriStr = 'Minor';
 
-      // For 'Detail Temuan' sheet, we need one row per bad item
-      if (hasIssue) {
-        badItems.forEach(item => {
-          const isMajor = item.name.includes('[MAJOR]');
-          const itemName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
-          
-          let statusFollowUpItem = 'Open';
-          let diverifikasiOlehItem = '-';
-          let waktuVerifItem = '-';
-          
-          if (h.issue) {
-             if (h.issue.status === 'RESOLVED') {
-               statusFollowUpItem = 'Closed';
-             }
-             if (h.issue.resolvedBy) diverifikasiOlehItem = h.issue.resolvedBy;
-             if (h.issue.resolvedAt) waktuVerifItem = h.issue.resolvedAt.toISOString().replace('T', ' ').substring(0, 16).replace('T', ' ');
-          }
-          
-          detailTemuanData.push({
-            handoverId: h.id,
-            waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 16).replace('T', ' '),
-            nopol: h.noPolisi,
-            amt: h.user ? h.user.name : 'Unknown',
-            komponen: itemName,
-            kategori: isMajor ? 'Major' : 'Minor',
-            detail: item.description || `Catatan kondisi ${itemName.toLowerCase()}`,
-            tindakan: h.issue && h.issue.status === 'RESOLVED' ? 'Telah diperbaiki' : 'Dilaporkan ke supervisor',
-            status: statusFollowUpItem
-          });
-        });
-      }
+      const amt1 = h.amt1?.trim() || '';
+      const amt2 = h.amt2?.trim() || '';
+      const kruAmtStr = (amt1 && amt2) ? `${amt1} & ${amt2}` : (amt1 || amt2 || h.user?.name || '-');
+      const waktuStr = formatDate(h.timestamp);
 
-      let statusFollowUp = '-';
+      let statusFollowUp = hasIssue ? 'Open' : '-';
+      let diverifikasiOleh = '-';
+      let waktuVerifikasi = '-';
+
       if (h.issue) {
         if (h.issue.status === 'RESOLVED') {
           statusFollowUp = 'Closed';
@@ -167,122 +323,328 @@ const exportExcel = async (req, res) => {
           statusFollowUp = 'Open';
           followUpOpen++;
         }
+        if (h.issue.resolvedBy) diverifikasiOleh = h.issue.resolvedBy;
+        if (h.issue.resolvedAt) waktuVerifikasi = formatDate(h.issue.resolvedAt);
+      } else if (!hasIssue) {
+        statusFollowUp = 'Normal';
       }
-      
-      const diverifikasiOleh = h.issue && h.issue.resolvedBy ? h.issue.resolvedBy : '-';
-      const waktuVerifikasi = h.issue && h.issue.resolvedAt ? h.issue.resolvedAt.toISOString().replace('T', ' ').substring(0, 16).replace('T', ' ') : '-';
+
+      // Kumpulkan item temuan untuk Sheet 2
+      if (hasIssue) {
+        badItems.forEach(item => {
+          const isMajor = item.name.includes('[MAJOR]');
+          const itemName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
+          detailTemuanData.push({
+            handoverId: getHandoverCode(h, handoverNoMap, hIdx + 1),
+            waktu: waktuStr,
+            nopol: h.noPolisi,
+            amt: kruAmtStr,
+            diinputOleh: h.user ? h.user.name : '-',
+            jabatan: h.user ? (h.user.jabatan || '-') : '-',
+            shift: shiftStr,
+            komponen: itemName,
+            kategori: isMajor ? 'Major' : 'Minor',
+            detail: item.description || `Catatan kondisi ${itemName.toLowerCase()}`,
+            repairNote: item.repairNote || '-',
+            isRepaired: item.isRepaired ? 'Sudah Diperbaiki' : 'Belum Diperbaiki',
+            tindakan: item.isRepaired
+              ? 'Selesai Diperbaiki'
+              : (h.issue && h.issue.status === 'RESOLVED' ? 'Telah diperbaiki' : 'Dilaporkan ke supervisor'),
+            status: (h.issue && h.issue.status === 'RESOLVED') || item.isRepaired ? 'Closed' : 'Open',
+            diverifikasiOleh: diverifikasiOleh,
+            waktuVerifikasi: waktuVerifikasi
+          });
+        });
+      }
+
+      // Kumpulkan seluruh item jika single handover untuk Sheet Rincian Checklist
+      if (isSingle && h.items) {
+        h.items.forEach((item, itemIdx) => {
+          const isMajor = item.name.includes('[MAJOR]');
+          const isMinor = item.name.includes('[MINOR]');
+          const cleanName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
+          let severityStr = 'Normal';
+          if (isMajor) severityStr = 'Major';
+          else if (isMinor) severityStr = 'Minor';
+
+          allChecklistItemsData.push({
+            no: itemIdx + 1,
+            handoverId: getHandoverCode(h, handoverNoMap, hIdx + 1),
+            nopol: h.noPolisi,
+            kategori: getCategoryName(item.category),
+            namaItem: cleanName,
+            kondisi: item.isGood ? 'Baik / Normal' : 'Ada Temuan',
+            severity: severityStr,
+            catatan: item.repairNote || item.description || '-',
+            statusPerbaikan: item.isRepaired ? 'Sudah Diperbaiki' : (item.isGood ? 'Normal' : 'Belum Diperbaiki')
+          });
+        });
+      }
 
       const row = reportSheet.addRow({
+        id: getHandoverCode(h, handoverNoMap, hIdx + 1),
+        tanggal: waktuStr,
+        noPolisi: h.noPolisi,
+        kruAmt: kruAmtStr,
+        amt1: amt1 || '-',
+        amt2: amt2 || '-',
+        diinputOleh: h.user ? h.user.name : '-',
+        jabatan: h.user ? (h.user.jabatan || '-') : '-',
         tipe: tipeStr,
         shift: shiftStr,
+        statusKondisi: statusKondisi,
+        statusOperasional: h.status || (hasIssue ? 'Perlu Perbaikan' : 'Siap Operasi (Normal)'),
         lokasi: lokasiStr,
-        statusKendaraan: statusKendaraan,
+        notes: h.notes || '-',
         komponen: komponenStr,
         kategori: kategoriStr,
-        detailTemuan: badItems.map(i => i.description || '-').join(', ') || '-',
+        detailKerusakan: badItems.map(i => i.description || '-').join(', ') || '-',
         statusFollowUp: statusFollowUp,
         diverifikasiOleh: diverifikasiOleh,
         waktuVerifikasi: waktuVerifikasi
       });
 
+      row.height = 22;
+      row.getCell('id').font = { size: 9 };
+      row.getCell('tanggal').alignment = { horizontal: 'center' };
+      row.getCell('noPolisi').alignment = { horizontal: 'center' };
+      row.getCell('noPolisi').font = { bold: true };
+      row.getCell('shift').alignment = { horizontal: 'center' };
+      row.getCell('statusKondisi').alignment = { horizontal: 'center' };
+      row.getCell('statusFollowUp').alignment = { horizontal: 'center' };
+
       if (hasIssue) {
-        row.getCell('statusKendaraan').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } }; // Warning yellow
+        row.getCell('statusKondisi').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
+        row.getCell('statusKondisi').font = { bold: true, color: { argb: 'FF856404' } };
       } else {
-        row.getCell('statusKendaraan').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } }; // Light green
+        row.getCell('statusKondisi').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
+        row.getCell('statusKondisi').font = { bold: true, color: { argb: 'FF155724' } };
       }
     });
 
+    if (handovers.length === 0) {
+      const emptyRow = reportSheet.addRow({
+        id: '-',
+        tanggal: '-',
+        noPolisi: '-',
+        kruAmt: '-',
+        amt1: '-',
+        amt2: '-',
+        diinputOleh: '-',
+        jabatan: '-',
+        tipe: '-',
+        shift: '-',
+        statusKondisi: '-',
+        statusOperasional: 'Tidak ada data serah terima yang sesuai dengan kriteria filter',
+        lokasi: '-',
+        notes: '-',
+        komponen: '-',
+        kategori: '-',
+        detailKerusakan: '-',
+        statusFollowUp: '-',
+        diverifikasiOleh: '-',
+        waktuVerifikasi: '-'
+      });
+      emptyRow.height = 24;
+    }
+
     // ============================================
-    // SHEET 2: Detail Temuan
+    // SHEET 2: Detail Temuan & Perbaikan
     // ============================================
-    const detailSheet = workbook.addWorksheet('Detail Temuan');
-    
-    // Add title row
-    detailSheet.mergeCells('A1:I2');
+    const detailSheet = workbook.addWorksheet('Detail Temuan & Perbaikan');
+    detailSheet.mergeCells('A1:P2');
     const titleCell2 = detailSheet.getCell('A1');
-    titleCell2.value = 'DETAIL TEMUAN KENDARAAN';
-    titleCell2.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 };
+    titleCell2.value = 'DIGIHANDOVER – PERTAMINA PATRA NIAGA\nDETAIL TEMUAN KERUSAKAN, CATATAN PERBAIKAN & STATUS VERIFIKASI';
+    titleCell2.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
     titleCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002060' } };
-    titleCell2.alignment = { vertical: 'middle', horizontal: 'center' };
-    
+    titleCell2.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    detailSheet.getRow(1).height = 24;
+    detailSheet.getRow(2).height = 24;
+
     detailSheet.addRow([]);
-
     detailSheet.getRow(4).values = [
-      'Handover ID', 'Waktu Temuan', 'Nopol Truk', 'AMT', 'Komponen/Area', 
-      'Kategori', 'Detail Temuan', 'Tindakan', 'Status'
+      'Handover ID', 'Tanggal & Waktu', 'No. Polisi', 'Kru AMT', 'Diinput Oleh',
+      'Jabatan', 'Shift', 'Komponen / Area', 'Kategori Severity', 'Detail Temuan',
+      'Catatan Perbaikan', 'Status Perbaikan', 'Tindakan Lanjutan', 'Status Follow Up',
+      'Diverifikasi Oleh', 'Waktu Verifikasi'
     ];
-    
+
     detailSheet.columns = [
-      { key: 'handoverId', width: 25 },
-      { key: 'waktu', width: 20 },
-      { key: 'nopol', width: 15 },
-      { key: 'amt', width: 25 },
-      { key: 'komponen', width: 20 },
-      { key: 'kategori', width: 15 },
+      { key: 'handoverId', width: 28 },
+      { key: 'waktu', width: 18 },
+      { key: 'nopol', width: 16 },
+      { key: 'amt', width: 28 },
+      { key: 'diinputOleh', width: 22 },
+      { key: 'jabatan', width: 20 },
+      { key: 'shift', width: 12 },
+      { key: 'komponen', width: 26 },
+      { key: 'kategori', width: 18 },
       { key: 'detail', width: 35 },
-      { key: 'tindakan', width: 30 },
-      { key: 'status', width: 15 }
+      { key: 'repairNote', width: 30 },
+      { key: 'isRepaired', width: 20 },
+      { key: 'tindakan', width: 25 },
+      { key: 'status', width: 16 },
+      { key: 'diverifikasiOleh', width: 20 },
+      { key: 'waktuVerifikasi', width: 20 }
     ];
 
-    detailSheet.getRow(4).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    detailSheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
-    detailSheet.getRow(4).alignment = { vertical: 'middle', horizontal: 'center' };
+    const headerRow2 = detailSheet.getRow(4);
+    headerRow2.height = 28;
+    headerRow2.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    headerRow2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
+    headerRow2.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-    detailTemuanData.forEach(dt => {
-      detailSheet.addRow(dt);
-    });
+    if (detailTemuanData.length > 0) {
+      detailTemuanData.forEach(dt => {
+        const r = detailSheet.addRow(dt);
+        r.height = 22;
+        r.getCell('nopol').font = { bold: true };
+        r.getCell('kategori').alignment = { horizontal: 'center' };
+        r.getCell('status').alignment = { horizontal: 'center' };
+        if (dt.kategori === 'Major') {
+          r.getCell('kategori').font = { bold: true, color: { argb: 'FFC0392B' } };
+        }
+      });
+    } else {
+      const emptyRow = detailSheet.addRow({
+        handoverId: '-',
+        waktu: '-',
+        nopol: '-',
+        amt: '-',
+        diinputOleh: '-',
+        jabatan: '-',
+        shift: '-',
+        komponen: 'Semua Komponen Normal',
+        kategori: 'Normal',
+        detail: 'Tidak ada temuan kerusakan pada kendaraan yang diperiksa.',
+        repairNote: '-',
+        isRepaired: '-',
+        tindakan: 'Operasional Berjalan Lancar',
+        status: 'Closed',
+        diverifikasiOleh: '-',
+        waktuVerifikasi: '-'
+      });
+      emptyRow.height = 22;
+    }
 
     // ============================================
-    // SHEET 3: Rekap
+    // SHEET TAMBAHAN JIKA SINGLE HANDOVER: Checklist Unit
     // ============================================
-    const summarySheet = workbook.addWorksheet('Rekap');
-    summarySheet.mergeCells('A1:F2');
+    if (isSingle && allChecklistItemsData.length > 0) {
+      const checklistSheet = workbook.addWorksheet('Rincian Checklist Unit');
+      checklistSheet.mergeCells('A1:H2');
+      const titleCellCheck = checklistSheet.getCell('A1');
+      titleCellCheck.value = `DIGIHANDOVER – DAFTAR LENGKAP CHECKLIST INSPEKSI\nUnit No. Polisi: ${handovers[0].noPolisi} | No. Dokumen: ${getHandoverCode(handovers[0], handoverNoMap, 1)}`;
+      titleCellCheck.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+      titleCellCheck.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002060' } };
+      titleCellCheck.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      checklistSheet.getRow(1).height = 24;
+      checklistSheet.getRow(2).height = 24;
+
+      checklistSheet.addRow([]);
+      checklistSheet.getRow(4).values = [
+        'No', 'Handover ID', 'No. Polisi', 'Kategori', 'Item Pemeriksaan',
+        'Kondisi', 'Severity', 'Catatan / Catatan Perbaikan'
+      ];
+      checklistSheet.columns = [
+        { key: 'no', width: 8 },
+        { key: 'handoverId', width: 28 },
+        { key: 'nopol', width: 16 },
+        { key: 'kategori', width: 28 },
+        { key: 'namaItem', width: 35 },
+        { key: 'kondisi', width: 18 },
+        { key: 'severity', width: 16 },
+        { key: 'catatan', width: 35 }
+      ];
+
+      const headerRowCheck = checklistSheet.getRow(4);
+      headerRowCheck.height = 26;
+      headerRowCheck.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRowCheck.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
+      headerRowCheck.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      allChecklistItemsData.forEach(itemRow => {
+        const r = checklistSheet.addRow(itemRow);
+        r.height = 20;
+        r.getCell('no').alignment = { horizontal: 'center' };
+        r.getCell('nopol').alignment = { horizontal: 'center' };
+        r.getCell('kondisi').alignment = { horizontal: 'center' };
+        r.getCell('severity').alignment = { horizontal: 'center' };
+
+        if (itemRow.kondisi !== 'Baik / Normal') {
+          r.getCell('kondisi').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+          r.getCell('kondisi').font = { bold: true, color: { argb: 'FF721C24' } };
+        } else {
+          r.getCell('kondisi').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
+          r.getCell('kondisi').font = { bold: true, color: { argb: 'FF155724' } };
+        }
+      });
+    }
+
+    // ============================================
+    // SHEET 3: Rekap & Statistik
+    // ============================================
+    const summarySheet = workbook.addWorksheet('Rekap & Statistik');
+    summarySheet.mergeCells('A1:D2');
     const titleCell3 = summarySheet.getCell('A1');
-    titleCell3.value = 'REKAP HANDOVER';
-    titleCell3.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 };
+    titleCell3.value = 'DIGIHANDOVER – RINGKASAN & STATISTIK HANDOVER';
+    titleCell3.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
     titleCell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002060' } };
-    titleCell3.alignment = { vertical: 'middle', horizontal: 'center' };
-    
+    titleCell3.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    summarySheet.getRow(1).height = 24;
+    summarySheet.getRow(2).height = 24;
+
     summarySheet.columns = [
-      { key: 'label', width: 30 },
-      { key: 'value', width: 15 },
-      { key: 'space', width: 5 },
-      { key: 'note1', width: 60 }
+      { key: 'label', width: 35 },
+      { key: 'value', width: 22 },
+      { key: 'unit', width: 14 },
+      { key: 'note', width: 50 }
     ];
 
-    const fillBlue = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-    
-    const summaryData = [
-      { label: 'Total Handover', value: totalHandover, note: 'Catatan' },
-      { label: 'Kendaraan Ada Temuan', value: kendaraanAdaTemuan, note: 'Sheet Handover Report = data utama/export.' },
-      { label: 'Temuan Major', value: temuanMajor, note: 'Detail Temuan = rincian jika satu handover punya beberapa temuan.' },
-      { label: 'Temuan Minor', value: temuanMinor, note: 'Rekap = ringkasan otomatis.' },
-      { label: 'Follow Up Open', value: followUpOpen, note: '' },
-      { label: 'Follow Up Closed', value: followUpClosed, note: '' }
+    summarySheet.addRow([]);
+    summarySheet.getRow(4).values = ['Indikator / Metrik', 'Nilai', 'Satuan', 'Keterangan'];
+    const summaryHeader = summarySheet.getRow(4);
+    summaryHeader.height = 26;
+    summaryHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    summaryHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
+
+    const summaryRows = [
+      { label: 'Total Handover Diperiksa', value: totalHandover, unit: 'Unit', note: 'Total proses serah terima tercatat pada sistem' },
+      { label: 'Kendaraan Kondisi Normal', value: totalHandover - kendaraanAdaTemuan, unit: 'Unit', note: 'Kendaraan siap operasi tanpa catatan isu' },
+      { label: 'Kendaraan Ada Temuan', value: kendaraanAdaTemuan, unit: 'Unit', note: 'Kendaraan dengan catatan temuan kendala checklist' },
+      { label: 'Temuan Kategori Major', value: temuanMajor, unit: 'Temuan', note: 'Perlu penanganan kritis / perbaikan segera' },
+      { label: 'Temuan Kategori Minor', value: temuanMinor, unit: 'Temuan', note: 'Temuan ringan yang masih dapat ditindaklanjuti' },
+      { label: 'Status Follow Up Open', value: followUpOpen, unit: 'Isu', note: 'Temuan belum diselesaikan / diverifikasi' },
+      { label: 'Status Follow Up Closed', value: followUpClosed, unit: 'Isu', note: 'Temuan telah diperbaiki & diverifikasi' },
+      { label: 'Waktu Cetak Dokumen', value: formatDate(new Date()), unit: 'WIB', note: 'Waktu berkas diekspor dari sistem' },
+      { label: 'Petugas Pengekspor', value: req.user ? req.user.name : '-', unit: 'Akun', note: `Role: ${req.user ? req.user.role : '-'}` }
     ];
 
-    summaryData.forEach((row, i) => {
-       const r = summarySheet.addRow({
-         label: row.label,
-         value: row.value,
-         note1: row.note
-       });
-       r.getCell('label').font = { bold: true };
-       r.getCell('label').fill = fillBlue;
-       r.getCell('value').alignment = { horizontal: 'center' };
-       r.getCell('value').font = { bold: true };
-       if (i === 0) r.getCell('note1').font = { bold: true };
+    summaryRows.forEach(sr => {
+      const r = summarySheet.addRow(sr);
+      r.height = 20;
+      r.getCell('label').font = { bold: true };
+      r.getCell('value').alignment = { horizontal: 'center' };
+      r.getCell('value').font = { bold: true };
+      r.getCell('unit').alignment = { horizontal: 'center' };
     });
+
+    let downloadFilename = 'Laporan_Handover_Pertamina.xlsx';
+    if (isSingle) {
+      downloadFilename = `Handover_${handovers[0]?.noPolisi || 'Report'}_${getHandoverCode(handovers[0], handoverNoMap, 1)}.xlsx`;
+    } else {
+      downloadFilename = `Laporan_Handover_Pertamina_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=' + 'Handover_Report.xlsx');
-    
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+
     if (req.user && req.user.id) {
       await prisma.auditLog.create({
         data: {
           action: 'EXPORT_EXCEL',
           userId: req.user.id,
-          details: 'User exported handover reports to Excel'
+          details: `User exported handover reports to Excel (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
         }
       });
     }
@@ -290,14 +652,21 @@ const exportExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error(error);
+    console.error('Error exportExcel:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
+/**
+ * ============================================================================
+ * EXPORT PDF CONTROLLER
+ * Menghasilkan berkas .pdf landscape A4 berstandar Pertamina dengan kelengkapan:
+ * (ID Handover, Tanggal & Waktu, No. Polisi, Kru AMT 1 & 2, Jabatan, Catatan, dsb.)
+ * ============================================================================
+ */
 const exportPdf = async (req, res) => {
   try {
-    const { status, shift, startDate, endDate, handoverId, id } = req.query;
+    const { status, shift, startDate, endDate, handoverId, id, search, q } = req.query;
 
     if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
@@ -310,7 +679,13 @@ const exportPdf = async (req, res) => {
     }
 
     if (status && status !== 'Semua') {
-      where.status = status;
+      if (status === 'Normal') {
+        where.status = 'Siap Operasi (Normal)';
+      } else if (status === 'Isu') {
+        where.status = { not: 'Siap Operasi (Normal)' };
+      } else {
+        where.status = status;
+      }
     }
     if (shift && shift !== 'Semua') {
       where.shift = shift;
@@ -326,20 +701,60 @@ const exportPdf = async (req, res) => {
       };
     }
 
+    const searchQuery = (search || q || '').trim();
+    if (searchQuery) {
+      where.OR = [
+        { noPolisi: { contains: searchQuery } },
+        { amt1: { contains: searchQuery } },
+        { amt2: { contains: searchQuery } },
+        { id: { contains: searchQuery } },
+        { notes: { contains: searchQuery } },
+        { user: { name: { contains: searchQuery } } }
+      ];
+    }
+
+    if (!where.status) {
+      where.status = { not: 'NOT_STARTED' };
+    }
+
     const handovers = await prisma.handover.findMany({
       where: where,
       orderBy: { timestamp: 'desc' },
-      include: { user: true, items: true, issue: true }
+      include: {
+        user: { select: { id: true, name: true, jabatan: true, role: true } },
+        items: true,
+        issue: true
+      }
     });
 
+    let handoverNoMap = new Map();
+    try {
+      const rawCodes = await prisma.$queryRaw`SELECT id, handoverNo FROM handover WHERE handoverNo IS NOT NULL`;
+      handoverNoMap = new Map(rawCodes.map(r => [r.id, r.handoverNo]));
+    } catch (e) {
+      console.warn('Could not load handoverNo mapping in exportPdf:', e.message);
+    }
+
+    const isSingle = handovers.length === 1 && !!targetId;
     const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+
+    let downloadFilename = 'Laporan_Handover_Pertamina.pdf';
+    if (isSingle) {
+      downloadFilename = `Handover_${handovers[0]?.noPolisi || 'Report'}_${getHandoverCode(handovers[0], handoverNoMap, 1)}.pdf`;
+    } else {
+      downloadFilename = `Laporan_Handover_Pertamina_${new Date().toISOString().slice(0, 10)}.pdf`;
+    }
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=' + 'Handover_Report.pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     doc.pipe(res);
 
+    // Decorative Pertamina tricolor top band
     const drawTopBar = () => {
-      doc.rect(0, 0, doc.page.width, 25).fill('#3498DB');
-      doc.y = 50;
+      doc.rect(0, 0, doc.page.width, 10).fill('#002060'); // Dark Navy
+      doc.rect(0, 10, doc.page.width, 3).fill('#ED1C24'); // Pertamina Red
+      doc.rect(0, 13, doc.page.width, 3).fill('#00A651'); // Pertamina Green
+      doc.y = 40;
     };
 
     // Calculate stats
@@ -347,299 +762,444 @@ const exportPdf = async (req, res) => {
     let adaTemuan = 0;
     let temuanMajor = 0;
     let followUpOpen = 0;
+    let followUpClosed = 0;
 
     handovers.forEach(h => {
-        const badItems = h.items.filter(i => !i.isGood);
-        if (badItems.length > 0) {
-            adaTemuan++;
-            if (badItems.some(i => i.name.includes('[MAJOR]'))) {
-                temuanMajor++;
-            }
-            if (!h.issue || h.issue.status !== 'RESOLVED') {
-                followUpOpen++;
-            }
+      const badItems = h.items ? h.items.filter(i => !i.isGood) : [];
+      if (badItems.length > 0) {
+        adaTemuan++;
+        if (badItems.some(i => i.name.includes('[MAJOR]'))) {
+          temuanMajor++;
         }
+        if (h.issue && h.issue.status === 'RESOLVED') {
+          followUpClosed++;
+        } else {
+          followUpOpen++;
+        }
+      }
     });
 
-    const handoverSelesai = totalHandover - followUpOpen;
-
     // ============================================
-    // PAGE 1: SUMMARY
+    // PAGE 1: RINGKASAN & IKHTISAR
     // ============================================
     drawTopBar();
-    doc.fillColor('#002060').font('Helvetica-Bold').fontSize(24).text('DIGIHANDOVER', 30, 60);
-    doc.fillColor('gray').font('Helvetica').fontSize(12).text('HANDOVER REPORT', 30, 85);
-    doc.moveDown(2);
+    doc.fillColor('#002060').font('Helvetica-Bold').fontSize(22).text('PERTAMINA PATRA NIAGA', 30, 42);
+    doc.fillColor('#004080').font('Helvetica-Bold').fontSize(12).text('DIGIHANDOVER – LAPORAN RESMI SERAH TERIMA KENDARAAN', 30, 68);
+    doc.fillColor('gray').font('Helvetica').fontSize(9).text('Fuel Terminal Maos • Sistem Handover & Checklist Inspeksi Digital Terintegrasi', 30, 84);
+    doc.moveDown(1.5);
 
-    let periodStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    let periodStr = formatDateIndo(new Date());
     if (startDate && endDate) {
-      periodStr = `${new Date(startDate).toLocaleDateString('id-ID')} - ${new Date(endDate).toLocaleDateString('id-ID')}`;
+      periodStr = `${startDate} s.d. ${endDate}`;
+    } else if (isSingle && handovers[0]) {
+      periodStr = `${formatDateIndo(handovers[0].timestamp)}`;
     }
 
     const tableHeader = {
-        headers: [
-            { label: "PERIODE", property: 'periode', width: 250 },
-            { label: "LOKASI", property: 'lokasi', width: 250 },
-            { label: "STATUS DOKUMEN", property: 'status', width: 250 }
-        ],
-        datas: [
-            { 
-                periode: periodStr,
-                lokasi: 'Fuel Terminal Maos',
-                status: 'Digital • Terverifikasi'
-            }
-        ]
+      headers: [
+        { label: "PERIODE LAPORAN", property: 'periode', width: 250 },
+        { label: "LOKASI OPERASIONAL", property: 'lokasi', width: 250 },
+        { label: "STATUS VALIDASI", property: 'status', width: 250 }
+      ],
+      datas: [
+        {
+          periode: periodStr,
+          lokasi: 'Fuel Terminal Maos',
+          status: 'Digital Verified • Sistem Terintegrasi'
+        }
+      ]
     };
-    
+
     await doc.table(tableHeader, {
-        prepareHeader: () => doc.font("Helvetica").fontSize(8).fillColor('gray'),
-        prepareRow: () => doc.font("Helvetica").fontSize(10).fillColor('black'),
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
+      prepareRow: () => doc.font("Helvetica").fontSize(9).fillColor('black'),
     });
 
-    doc.moveDown(2);
-    doc.fillColor('#002060').font('Helvetica-Bold').fontSize(16).text('Ringkasan Handover', 30, doc.y);
-    doc.moveDown(1);
+    doc.moveDown(1.2);
+
+    // Jika Single Handover: Tampilkan Kartu Identitas Khusus Unit
+    if (isSingle && handovers[0]) {
+      const hSingle = handovers[0];
+      const singleBoxY = doc.y;
+      doc.rect(30, singleBoxY, 750, 75).fill('#f8fafc');
+      doc.rect(30, singleBoxY, 5, 75).fill('#002060');
+
+      doc.fillColor('#002060').font('Helvetica-Bold').fontSize(11).text('IDENTITAS SERAH TERIMA KENDARAAN (HANDOVER DETAIL)', 45, singleBoxY + 10);
+      
+      const col1X = 45;
+      const col2X = 280;
+      const col3X = 520;
+      const line1Y = singleBoxY + 28;
+      const line2Y = singleBoxY + 44;
+      const line3Y = singleBoxY + 58;
+
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#333333');
+      doc.text(`ID Handover: `, col1X, line1Y, { continued: true }).font('Helvetica').text(getHandoverCode(hSingle, handoverNoMap, 1));
+      doc.font('Helvetica-Bold').text(`No. Polisi: `, col1X, line2Y, { continued: true }).font('Helvetica').text(hSingle.noPolisi);
+      doc.font('Helvetica-Bold').text(`Tanggal: `, col1X, line3Y, { continued: true }).font('Helvetica').text(formatDate(hSingle.timestamp));
+
+      doc.font('Helvetica-Bold').text(`Kru AMT 1: `, col2X, line1Y, { continued: true }).font('Helvetica').text(hSingle.amt1 || '-');
+      doc.font('Helvetica-Bold').text(`Kru AMT 2: `, col2X, line2Y, { continued: true }).font('Helvetica').text(hSingle.amt2 || '-');
+      doc.font('Helvetica-Bold').text(`Diinput Oleh: `, col2X, line3Y, { continued: true }).font('Helvetica').text(`${hSingle.user?.name || '-'} (${hSingle.user?.jabatan || '-'})`);
+
+      doc.font('Helvetica-Bold').text(`Tipe / Shift: `, col3X, line1Y, { continued: true }).font('Helvetica').text(`${hSingle.type === 'mulai' ? 'Mulai' : 'Akhiri'} • ${hSingle.shift || '-'}`);
+      doc.font('Helvetica-Bold').text(`Status Unit: `, col3X, line2Y, { continued: true }).font('Helvetica').text(hSingle.status || (adaTemuan > 0 ? 'Ada Temuan' : 'Normal'));
+      doc.font('Helvetica-Bold').text(`Catatan: `, col3X, line3Y, { continued: true }).font('Helvetica').text((hSingle.notes || '-').substring(0, 35));
+
+      doc.y = singleBoxY + 75 + 15;
+    }
+
+    doc.fillColor('#002060').font('Helvetica-Bold').fontSize(14).text('Ringkasan Eksekutif Handover', 30, doc.y);
+    doc.moveDown(0.8);
 
     const boxY = doc.y;
     const boxW = 180;
-    const boxH = 60;
-    
+    const boxH = 55;
+
     const boxes = [
-        { title: 'TOTAL HANDOVER', value: totalHandover.toString(), color: '#2980B9', bg: '#f0f8ff' },
-        { title: 'ADA TEMUAN', value: adaTemuan.toString(), color: '#F39C12', bg: '#fef5e7' },
-        { title: 'TEMUAN MAJOR', value: temuanMajor.toString(), color: '#C0392B', bg: '#fdedec' },
-        { title: 'FOLLOW UP OPEN', value: followUpOpen.toString(), color: '#E74C3C', bg: '#fadbd8' }
+      { title: 'TOTAL HANDOVER', value: `${totalHandover} Unit`, color: '#0055A5', bg: '#f0f8ff' },
+      { title: 'KONDISI NORMAL', value: `${totalHandover - adaTemuan} Unit`, color: '#00A651', bg: '#e8f8f5' },
+      { title: 'ADA TEMUAN', value: `${adaTemuan} Unit`, color: '#E67E22', bg: '#fef5e7' },
+      { title: 'TEMUAN MAJOR', value: `${temuanMajor} Isu`, color: '#C0392B', bg: '#fdedec' }
     ];
 
     boxes.forEach((box, i) => {
-        const bx = 30 + (boxW + 15) * i;
-        doc.rect(bx, boxY, boxW, boxH).fill(box.bg);
-        doc.rect(bx, boxY, 5, boxH).fill(box.color);
-        doc.fillColor(box.color).font('Helvetica-Bold').fontSize(24).text(box.value, bx + 15, boxY + 15);
-        doc.fillColor('gray').font('Helvetica-Bold').fontSize(8).text(box.title, bx + 15, boxY + 45);
+      const bx = 30 + (boxW + 15) * i;
+      doc.rect(bx, boxY, boxW, boxH).fill(box.bg);
+      doc.rect(bx, boxY, 5, boxH).fill(box.color);
+      doc.fillColor(box.color).font('Helvetica-Bold').fontSize(18).text(box.value, bx + 15, boxY + 12);
+      doc.fillColor('#555555').font('Helvetica-Bold').fontSize(8).text(box.title, bx + 15, boxY + 36);
     });
 
-    doc.y = boxY + boxH + 30;
-
-    doc.fillColor('#002060').font('Helvetica-Bold').fontSize(16).text('Ikhtisar Status', 30, doc.y);
-    doc.moveDown(1);
+    doc.y = boxY + boxH + 20;
 
     const tableIkhtisar = {
-        headers: [
-            { label: "INDIKATOR", property: 'indikator', width: 250 },
-            { label: "JUMLAH", property: 'jumlah', width: 100 },
-            { label: "PROPORSI", property: 'proporsi', width: 100 },
-            { label: "KETERANGAN", property: 'keterangan', width: 300 }
-        ],
-        datas: [
-            { indikator: 'Handover selesai', jumlah: handoverSelesai.toString(), proporsi: totalHandover ? Math.round((handoverSelesai/totalHandover)*100) + '%' : '0%', keterangan: 'Follow up berstatus Closed' },
-            { indikator: 'Follow up terbuka', jumlah: followUpOpen.toString(), proporsi: totalHandover ? Math.round((followUpOpen/totalHandover)*100) + '%' : '0%', keterangan: 'Perlu pemantauan / tindakan lanjutan' },
-            { indikator: 'Kendaraan ada temuan', jumlah: adaTemuan.toString(), proporsi: totalHandover ? Math.round((adaTemuan/totalHandover)*100) + '%' : '0%', keterangan: 'Terdapat catatan kondisi kendaraan' }
-        ]
+      headers: [
+        { label: "INDIKATOR OPERASIONAL", property: 'indikator', width: 250 },
+        { label: "JUMLAH", property: 'jumlah', width: 100 },
+        { label: "PROPORSI", property: 'proporsi', width: 100 },
+        { label: "KETERANGAN", property: 'keterangan', width: 300 }
+      ],
+      datas: [
+        {
+          indikator: 'Handover Siap Operasi (Normal)',
+          jumlah: (totalHandover - adaTemuan).toString(),
+          proporsi: totalHandover ? Math.round(((totalHandover - adaTemuan) / totalHandover) * 100) + '%' : '0%',
+          keterangan: 'Kendaraan laik operasi tanpa kendala checklist'
+        },
+        {
+          indikator: 'Kendaraan Dengan Temuan',
+          jumlah: adaTemuan.toString(),
+          proporsi: totalHandover ? Math.round((adaTemuan / totalHandover) * 100) + '%' : '0%',
+          keterangan: 'Terdapat catatan kendala pada komponen checklist'
+        },
+        {
+          indikator: 'Temuan Selesai (Closed)',
+          jumlah: followUpClosed.toString(),
+          proporsi: adaTemuan ? Math.round((followUpClosed / adaTemuan) * 100) + '%' : '0%',
+          keterangan: 'Isu telah diperbaiki dan diverifikasi oleh pengawas'
+        },
+        {
+          indikator: 'Temuan Menunggu (Open)',
+          jumlah: followUpOpen.toString(),
+          proporsi: adaTemuan ? Math.round((followUpOpen / adaTemuan) * 100) + '%' : '0%',
+          keterangan: 'Perlu tindak lanjut perbaikan teknisi / pengawas'
+        }
+      ]
     };
-    
+
     await doc.table(tableIkhtisar, {
-        prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
-        prepareRow: () => doc.font("Helvetica").fontSize(9).fillColor('black'),
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
+      prepareRow: () => doc.font("Helvetica").fontSize(8.5).fillColor('black'),
     });
 
     doc.moveDown(1);
     const catY = doc.y;
-    doc.rect(30, catY, 750, 30).fill('#f0f8ff');
-    doc.rect(30, catY, 5, 30).fill('#2980B9');
-    doc.fillColor('black').font('Helvetica-Bold').fontSize(9).text('Catatan: ', 45, catY + 10, { continued: true });
-    doc.font('Helvetica').text('Laporan merangkum proses serah terima kendaraan, kondisi unit, detail temuan, dan status tindak lanjut. Seluruh data dapat ditelusuri melalui Handover ID.');
+    doc.rect(30, catY, 750, 32).fill('#f0f8ff');
+    doc.rect(30, catY, 4, 32).fill('#0055A5');
+    doc.fillColor('black').font('Helvetica-Bold').fontSize(8.5).text('Catatan Sistem: ', 45, catY + 10, { continued: true });
+    doc.font('Helvetica').text('Laporan resmi ini merangkum seluruh siklus serah terima mobil tangki, personil kru AMT, jabatan, nomor polisi unit, serta status verifikasi dan tindak lanjut perbaikan.');
 
     // ============================================
-    // PAGE 2: Daftar Handover & Verifikasi
+    // PAGE 2: DAFTAR HANDOVER & VERIFIKASI
     // ============================================
     doc.addPage();
     drawTopBar();
-    doc.fontSize(20).fillColor('#002060').font('Helvetica-Bold').text('Daftar Handover', 30, 60);
-    doc.fontSize(10).fillColor('gray').font('Helvetica').text('Rekaman utama proses serah terima kendaraan dan kondisi operasional.');
+    doc.fontSize(16).fillColor('#002060').font('Helvetica-Bold').text('Daftar Handover Kendaraan', 30, 42);
+    doc.fontSize(8.5).fillColor('gray').font('Helvetica').text('Rekaman utama proses serah terima unit, kru AMT, jabatan pelapor, nomor polisi, dan status kelayakan operasional.');
     doc.moveDown(1);
 
     const table1 = {
       headers: [
-        { label: "ID", property: 'id', width: 70 },
-        { label: "WAKTU", property: 'waktu', width: 75 },
-        { label: "AMT / JABATAN", property: 'amt', width: 90 },
-        { label: "NOPOL", property: 'nopol', width: 50 },
-        { label: "TIPE", property: 'tipe', width: 65 },
-        { label: "SHIFT", property: 'shift', width: 40 },
-        { label: "LOKASI", property: 'lokasi', width: 90 },
-        { label: "KONDISI", property: 'kondisi', width: 60 },
-        { label: "AREA", property: 'area', width: 90 },
-        { label: "KATEGORI", property: 'kategori', width: 60 },
-        { label: "FOLLOW UP", property: 'followup', width: 60 }
+        { label: "ID HANDOVER", property: 'id', width: 95 },
+        { label: "TANGGAL", property: 'waktu', width: 75 },
+        { label: "NO. POLISI", property: 'nopol', width: 65 },
+        { label: "KRU AMT", property: 'amt', width: 100 },
+        { label: "PELAPOR & JABATAN", property: 'pelapor', width: 95 },
+        { label: "TIPE / SHIFT", property: 'tipe', width: 65 },
+        { label: "KONDISI", property: 'kondisi', width: 65 },
+        { label: "CATATAN / TEMUAN", property: 'catatan', width: 120 },
+        { label: "STATUS", property: 'status', width: 70 }
       ],
       datas: []
     };
 
     const table2 = {
       headers: [
-        { label: "HANDOVER ID", property: 'id', width: 120 },
-        { label: "DIVERIFIKASI OLEH", property: 'admin', width: 160 },
-        { label: "WAKTU VERIFIKASI", property: 'waktu', width: 140 },
-        { label: "KETERANGAN", property: 'ket', width: 280 }
+        { label: "ID HANDOVER", property: 'id', width: 110 },
+        { label: "NO. POLISI", property: 'nopol', width: 70 },
+        { label: "TANGGAL", property: 'waktu', width: 80 },
+        { label: "KRU AMT & JABATAN", property: 'petugas', width: 150 },
+        { label: "STATUS DOKUMEN", property: 'status', width: 100 },
+        { label: "DIVERIFIKASI OLEH", property: 'admin', width: 120 },
+        { label: "WAKTU VERIFIKASI", property: 'waktuVerif', width: 120 }
       ],
       datas: []
     };
 
     const table3 = {
       headers: [
-        { label: "ID", property: 'id', width: 80 },
-        { label: "NOPOL", property: 'nopol', width: 50 },
-        { label: "WAKTU", property: 'waktu', width: 75 },
-        { label: "AREA", property: 'area', width: 80 },
-        { label: "KATEGORI", property: 'kategori', width: 50 },
-        { label: "SEVERITY", property: 'severity', width: 55 },
-        { label: "DESKRIPSI", property: 'desc', width: 120 },
-        { label: "TINDAKAN", property: 'tindakan', width: 110 },
-        { label: "STATUS", property: 'status', width: 60 },
-        { label: "KETERANGAN", property: 'ket', width: 60 }
+        { label: "ID HANDOVER", property: 'id', width: 85 },
+        { label: "NO. POLISI", property: 'nopol', width: 65 },
+        { label: "TANGGAL", property: 'waktu', width: 70 },
+        { label: "KRU AMT", property: 'amt', width: 85 },
+        { label: "JABATAN", property: 'jabatan', width: 70 },
+        { label: "KOMPONEN", property: 'area', width: 80 },
+        { label: "SEVERITY", property: 'severity', width: 50 },
+        { label: "DESKRIPSI & PERBAIKAN", property: 'desc', width: 125 },
+        { label: "TINDAKAN", property: 'tindakan', width: 70 },
+        { label: "STATUS", property: 'status', width: 50 }
       ],
       datas: []
     };
 
-    handovers.forEach(h => {
-      const typeStr = h.type === 'mulai' ? 'Mulai Pekerjaan' : 'Akhiri Pekerjaan';
-      const userName = h.user ? h.user.name : 'Unknown User';
-      const jabatan = h.user ? h.user.jabatan : '-';
-      
-      const badItems = h.items.filter(i => !i.isGood);
+    handovers.forEach((h, hIdx) => {
+      const isMulai = h.type === 'mulai';
+      const typeStr = isMulai ? 'Mulai' : 'Akhiri';
+      const badItems = h.items ? h.items.filter(i => !i.isGood) : [];
       const isNormal = badItems.length === 0;
-      const kondisiStr = isNormal ? 'Normal' : 'Ada Temuan';
-      
-      const areaStr = badItems.map(i => i.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim()).join(', ') || '-';
-      
-      let katStr = '-';
-      let hasMajor = false;
-      let hasMinor = false;
-      badItems.forEach(i => {
-        if (i.name.includes('[MAJOR]')) hasMajor = true;
-        if (i.name.includes('[MINOR]')) hasMinor = true;
-      });
-      if (hasMajor && hasMinor) katStr = 'Major & Minor';
-      else if (hasMajor) katStr = 'Major';
-      else if (hasMinor) katStr = 'Minor';
 
-      let followUpStr = 'Closed';
+      const amtDisplay = formatAmtCrewPdf(h);
+      const pelaporDisplay = `${h.user?.name || '-'}\n(${h.user?.jabatan || '-'})`;
+
+      const temuanParts = [];
+      if (badItems.length > 0) {
+        temuanParts.push(badItems.map(i => i.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim()).join(', '));
+      }
+      if (h.notes && h.notes.trim()) {
+        temuanParts.push(`Catatan: ${h.notes.trim()}`);
+      }
+      const catatanStr = temuanParts.length > 0 ? temuanParts.join('\n') : 'Semua item checklist normal';
+
+      let followUpStr = 'Normal';
       if (!isNormal) {
         followUpStr = (h.issue && h.issue.status === 'RESOLVED') ? 'Closed' : 'Open';
       }
 
       table1.datas.push({
-        id: h.id.substring(0, 15), 
-        waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 16),
-        amt: `${userName}\n${jabatan}`,
+        id: getHandoverCode(h, handoverNoMap, hIdx + 1),
+        waktu: formatDateShort(h.timestamp),
         nopol: h.noPolisi,
-        tipe: typeStr,
-        shift: h.shift || '-',
-        lokasi: h.locationLat && h.locationLng ? `Fuel Terminal Maos` : 'Fuel Terminal Maos',
-        kondisi: kondisiStr,
-        area: areaStr,
-        kategori: katStr,
-        followup: followUpStr
+        amt: amtDisplay,
+        pelapor: pelaporDisplay,
+        tipe: `${typeStr}\n${h.shift || '-'}`,
+        kondisi: isNormal ? 'Normal' : 'Ada Temuan',
+        catatan: catatanStr,
+        status: followUpStr
       });
 
-      const verifiedBy = h.issue && h.issue.resolvedBy ? h.issue.resolvedBy : 'Supervisor';
-      const verifiedTime = h.issue && h.issue.resolvedAt ? h.issue.resolvedAt.toISOString().replace('T', ' ').substring(0, 16) : h.timestamp.toISOString().replace('T', ' ').substring(0, 16);
-      
+      const verifiedBy = h.issue && h.issue.resolvedBy ? h.issue.resolvedBy : (isNormal ? 'Sistem' : 'Pengawas');
+      const verifiedTime = h.issue && h.issue.resolvedAt
+        ? formatDate(h.issue.resolvedAt)
+        : (isNormal ? '-' : formatDate(h.timestamp));
+
       table2.datas.push({
-        id: h.id.substring(0, 15),
-        admin: isNormal ? 'Sistem' : verifiedBy,
-        waktu: isNormal ? '-' : verifiedTime,
-        ket: 'Data handover tercatat pada sistem'
+        id: getHandoverCode(h, handoverNoMap, hIdx + 1),
+        nopol: h.noPolisi,
+        waktu: formatDate(h.timestamp),
+        petugas: `${formatAmtCrew(h)}\n(${h.user?.jabatan || '-'})`,
+        status: isNormal
+          ? 'Siap Operasi'
+          : (h.issue && h.issue.status === 'RESOLVED' ? 'Selesai Verifikasi' : 'Perlu Perbaikan'),
+        admin: verifiedBy,
+        waktuVerif: verifiedTime
       });
 
       if (!isNormal) {
         badItems.forEach(item => {
           const isItemMajor = item.name.includes('[MAJOR]');
           const itemName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
+          const descText = `${item.description || `Catatan kondisi ${itemName.toLowerCase()}`}${item.repairNote ? `\n[Perbaikan]: ${item.repairNote}` : ''}`;
           table3.datas.push({
-            id: h.id.substring(0, 15),
+            id: getHandoverCode(h, handoverNoMap, hIdx + 1),
             nopol: h.noPolisi,
-            waktu: h.timestamp.toISOString().replace('T', ' ').substring(0, 16),
+            waktu: formatDateShort(h.timestamp),
+            amt: h.amt1 || h.user?.name || '-',
+            jabatan: h.user?.jabatan || '-',
             area: itemName,
-            kategori: 'Rem/Mesin/Kabin',
             severity: isItemMajor ? 'Major' : 'Minor',
-            desc: item.description || `Catatan kondisi ${itemName.toLowerCase()}`,
-            tindakan: h.issue && h.issue.status === 'RESOLVED' ? 'Telah diperbaiki' : 'Dilaporkan ke supervisor',
-            status: (h.issue && h.issue.status === 'RESOLVED') ? 'Closed' : 'Open',
-            ket: '-'
+            desc: descText,
+            tindakan: item.isRepaired
+              ? 'Selesai Diperbaiki'
+              : (h.issue && h.issue.status === 'RESOLVED' ? 'Telah diverifikasi' : 'Perlu Perbaikan'),
+            status: (h.issue && h.issue.status === 'RESOLVED') || item.isRepaired ? 'Closed' : 'Open'
           });
         });
       }
     });
 
+    if (table1.datas.length === 0) {
+      table1.datas.push({
+        id: '-',
+        waktu: '-',
+        nopol: '-',
+        amt: '-',
+        pelapor: '-',
+        tipe: '-',
+        kondisi: '-',
+        catatan: 'Tidak ada data serah terima yang sesuai dengan filter',
+        status: '-'
+      });
+      table2.datas.push({
+        id: '-',
+        nopol: '-',
+        waktu: '-',
+        petugas: '-',
+        status: '-',
+        admin: '-',
+        waktuVerif: '-'
+      });
+    }
+
     await doc.table(table1, {
-      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
-      prepareRow: () => doc.font("Helvetica").fontSize(8).fillColor('black'),
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(7.5).fillColor('#002060'),
+      prepareRow: () => doc.font("Helvetica").fontSize(7).fillColor('black'),
     });
 
-    doc.moveDown(2);
-    doc.fontSize(18).fillColor('#002060').font('Helvetica-Bold').text('Verifikasi');
-    doc.moveDown(1);
-    
+    doc.moveDown(1.5);
+    doc.fontSize(14).fillColor('#002060').font('Helvetica-Bold').text('Verifikasi & Validasi Digital');
+    doc.moveDown(0.8);
+
     await doc.table(table2, {
-      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
-      prepareRow: () => doc.font("Helvetica").fontSize(8).fillColor('black'),
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(7.5).fillColor('#002060'),
+      prepareRow: () => doc.font("Helvetica").fontSize(7).fillColor('black'),
     });
 
     // ============================================
-    // PAGE 3: Detail Temuan
+    // PAGE 3: DETAIL TEMUAN & STATUS PERBAIKAN
     // ============================================
     doc.addPage();
     drawTopBar();
-    doc.fontSize(20).fillColor('#002060').font('Helvetica-Bold').text('Detail Temuan Kendaraan', 30, 60);
-    doc.fontSize(10).fillColor('gray').font('Helvetica').text('Rincian temuan yang membutuhkan pencatatan dan tindak lanjut.');
+    doc.fontSize(16).fillColor('#002060').font('Helvetica-Bold').text('Detail Temuan & Status Perbaikan', 30, 42);
+    doc.fontSize(8.5).fillColor('gray').font('Helvetica').text('Rincian temuan kerusakan teknis, catatan perbaikan kru AMT, dan status verifikasi pengawas.');
     doc.moveDown(1);
+
+    if (table3.datas.length === 0) {
+      table3.datas.push({
+        id: '-',
+        nopol: '-',
+        waktu: '-',
+        amt: '-',
+        jabatan: '-',
+        area: 'Semua Komponen Normal',
+        severity: 'Normal',
+        desc: 'Tidak ada temuan kendala teknis pada unit kendaraan yang diperiksa',
+        tindakan: 'Siap Operasi',
+        status: 'Closed'
+      });
+    }
 
     await doc.table(table3, {
-      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
-      prepareRow: () => doc.font("Helvetica").fontSize(8).fillColor('black'),
+      prepareHeader: () => doc.font("Helvetica-Bold").fontSize(7.5).fillColor('#002060'),
+      prepareRow: () => doc.font("Helvetica").fontSize(7).fillColor('black'),
     });
 
-    doc.moveDown(2);
-    doc.fontSize(16).fillColor('#002060').font('Helvetica-Bold').text('Alur Tindak Lanjut');
-    doc.moveDown(1);
-    
+    // JIKA SINGLE HANDOVER: Tampilkan Tabel Checklist Lengkap Unit
+    if (isSingle && handovers[0]?.items && handovers[0].items.length > 0) {
+      doc.moveDown(1.2);
+      doc.fontSize(13).fillColor('#002060').font('Helvetica-Bold').text('Daftar Pemeriksaan Checklist Inspeksi Unit');
+      doc.moveDown(0.6);
+
+      const tableChecklistSingle = {
+        headers: [
+          { label: "NO", property: 'no', width: 30 },
+          { label: "KATEGORI", property: 'kategori', width: 140 },
+          { label: "ITEM PEMERIKSAAN", property: 'item', width: 220 },
+          { label: "KONDISI", property: 'kondisi', width: 80 },
+          { label: "SEVERITY", property: 'severity', width: 60 },
+          { label: "CATATAN / PERBAIKAN", property: 'catatan', width: 220 }
+        ],
+        datas: handovers[0].items.map((item, idx) => {
+          const isMajor = item.name.includes('[MAJOR]');
+          const isMinor = item.name.includes('[MINOR]');
+          const cleanName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
+          let sev = 'Normal';
+          if (isMajor) sev = 'Major';
+          else if (isMinor) sev = 'Minor';
+
+          let noteText = '-';
+          if (item.repairNote) noteText = `[Perbaikan]: ${item.repairNote}`;
+          else if (item.description) noteText = item.description;
+
+          return {
+            no: (idx + 1).toString(),
+            kategori: getCategoryName(item.category),
+            item: cleanName,
+            kondisi: item.isGood ? 'Normal' : 'Temuan',
+            severity: sev,
+            catatan: noteText
+          };
+        })
+      };
+
+      await doc.table(tableChecklistSingle, {
+        prepareHeader: () => doc.font("Helvetica-Bold").fontSize(7.5).fillColor('#002060'),
+        prepareRow: () => doc.font("Helvetica").fontSize(7).fillColor('black'),
+      });
+    }
+
+    doc.moveDown(1.2);
+    doc.fontSize(12).fillColor('#002060').font('Helvetica-Bold').text('Alur Tindak Lanjut & Validasi');
+    doc.moveDown(0.8);
+
     const yPos = doc.y;
     const alurBoxW = 180;
-    const alurBoxH = 60;
-    const gap = 15;
-    
+    const alurBoxH = 50;
+    const gap = 12;
+
     const steps = [
-      { num: '01', title: 'TEMUAN DICATAT', desc: 'Kondisi kendaraan dan area temuan dicatat.' },
-      { num: '02', title: 'DILAPORKAN', desc: 'Temuan diteruskan kepada pihak terkait.' },
-      { num: '03', title: 'TINDAKAN', desc: 'Perbaikan atau pemeriksaan dilakukan.' },
-      { num: '04', title: 'VERIFIKASI', desc: 'Status diperbarui setelah tindak lanjut.' }
+      { num: '01', title: 'INSPEKSI CHECKLIST', desc: 'Kondisi kendaraan & kelengkapan dicek kru AMT.' },
+      { num: '02', title: 'PELAPORAN REALTIME', desc: 'Data tersinkron otomatis ke server & dasbor pengawas.' },
+      { num: '03', title: 'PERBAIKAN & BUKTI', desc: 'Tindakan perbaikan diinput dengan foto bukti.' },
+      { num: '04', title: 'VERIFIKASI PENGAWAS', desc: 'Pengawas memvalidasi kondisi unit siap operasi.' }
     ];
 
     steps.forEach((step, idx) => {
-       const x = 30 + (alurBoxW + gap) * idx;
-       doc.rect(x, yPos, alurBoxW, alurBoxH).stroke('#3498DB');
-       doc.rect(x, yPos, 4, alurBoxH).fill('#3498DB');
-       
-       doc.fillColor('#002060').font('Helvetica-Bold').fontSize(14).text(step.num, x + 10, yPos + 10);
-       doc.fontSize(8).text(step.title, x + 10, yPos + 25);
-       doc.fillColor('gray').font('Helvetica').fontSize(8).text(step.desc, x + 10, yPos + 40, { width: 160 });
+      const x = 30 + (alurBoxW + gap) * idx;
+      doc.rect(x, yPos, alurBoxW, alurBoxH).stroke('#0055A5');
+      doc.rect(x, yPos, 4, alurBoxH).fill('#0055A5');
+      doc.fillColor('#002060').font('Helvetica-Bold').fontSize(12).text(step.num, x + 8, yPos + 8);
+      doc.fontSize(7.5).text(step.title, x + 8, yPos + 22);
+      doc.fillColor('gray').font('Helvetica').fontSize(6.5).text(step.desc, x + 8, yPos + 34, { width: 165 });
     });
 
-    doc.y = yPos + alurBoxH + 30;
+    doc.y = yPos + alurBoxH + 20;
 
     const table4 = {
       headers: [
-        { label: "DIBUAT OLEH", property: 'dibuat', width: 250 },
-        { label: "DIVERIFIKASI OLEH", property: 'diverifikasi', width: 250 },
-        { label: "STATUS", property: 'status', width: 250 }
+        { label: "PETUGAS PEMERIKSA (AMT)", property: 'dibuat', width: 250 },
+        { label: "PENGAWAS OPERASIONAL (HSSE/QQ)", property: 'diverifikasi', width: 250 },
+        { label: "STATUS VALIDASI SISTEM", property: 'status', width: 250 }
       ],
       datas: [
-        { dibuat: 'AMT / Petugas Handover\n\n\n__________________', diverifikasi: 'Supervisor\n\n\n__________________', status: 'Digital Verified\n\n\n__________________' }
+        {
+          dibuat: 'Kru Awak Mobil Tangki (AMT)\n\n\n_____________________________\n(Nama & Tanda Tangan)',
+          diverifikasi: 'Pengawas / Supervisor FT Maos\n\n\n_____________________________\n(Nama & Tanda Tangan)',
+          status: 'Dokumen Digital DigiHandover\nFuel Terminal Maos\n\n[TERVERIFIKASI SISTEM]'
+        }
       ]
     };
-    
+
     await doc.table(table4, {
       prepareHeader: () => doc.font("Helvetica-Bold").fontSize(8).fillColor('#002060'),
       prepareRow: () => doc.font("Helvetica").fontSize(8).fillColor('black'),
@@ -650,14 +1210,14 @@ const exportPdf = async (req, res) => {
         data: {
           action: 'EXPORT_PDF',
           userId: req.user.id,
-          details: 'User exported handover reports to PDF'
+          details: `User exported handover reports to PDF (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
         }
       });
     }
 
     doc.end();
   } catch (error) {
-    console.error(error);
+    console.error('Error exportPdf:', error);
     res.status(500).json({ error: error.message });
   }
 };

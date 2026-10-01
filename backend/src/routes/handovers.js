@@ -11,6 +11,26 @@ const { sendNotification } = require('../services/notificationService');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Helper to generate official handover document code: HO-YYYYMMDD-XXXX
+const generateHandoverNo = async () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const datePrefix = `HO-${year}${month}${day}-`;
+  try {
+    const countResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as count FROM handover 
+      WHERE handoverNo LIKE ${datePrefix + '%'}
+    `;
+    const seqNum = Number(countResult[0]?.count || 0) + 1;
+    return `${datePrefix}${String(seqNum).padStart(4, '0')}`;
+  } catch (e) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    return `${datePrefix}${randomSuffix}`;
+  }
+};
+
 // 1. GET My Latest Active Handover (Untuk Cek Status Scan Mulai / Akhiri)
 router.get('/my-active', authenticateToken, async (req, res) => {
   try {
@@ -144,8 +164,11 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
     });
 
     // Simpan ke DB
+    const handoverNo = await generateHandoverNo();
     const handover = await prisma.handover.create({
       data: {
+        id: handoverNo,
+        handoverNo,
         userId,
         noPolisi,
         shift,
@@ -268,8 +291,11 @@ router.post('/force-release', authenticateToken, async (req, res) => {
 
     const releaseReason = reason || 'Shift gantung ditutup paksa agar mobil siap beroperasi kembali';
 
+    const handoverNo = await generateHandoverNo();
     const forceClose = await prisma.handover.create({
       data: {
+        id: handoverNo,
+        handoverNo,
         userId: req.user ? req.user.id : lastHandover.userId,
         noPolisi,
         shift: lastHandover.shift || '1',

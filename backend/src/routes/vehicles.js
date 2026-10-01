@@ -111,8 +111,21 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
       return res.status(400).json({ error: 'Nomor Polisi atau Barcode sudah terdaftar' });
     }
 
+    // Auto-generate sequential ID VH-xxx
+    const lastVehicle = await prisma.vehicle.findFirst({
+      where: { id: { startsWith: 'VH-' } },
+      orderBy: { id: 'desc' }
+    });
+    let nextNum = 1;
+    if (lastVehicle && lastVehicle.id) {
+      const match = lastVehicle.id.match(/VH-(\d+)/);
+      if (match) nextNum = parseInt(match[1], 10) + 1;
+    }
+    const id = `VH-${String(nextNum).padStart(3, '0')}`;
+
     const vehicle = await prisma.vehicle.create({
       data: {
+        id,
         noPolisi,
         barcode,
         jenisKendaraan,
