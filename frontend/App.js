@@ -56,7 +56,7 @@ import ScannerScreen from './screens/user/ScannerScreen';
 import HandoverFormScreen from './screens/user/HandoverFormScreen';
 import FixVerificationScreen from './screens/user/FixVerificationScreen';
 
-import { API_URL } from './config';
+import { API_URL, loadSavedApiUrl } from './config';
 
 const Stack = createNativeStackNavigator();
 
@@ -101,6 +101,17 @@ export default function App() {
   useEffect(() => {
     const checkLogin = async () => {
       try {
+        await loadSavedApiUrl();
+
+        // Pada aplikasi Android / Mobile: Wajibkan login ulang setiap aplikasi dibuka dari awal (Cold Start / dihapus dari RAM)
+        if (Platform.OS !== 'web') {
+          await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
+          delete axios.defaults.headers.common['Authorization'];
+          setInitialRoute('Login');
+          return;
+        }
+
+        // Pada Web browser: Tetap pertahankan session jika token masih valid agar tidak logout saat refresh (F5)
         const userStr = await AsyncStorage.getItem('user');
         let token = await AsyncStorage.getItem('token');
         const refreshToken = await AsyncStorage.getItem('refreshToken');
@@ -181,9 +192,10 @@ export default function App() {
     ]).start();
   }, []);
 
-  if (!initialRoute) {
-    return (
-      <SafeAreaProvider>
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      {!initialRoute ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
           <Animated.View style={{
             opacity: fadeAnim,
@@ -194,41 +206,36 @@ export default function App() {
             <ActivityIndicator size="large" color="#0055A5" />
           </Animated.View>
         </View>
-      </SafeAreaProvider>
-    );
-  }
-  return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-      <StatusBar style="dark" />
-      <Stack.Navigator
-        initialRouteName={initialRoute}
-        screenOptions={{
-          headerShown: false,
-          animation: Platform.OS === 'web' ? 'none' : 'fade_from_bottom', // Instant on web, smooth transition on mobile
-        }}
-      >
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-        <Stack.Screen name="PengawasDashboard" component={PengawasDashboardScreen} />
-        <Stack.Screen name="UserDashboard" component={UserDashboardScreen} />
-        <Stack.Screen name="Scanner" component={ScannerScreen} />
-        <Stack.Screen name="HandoverForm" component={HandoverFormScreen} />
-        <Stack.Screen name="FixVerification" component={FixVerificationScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
-        <Stack.Screen name="HandoverDetail" component={HandoverDetailScreen} />
-        <Stack.Screen name="VehicleList" component={VehicleListScreen} />
-        <Stack.Screen name="IssueList" component={IssueListScreen} />
-        <Stack.Screen name="IssueDetail" component={IssueDetailScreen} />
-        <Stack.Screen name="MessageCenter" component={MessageCenterScreen} />
-        <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
-        <Stack.Screen name="WorkerList" component={WorkerListScreen} />
-        <Stack.Screen name="PengawasList" component={PengawasListScreen} />
-        <Stack.Screen name="AdminList" component={AdminListScreen} />
-
-      </Stack.Navigator>
+      ) : (
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{
+              headerShown: false,
+              animation: Platform.OS === 'web' ? 'none' : 'fade_from_bottom', // Instant on web, smooth transition on mobile
+            }}
+          >
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="PengawasDashboard" component={PengawasDashboardScreen} />
+            <Stack.Screen name="UserDashboard" component={UserDashboardScreen} />
+            <Stack.Screen name="Scanner" component={ScannerScreen} />
+            <Stack.Screen name="HandoverForm" component={HandoverFormScreen} />
+            <Stack.Screen name="FixVerification" component={FixVerificationScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="HandoverDetail" component={HandoverDetailScreen} />
+            <Stack.Screen name="VehicleList" component={VehicleListScreen} />
+            <Stack.Screen name="IssueList" component={IssueListScreen} />
+            <Stack.Screen name="IssueDetail" component={IssueDetailScreen} />
+            <Stack.Screen name="MessageCenter" component={MessageCenterScreen} />
+            <Stack.Screen name="ChecklistManager" component={ChecklistManagerScreen} />
+            <Stack.Screen name="WorkerList" component={WorkerListScreen} />
+            <Stack.Screen name="PengawasList" component={PengawasListScreen} />
+            <Stack.Screen name="AdminList" component={AdminListScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      )}
       <Toast config={toastConfig} position="top" topOffset={50} />
-    </NavigationContainer>
     </SafeAreaProvider>
   );
 }

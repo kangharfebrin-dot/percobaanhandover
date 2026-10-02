@@ -3,16 +3,18 @@
     "allowJs": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "lib": ["DOM", "ESNext"],
-    "module": "preserve",
-    "moduleDetection": "force",
+    "lib": [
+      "DOM",
+      "ESNext"
+    ],
+    "module": "ESNext",
     "moduleResolution": "bundler",
-    "customConditions": ["react-native"],
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "target": "ESNext",
-    "strict": false
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "**/*"
@@ -21,5 +23,6 @@
     "node_modules",
     "dist",
     "web-build"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }
