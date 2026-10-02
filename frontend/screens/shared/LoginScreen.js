@@ -380,10 +380,16 @@ export default function LoginScreen({ navigation }) {
         </Modal>
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -50}
           style={tw`flex-1`}
+          contentContainerStyle={tw`flex-1`}
         >
-          <ScrollView contentContainerStyle={tw`flex-grow justify-center items-center px-6`} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            contentContainerStyle={tw`flex-grow justify-center items-center px-6`} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
             {/* Header Image Area: Truck behind Mascot */}
             <View style={tw`z-10 mb-0 items-center mt-4 w-80 h-48 justify-end relative`}>
