@@ -31,7 +31,7 @@ const isNameMatch = (targetName, currentUserName) => {
 export default function ScannerScreen({ route, navigation }) {
   const { type } = route?.params || { type: 'mulai' };
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanResult, setScanResult] = useState(null); // 'recap' | 'success' | 'error' | null
+  const [scanResult, setScanResult] = useState(null); // 'recap' | 'success' | 'error' | 'not_started' | null
   const [errorTitle, setErrorTitle] = useState('Scan Gagal');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,7 +76,8 @@ export default function ScannerScreen({ route, navigation }) {
     navigation,
     user,
     modals: [
-      { isOpen: !!scanResult, close: () => setScanResult(null) },
+      { isOpen: !!scanResult && scanResult !== 'not_started', close: () => setScanResult(null) },
+      { isOpen: scanResult === 'not_started', close: () => { setScanResult(null); navigateToDashboard(); } },
     ],
     onBack: () => {
       if (navigation && navigation.canGoBack && navigation.canGoBack()) {
@@ -284,6 +285,15 @@ export default function ScannerScreen({ route, navigation }) {
               return;
             }
           }
+        } else {
+          // === Validasi khusus Admin/Pengawas saat scan Akhiri ===
+          if (type === 'akhiri' && lastType !== 'mulai') {
+            // Kendaraan ada histori tapi tidak sedang berjalan (sudah diakhiri atau belum mulai)
+            setLastHandover(res.data.lastHandover);
+            setLoading(false);
+            setScanResult('not_started');
+            return;
+          }
         }
 
         // Simpan lastHandover untuk diteruskan ke HandoverFormScreen
@@ -297,11 +307,19 @@ export default function ScannerScreen({ route, navigation }) {
         }
       } else {
         // Belum ada handover sama sekali
-        if (type === 'akhiri' && !isAdminOrPengawas) {
-          setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
-          setLoading(false);
-          setScanResult('error');
-          return;
+        if (type === 'akhiri') {
+          if (!isAdminOrPengawas) {
+            setErrorMessage('Kendaraan ini belum memulai pekerjaan.');
+            setLoading(false);
+            setScanResult('error');
+            return;
+          } else {
+            // Admin/Pengawas scan Akhiri tapi kendaraan belum pernah ada handover sama sekali
+            setLastHandover(null);
+            setLoading(false);
+            setScanResult('not_started');
+            return;
+          }
         }
         setLastHandover(null);
         finalResult = 'success';
@@ -572,6 +590,116 @@ export default function ScannerScreen({ route, navigation }) {
 
         {scanResult === 'recap' && renderRecapModal()}
         {scanResult === 'success' && renderSuccessModal()}
+
+        {scanResult === 'not_started' && (
+          <View style={tw`absolute inset-0 bg-black/70 justify-center items-center px-6 z-50`}>
+            <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl border-4 border-orange-200 relative overflow-hidden`}>
+              {/* Decorative background accent */}
+              <View style={tw`absolute -top-10 -right-10 w-36 h-36 bg-orange-50 rounded-full opacity-70`} />
+              <View style={tw`absolute -bottom-10 -left-10 w-36 h-36 bg-amber-50 rounded-full opacity-70`} />
+
+              {/* Close Button */}
+              <TouchableOpacity
+                style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100 rounded-full`}
+                onPress={() => setScanResult(null)}
+              >
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+
+              {/* Icon */}
+              <View style={tw`w-24 h-24 bg-orange-50 rounded-full items-center justify-center mb-5 z-10 border-4 border-orange-100 shadow-lg shadow-orange-200`}>
+                <Ionicons name="car-outline" size={46} color="#EA580C" />
+              </View>
+
+              {/* Badge */}
+              <View style={tw`bg-orange-100 px-3.5 py-1 rounded-full mb-3 z-10`}>
+                <Text style={tw`text-orange-800 font-black text-[10px] uppercase tracking-wider`}>PEKERJAAN BELUM DIMULAI</Text>
+              </View>
+
+              {/* Title */}
+              <Text style={tw`text-[22px] font-black text-gray-800 mb-2 text-center z-10 leading-tight`}>
+                Mobil Belum{`\n`}Mulai Beroperasi
+              </Text>
+
+              {/* Description */}
+              <Text style={tw`text-gray-500 text-center mb-5 font-medium text-xs leading-5 z-10 px-1`}>
+                Kendaraan ini belum tercatat memulai pekerjaan (scan Mulai Pekerjaan belum dilakukan oleh AMT). Tidak dapat mengakhiri pekerjaan yang belum dimulai.
+              </Text>
+
+              {/* Detail Card */}
+              <View style={tw`w-full bg-orange-50/80 rounded-2xl p-4 border border-orange-200/60 mb-6 z-10`}>
+                <Text style={tw`text-xs text-orange-900 font-black uppercase tracking-wider mb-3`}>Detail Kendaraan</Text>
+
+                <View style={tw`flex-row justify-between items-center mb-2`}>
+                  <Text style={tw`text-xs text-orange-900/60 font-semibold`}>No. Polisi</Text>
+                  <Text style={tw`text-xs text-orange-900 font-extrabold`}>{scannedNoPolisi || '-'}</Text>
+                </View>
+
+                <View style={tw`flex-row justify-between items-center mb-2`}>
+                  <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Status Operasional</Text>
+                  <View style={tw`bg-orange-200/70 px-2 py-0.5 rounded-md`}>
+                    <Text style={tw`text-orange-900 font-bold text-[11px]`}>Belum Mulai</Text>
+                  </View>
+                </View>
+
+                {lastHandover ? (
+                  <>
+                    <View style={tw`flex-row justify-between items-center mb-2`}>
+                      <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Handover Terakhir</Text>
+                      <Text style={tw`text-xs text-orange-900 font-bold capitalize`}>
+                        {lastHandover.type === 'akhiri' ? 'Sudah Diakhiri' : lastHandover.type || '-'}
+                      </Text>
+                    </View>
+                    {lastHandover.shift && (
+                      <View style={tw`flex-row justify-between items-center mb-2`}>
+                        <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Shift Terakhir</Text>
+                        <Text style={tw`text-xs text-orange-900 font-bold`}>{lastHandover.shift}</Text>
+                      </View>
+                    )}
+                    {(lastHandover.amt1 || lastHandover.amt2) && (
+                      <View style={tw`flex-row justify-between items-center mb-2`}>
+                        <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Kru Terakhir</Text>
+                        <Text style={tw`text-xs text-orange-900 font-bold`} numberOfLines={1}>
+                          {lastHandover.amt1 || '-'}
+                        </Text>
+                      </View>
+                    )}
+                    {lastHandover.createdAt && (
+                      <View style={tw`flex-row justify-between items-center`}>
+                        <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Waktu Terakhir</Text>
+                        <Text style={tw`text-xs text-orange-900 font-bold`}>
+                          {new Date(lastHandover.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <View style={tw`flex-row justify-between items-center`}>
+                    <Text style={tw`text-xs text-orange-900/60 font-semibold`}>Riwayat</Text>
+                    <Text style={tw`text-xs text-orange-900 font-bold`}>Belum ada handover</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Info hint */}
+              <View style={tw`w-full bg-blue-50 rounded-xl p-3 border border-blue-200/60 mb-5 flex-row items-start z-10`}>
+                <Ionicons name="information-circle" size={16} color="#1D4ED8" style={tw`mr-2 mt-0.5`} />
+                <Text style={tw`text-blue-700 text-[11px] font-semibold leading-4 flex-1`}>
+                  Pastikan AMT melakukan scan{' '}
+                  <Text style={tw`font-black`}>Mulai Pekerjaan</Text>{' '}terlebih dahulu sebelum dapat mengakhiri perjalanan.
+                </Text>
+              </View>
+
+              {/* Action Button */}
+              <TouchableOpacity
+                style={tw`w-full bg-[#003366] p-4 rounded-2xl items-center shadow-lg shadow-blue-900/30 z-10`}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
+              >
+                <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Beranda</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
 
         {scanResult === 'pending_approval' && (

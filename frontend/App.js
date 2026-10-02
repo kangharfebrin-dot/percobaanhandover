@@ -3,6 +3,7 @@ import TextLogo from './components/TextLogo';
 import { View, Image, Text, ActivityIndicator, Animated, Easing, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import axios from 'axios';
@@ -182,20 +183,23 @@ export default function App() {
 
   if (!initialRoute) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-        <Animated.View style={{
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-          alignItems: 'center'
-        }}>
-          <TextLogo style={{ marginBottom: 20, transform: [{ scale: 1.2 }] }} />
-          <ActivityIndicator size="large" color="#0055A5" />
-        </Animated.View>
-      </View>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+          <Animated.View style={{
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+            alignItems: 'center'
+          }}>
+            <TextLogo style={{ marginBottom: 20, transform: [{ scale: 1.2 }] }} />
+            <ActivityIndicator size="large" color="#0055A5" />
+          </Animated.View>
+        </View>
+      </SafeAreaProvider>
     );
   }
   return (
-    <NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
       <StatusBar style="dark" />
       <Stack.Navigator
         initialRouteName={initialRoute}
@@ -225,5 +229,6 @@ export default function App() {
       </Stack.Navigator>
       <Toast config={toastConfig} position="top" topOffset={50} />
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
