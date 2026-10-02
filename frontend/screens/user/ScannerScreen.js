@@ -10,6 +10,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebSidebar from '../../components/WebSidebar';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 
 const normalizeName = (name) => {
   if (!name) return '';
@@ -56,9 +58,35 @@ export default function ScannerScreen({ route, navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'token']);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
+
+  const navigateToDashboard = () => {
+    if (!user) return handleLogoutAndReset(navigation);
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+      navigation.navigate('AdminDashboard');
+    } else if (user.role === 'PENGAWAS') {
+      navigation.navigate('PengawasDashboard');
+    } else {
+      navigation.navigate('UserDashboard');
+    }
+  };
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!scanResult, close: () => setScanResult(null) },
+    ],
+    onBack: () => {
+      if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigateToDashboard();
+      }
+      return true;
+    }
+  });
 
   const handleForceReleaseAndStart = async () => {
     try {
@@ -74,16 +102,16 @@ export default function ScannerScreen({ route, navigation }) {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+      setLoading(false);
       setScanResult(null);
       navigation.navigate('HandoverForm', {
         noPolisi: scannedNoPolisi,
         type: 'mulai'
       });
     } catch (e) {
+      setLoading(false);
       console.warn('Force release error:', e.message);
       Alert.alert('Gagal', e?.response?.data?.error || 'Gagal menutup shift gantung. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -319,23 +347,61 @@ export default function ScannerScreen({ route, navigation }) {
     if (!lastHandover) return null;
 
     // Hitung status checklist
-    const itemsA = lastHandover.items.filter(i => i.category === 'A');
-    const itemsB = lastHandover.items.filter(i => i.category === 'B');
-    const odoItem = lastHandover.items.find(i => i.category === 'C');
+    const itemsA = lastHandover.items ? lastHandover.items.filter(i => i.category === 'A') : [];
+    const itemsB = lastHandover.items ? lastHandover.items.filter(i => i.category === 'B') : [];
+    const odoItem = lastHandover.items ? lastHandover.items.find(i => i.category === 'C') : null;
 
-    // Change back to 'Baik' to match the design 100%
-    // Change back to 'Baik' to match the design 100%
-    // Change back to 'Baik' to match the design 100%
     const countAGood = itemsA.filter(i => i.isGood || i.isRepaired).length;
     const countBGood = itemsB.filter(i => i.isGood || i.isRepaired).length;
     const odoMeter = odoItem ? odoItem.name.replace('Odo Meter: ', '') : '-';
 
-    // Status logic
-    const isPerfect = countAGood === itemsA.length && countBGood === itemsB.length;
-    const statusText = isPerfect ? 'Aman' : 'Ada Masalah';
-    const statusBg = isPerfect ? 'bg-[#E5F5EB]' : 'bg-[#FEE2E2]';
-    const statusDot = isPerfect ? 'bg-[#10B981]' : 'bg-[#EF4444]';
-    const statusColor = isPerfect ? 'text-[#10B981]' : 'text-[#EF4444]';
+    // Cek issue/kerusakan pada checklist kendaraan (Kategori A)
+    const badItemsA = itemsA.filter(i => !i.isGood && !i.isRepaired);
+    const hasMajor = badItemsA.some(i => 
+      (i.severity && i.severity.toLowerCase() === 'major') || 
+      (i.name && i.name.toUpperCase().includes('[MAJOR]'))
+    );
+    const hasMinor = badItemsA.length > 0 && !hasMajor;
+    const hasAmtIssue = countBGood < itemsB.length;
+
+    // Status logic:
+    // 1. Jika ada Major -> status 'Isu' (merah), checklist kendaraan merah
+    // 2. Jika ada Minor -> status 'Perlu Perhatian' (orange), checklist kendaraan orange
+    // 3. Jika normal semua -> status 'Normal' (hijau), checklist kendaraan hijau
+    let statusText = 'Normal';
+    let statusBg = 'bg-[#E5F5EB]';
+    let statusDot = 'bg-[#10B981]';
+    let statusColor = 'text-[#10B981]';
+    let vehicleChecklistColor = '#10B981';
+
+    if (hasMajor) {
+      statusText = 'Isu';
+      statusBg = 'bg-[#FEE2E2]';
+      statusDot = 'bg-[#EF4444]';
+      statusColor = 'text-[#EF4444]';
+      vehicleChecklistColor = '#EF4444';
+    } else if (hasMinor) {
+      statusText = 'Perlu Perhatian';
+      statusBg = 'bg-[#FFEDD5]';
+      statusDot = 'bg-[#F97316]';
+      statusColor = 'text-[#F97316]';
+      vehicleChecklistColor = '#F97316';
+    } else if (hasAmtIssue) {
+      // Kendaraan normal tapi perlengkapan AMT kurang lengkap
+      statusText = 'Perlu Perhatian';
+      statusBg = 'bg-[#FFEDD5]';
+      statusDot = 'bg-[#F97316]';
+      statusColor = 'text-[#F97316]';
+      vehicleChecklistColor = '#10B981';
+    } else {
+      statusText = 'Normal';
+      statusBg = 'bg-[#E5F5EB]';
+      statusDot = 'bg-[#10B981]';
+      statusColor = 'text-[#10B981]';
+      vehicleChecklistColor = '#10B981';
+    }
+
+    const amtColor = hasAmtIssue ? '#F97316' : '#10B981';
 
     return (
       <View style={tw`absolute inset-0 bg-black/60 justify-center items-center px-5 z-50`}>
@@ -345,7 +411,7 @@ export default function ScannerScreen({ route, navigation }) {
           {/* Close Button inside modal */}
           <TouchableOpacity
             style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100/80 rounded-full`}
-            onPress={() => { setScanResult(null); navigation.navigate('UserDashboard'); }}
+            onPress={() => { setScanResult(null); navigateToDashboard(); }}
           >
             <Ionicons name="close" size={20} color="#4B5563" />
           </TouchableOpacity>
@@ -410,16 +476,16 @@ export default function ScannerScreen({ route, navigation }) {
             {/* Row: Checklist */}
             <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
               <Text style={tw`text-[#4B5563] text-[14px]`}>Checklist Kendaraan</Text>
-              <View style={tw`border-b-[3px] border-[#10B981] pb-0.5`}>
-                <Text style={tw`font-bold text-[#10B981] text-[15px]`}>{countAGood}/{itemsA.length} Baik</Text>
+              <View style={[tw`border-b-[3px] pb-0.5`, { borderColor: vehicleChecklistColor }]}>
+                <Text style={[tw`font-bold text-[15px]`, { color: vehicleChecklistColor }]}>{countAGood}/{itemsA.length} Baik</Text>
               </View>
             </View>
 
             {/* Row: Perlengkapan */}
             <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
               <Text style={tw`text-[#4B5563] text-[14px]`}>Perlengkapan AMT</Text>
-              <View style={tw`border-b-[3px] border-[#10B981] pb-0.5`}>
-                <Text style={tw`font-bold text-[#10B981] text-[15px]`}>{countBGood}/{itemsB.length} Lengkap</Text>
+              <View style={[tw`border-b-[3px] pb-0.5`, { borderColor: amtColor }]}>
+                <Text style={[tw`font-bold text-[15px]`, { color: amtColor }]}>{countBGood}/{itemsB.length} Lengkap</Text>
               </View>
             </View>
 
@@ -547,7 +613,7 @@ export default function ScannerScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`w-full bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/20`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-white font-bold text-[15px]`}>Kembali ke Beranda</Text>
               </TouchableOpacity>
@@ -579,7 +645,7 @@ export default function ScannerScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`w-full bg-red-50 p-4 rounded-2xl items-center border border-red-200`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-red-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
               </TouchableOpacity>
@@ -620,7 +686,7 @@ export default function ScannerScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`w-full bg-gray-100 p-4 rounded-2xl items-center border border-gray-200`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-gray-600 font-bold text-[15px]`}>Kembali ke Beranda</Text>
               </TouchableOpacity>
@@ -644,7 +710,7 @@ export default function ScannerScreen({ route, navigation }) {
               <Text style={tw`text-gray-500 text-center mb-8 font-semibold`}>Truk ini sedang dalam status MAINTENANCE total. Tidak dapat digunakan untuk operasional.</Text>
               <TouchableOpacity
                 style={tw`w-full bg-red-600 p-4 rounded-2xl items-center shadow-lg shadow-red-500/30`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-white font-bold text-lg`}>Kembali ke Beranda</Text>
               </TouchableOpacity>
@@ -700,7 +766,7 @@ export default function ScannerScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-gray-600 font-bold text-[14px]`}>Batal / Kembali ke Beranda</Text>
               </TouchableOpacity>
@@ -745,7 +811,7 @@ export default function ScannerScreen({ route, navigation }) {
 
               <TouchableOpacity
                 style={tw`w-full bg-gray-100 p-3.5 rounded-2xl items-center border border-gray-200 z-10`}
-                onPress={() => { setScanResult(null); navigation.goBack(); }}
+                onPress={() => { setScanResult(null); navigateToDashboard(); }}
               >
                 <Text style={tw`text-gray-600 font-bold text-sm`}>Kembali ke Beranda</Text>
               </TouchableOpacity>

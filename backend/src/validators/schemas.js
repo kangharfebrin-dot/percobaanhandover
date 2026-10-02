@@ -52,7 +52,7 @@ const userManageSchema = Joi.object({
 const checklistItemSchema = Joi.object({
   name: Joi.string().trim().required(),
   category: Joi.string().trim().required(),
-  severity: Joi.string().valid('Major', 'Minor').default('Minor')
+  severity: Joi.string().valid('Major', 'Minor', '-').allow(null, '').default('Minor')
 });
 
 module.exports = {

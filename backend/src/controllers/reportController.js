@@ -359,7 +359,12 @@ const exportExcel = async (req, res) => {
 
       // Kumpulkan seluruh item jika single handover untuk Sheet Rincian Checklist
       if (isSingle && h.items) {
-        h.items.forEach((item, itemIdx) => {
+        let validItemIdx = 0;
+        h.items.forEach((item) => {
+          // Lewati dummy catatan foto agar tidak polusi daftar checklist inspeksi
+          if (item.name && item.name.startsWith('Catatan Foto:')) return;
+          validItemIdx++;
+
           const isMajor = item.name.includes('[MAJOR]');
           const isMinor = item.name.includes('[MINOR]');
           const cleanName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
@@ -368,7 +373,7 @@ const exportExcel = async (req, res) => {
           else if (isMinor) severityStr = 'Minor';
 
           allChecklistItemsData.push({
-            no: itemIdx + 1,
+            no: validItemIdx,
             handoverId: getHandoverCode(h, handoverNoMap, hIdx + 1),
             nopol: h.noPolisi,
             kategori: getCategoryName(item.category),
@@ -380,6 +385,10 @@ const exportExcel = async (req, res) => {
           });
         });
       }
+
+      // Catatan terpadu: h.notes, atau fallback dari legacy Catatan Foto jika notes kosong
+      const legacyPhotoNote = h.items?.find(it => it.name && it.name.startsWith('Catatan Foto:'))?.name?.replace('Catatan Foto:', '').trim();
+      const unifiedNotes = (h.notes && h.notes.trim()) || legacyPhotoNote || '-';
 
       const row = reportSheet.addRow({
         id: getHandoverCode(h, handoverNoMap, hIdx + 1),
@@ -395,7 +404,7 @@ const exportExcel = async (req, res) => {
         statusKondisi: statusKondisi,
         statusOperasional: h.status || (hasIssue ? 'Perlu Perbaikan' : 'Siap Operasi (Normal)'),
         lokasi: lokasiStr,
-        notes: h.notes || '-',
+        notes: unifiedNotes,
         komponen: komponenStr,
         kategori: kategoriStr,
         detailKerusakan: badItems.map(i => i.description || '-').join(', ') || '-',
@@ -982,12 +991,15 @@ const exportPdf = async (req, res) => {
       const amtDisplay = formatAmtCrewPdf(h);
       const pelaporDisplay = `${h.user?.name || '-'}\n(${h.user?.jabatan || '-'})`;
 
+      const legacyPhotoNote = h.items?.find(it => it.name && it.name.startsWith('Catatan Foto:'))?.name?.replace('Catatan Foto:', '').trim();
+      const unifiedNotes = (h.notes && h.notes.trim()) || legacyPhotoNote;
+
       const temuanParts = [];
       if (badItems.length > 0) {
         temuanParts.push(badItems.map(i => i.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim()).join(', '));
       }
-      if (h.notes && h.notes.trim()) {
-        temuanParts.push(`Catatan: ${h.notes.trim()}`);
+      if (unifiedNotes) {
+        temuanParts.push(`Catatan: ${unifiedNotes}`);
       }
       const catatanStr = temuanParts.length > 0 ? temuanParts.join('\n') : 'Semua item checklist normal';
 
@@ -1120,6 +1132,8 @@ const exportPdf = async (req, res) => {
       doc.fontSize(13).fillColor('#002060').font('Helvetica-Bold').text('Daftar Pemeriksaan Checklist Inspeksi Unit');
       doc.moveDown(0.6);
 
+      const filteredChecklistItems = handovers[0].items.filter(item => !item.name?.startsWith('Catatan Foto:'));
+
       const tableChecklistSingle = {
         headers: [
           { label: "NO", property: 'no', width: 30 },
@@ -1129,7 +1143,7 @@ const exportPdf = async (req, res) => {
           { label: "SEVERITY", property: 'severity', width: 60 },
           { label: "CATATAN / PERBAIKAN", property: 'catatan', width: 220 }
         ],
-        datas: handovers[0].items.map((item, idx) => {
+        datas: filteredChecklistItems.map((item, idx) => {
           const isMajor = item.name.includes('[MAJOR]');
           const isMinor = item.name.includes('[MINOR]');
           const cleanName = item.name.replace(/\[MAJOR\]|\[MINOR\]/g, '').trim();
@@ -1187,14 +1201,12 @@ const exportPdf = async (req, res) => {
 
     const table4 = {
       headers: [
-        { label: "PETUGAS PEMERIKSA (AMT)", property: 'dibuat', width: 250 },
-        { label: "PENGAWAS OPERASIONAL (HSSE/QQ)", property: 'diverifikasi', width: 250 },
-        { label: "STATUS VALIDASI SISTEM", property: 'status', width: 250 }
+        { label: "PENGAWAS OPERASIONAL (HSSE/QQ)", property: 'diverifikasi', width: 375 },
+        { label: "STATUS VALIDASI SISTEM", property: 'status', width: 375 }
       ],
       datas: [
         {
-          dibuat: 'Kru Awak Mobil Tangki (AMT)\n\n\n_____________________________\n(Nama & Tanda Tangan)',
-          diverifikasi: 'Pengawas / Supervisor FT Maos\n\n\n_____________________________\n(Nama & Tanda Tangan)',
+          diverifikasi: 'Pengawas / Supervisor FT Maos\n\n\n[TERVERIFIKASI SISTEM]',
           status: 'Dokumen Digital DigiHandover\nFuel Terminal Maos\n\n[TERVERIFIKASI SISTEM]'
         }
       ]

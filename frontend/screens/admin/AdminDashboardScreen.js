@@ -10,6 +10,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import { handleLogoutAndReset } from '../../utils/authHelper';
 
 const PERTAMINA_BLUE = ['#003366', '#0055A5'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -19,7 +20,11 @@ const GLASS_BG = 'rgba(255, 255, 255, 0.7)';
 // Helper untuk efek Glassmorphism di Web
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useDashboardBackHandler } from '../../hooks/useDashboardBackHandler';
+
 export default function AdminDashboardScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
   const [user, setUser] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [alerts, setAlerts] = useState([]);
@@ -79,7 +84,7 @@ export default function AdminDashboardScreen({ navigation }) {
         toValue: 1,
         duration: 2500,
         easing: Easing.linear,
-        useNativeDriver: false
+        useNativeDriver: true
       })
     ).start();
 
@@ -114,6 +119,10 @@ export default function AdminDashboardScreen({ navigation }) {
           fetchAlerts();
           fetchNotifications();
         }
+      } else {
+        setUser(null);
+        await handleLogoutAndReset(navigation);
+        return;
       }
     } catch (e) {
       console.log('Error loading user data:', e.message);
@@ -161,8 +170,7 @@ export default function AdminDashboardScreen({ navigation }) {
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
-        navigation.replace('Login');
+        await handleLogoutAndReset(navigation);
       }
     } finally {
       setLoadingAlerts(false);
@@ -182,8 +190,7 @@ export default function AdminDashboardScreen({ navigation }) {
     } catch (error) {
       console.log("Gagal mengambil notifikasi:", error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
-        navigation.replace('Login');
+        await handleLogoutAndReset(navigation);
       }
     }
   };
@@ -213,10 +220,17 @@ export default function AdminDashboardScreen({ navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
+
+  useDashboardBackHandler({
+    isLogoutVisible,
+    setIsLogoutVisible,
+    handleLogout,
+    handleCancelLogout,
+    showNotificationsModal,
+    setShowNotificationsModal,
+  });
 
   if (!user) {
     return (
@@ -426,36 +440,9 @@ export default function AdminDashboardScreen({ navigation }) {
         {/* MAIN CONTENT AREA */}
         <View style={tw`flex-1 relative`}>
 
-          {/* STICKY NAVBAR (Floating Modern Style) */}
-          {isLargeScreen && user ? (
-            <WebNavbar user={user} />
-          ) : (
-            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-              {/* Faint Logo Watermark with Clip */}
-              <View style={tw`absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-3xl`}>
-                <TextLogo style={[tw`absolute`, { top: 15, right: -10, transform: [{ scale: 0.65 }] }]} />
-              </View>
-
-              <View style={tw`flex-row items-center flex-1`}>
-                <View style={tw`w-[50px] h-[50px] mr-4 shadow-lg shadow-gray-300 relative justify-center items-center`}>
-                  <Animated.View style={[tw`absolute w-full h-full rounded-full overflow-hidden`, { transform: [{ rotate: spinInterpolate }] }]}>
-                    <LinearGradient
-                      colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={tw`flex-1 w-full h-full`}
-                    />
-                  </Animated.View>
-                  <View style={tw`w-[44px] h-[44px] rounded-full bg-white items-center justify-center`}>
-                    <Text style={tw`text-[#0055A5] font-black text-base tracking-widest`} className="notranslate" translate="no">{getInitials()}</Text>
-                  </View>
-                </View>
-                <View style={tw`flex-1 pr-2`}>
-                  <Text style={tw`text-gray-500 text-xs font-bold uppercase tracking-widest`}>{getGreeting()}</Text>
-                  <Text style={tw`text-gray-800 text-lg font-black max-w-[150px]`} numberOfLines={1} ellipsizeMode="tail">{user.name}</Text>
-                </View>
-              </View>
-            </View>
+          {/* STICKY NAVBAR (Floating Modern Style - Sama persis Mobile & Web) */}
+          {user && (
+            <WebNavbar user={user} navigation={navigation} />
           )}
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
@@ -500,19 +487,19 @@ export default function AdminDashboardScreen({ navigation }) {
                 </View>
 
                 <TouchableOpacity
-                  style={[tw`w-full p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                  style={[tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
                   onPress={() => navigation.navigate('WorkerList')}
                 >
-                  <View style={tw`flex-row items-center flex-1`}>
-                    <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4`}>
+                  <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                    <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
                       <Feather name="users" size={22} color="#00A651" />
                     </View>
-                    <View>
-                      <Text style={tw`text-xl font-black text-gray-800 tracking-tighter`}>Daftar Pekerja</Text>
-                      <Text style={tw`text-[11px] text-green-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                    <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                      <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Pekerja</Text>
+                      <Text style={tw`text-[10px] sm:text-[11px] text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akun</Text>
                     </View>
                   </View>
-                  <View style={tw`w-9 h-9 bg-green-50 rounded-full items-center justify-center`}>
+                  <View style={tw`w-9 h-9 bg-green-50 rounded-full items-center justify-center shrink-0`}>
                     <Feather name="chevron-right" size={20} color="#00A651" />
                   </View>
                 </TouchableOpacity>
@@ -521,19 +508,19 @@ export default function AdminDashboardScreen({ navigation }) {
 
             {/* Daftar Pengawas Full Width Card */}
             <TouchableOpacity
-              style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
+              style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
               onPress={() => navigation.navigate('PengawasList')}
             >
-              <View style={tw`flex-row items-center flex-1`}>
-                <View style={tw`w-14 h-14 bg-orange-100 rounded-full items-center justify-center mr-4`}>
-                  <Feather name="shield" size={26} color="#F59E0B" />
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
+                  <Feather name="shield" size={24} color="#F59E0B" />
                 </View>
-                <View>
-                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Pengawas</Text>
-                  <Text style={tw`text-xs text-orange-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akun</Text>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Pengawas</Text>
+                  <Text style={tw`text-[10px] sm:text-xs text-orange-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akun</Text>
                 </View>
               </View>
-              <View style={tw`w-10 h-10 bg-orange-50 rounded-full items-center justify-center`}>
+              <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full items-center justify-center shrink-0`}>
                 <Feather name="chevron-right" size={20} color="#F59E0B" />
               </View>
             </TouchableOpacity>
@@ -541,19 +528,19 @@ export default function AdminDashboardScreen({ navigation }) {
             {/* Daftar Admin Full Width Card */}
             {(isSuperAdmin || isAdmin) && (
               <TouchableOpacity
-                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
                 onPress={() => navigation.navigate('AdminList')}
               >
-                <View style={tw`flex-row items-center flex-1`}>
-                  <View style={tw`w-14 h-14 bg-blue-100 rounded-full items-center justify-center mr-4`}>
-                    <Feather name="user-check" size={26} color="#0055A5" />
+                <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                  <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
+                    <Feather name="user-check" size={24} color="#0055A5" />
                   </View>
-                  <View>
-                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Daftar Admin</Text>
-                    <Text style={tw`text-xs text-blue-600 font-black uppercase tracking-widest mt-1`}>Manajemen Akses Sistem</Text>
+                  <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                    <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Admin</Text>
+                    <Text style={tw`text-[10px] sm:text-xs text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akses Sistem</Text>
                   </View>
                 </View>
-                <View style={tw`w-10 h-10 bg-blue-50 rounded-full items-center justify-center`}>
+                <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
                   <Feather name="chevron-right" size={20} color="#0055A5" />
                 </View>
               </TouchableOpacity>
@@ -562,19 +549,19 @@ export default function AdminDashboardScreen({ navigation }) {
             {/* Manajer Checklist Full Width Card */}
             {(isSuperAdmin || isAdmin) && (
               <TouchableOpacity
-                style={[tw`w-full p-6 rounded-[35px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-10 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }]}
                 onPress={() => navigation.navigate('ChecklistManager')}
               >
-                <View style={tw`flex-row items-center flex-1`}>
-                  <View style={tw`w-14 h-14 bg-green-100 rounded-full items-center justify-center mr-4`}>
-                    <Feather name="check-square" size={26} color="#00A651" />
+                <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                  <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
+                    <Feather name="check-square" size={24} color="#00A651" />
                   </View>
-                  <View>
-                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tighter`}>Manajer Checklist</Text>
-                    <Text style={tw`text-xs text-green-600 font-black uppercase tracking-widest mt-1`}>Konfigurasi Pertanyaan Inspeksi</Text>
+                  <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                    <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Manajer Checklist</Text>
+                    <Text style={tw`text-[10px] sm:text-xs text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1} ellipsizeMode="tail">Konfigurasi Pertanyaan Inspeksi</Text>
                   </View>
                 </View>
-                <View style={tw`w-10 h-10 bg-green-50 rounded-full items-center justify-center`}>
+                <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-green-50 rounded-full items-center justify-center shrink-0`}>
                   <Feather name="chevron-right" size={20} color="#00A651" />
                 </View>
               </TouchableOpacity>

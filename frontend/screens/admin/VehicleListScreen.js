@@ -19,7 +19,12 @@ const API_BASE = `${API_URL}/api`;
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 const { Dimensions } = require('react-native');
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function VehicleListScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN', 'PENGAWAS']);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -45,6 +50,7 @@ export default function VehicleListScreen({ navigation }) {
   const numCols = isLargeScreen ? 3 : 1;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Semua');
+  const [tempSelectedStatus, setTempSelectedStatus] = useState('Semua');
   const [selectedMonth, setSelectedMonth] = useState('Semua');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [user, setUser] = useState(null);
@@ -53,9 +59,7 @@ export default function VehicleListScreen({ navigation }) {
   const handleCancelLogout = () => setIsLogoutVisible(false);
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   // Modal Manage Vehicle (Detail/Edit/Delete)
@@ -95,6 +99,22 @@ export default function VehicleListScreen({ navigation }) {
     setWarningModalVisible(true);
   };
 
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: fullScreenBarcode, close: () => setFullScreenBarcode(false) },
+      { isOpen: forceReleaseModalVisible, close: () => setForceReleaseModalVisible(false) },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: addModalVisible, close: () => setAddModalVisible(false) },
+      { isOpen: manageModalVisible, close: () => setManageModalVisible(false) },
+      { isOpen: isFilterVisible, close: () => setIsFilterVisible(false) },
+      { isOpen: successModalVisible, close: () => setSuccessModalVisible(false) },
+      { isOpen: warningModalVisible, close: () => setWarningModalVisible(false) },
+      { isOpen: isLogoutVisible, close: handleCancelLogout },
+    ]
+  });
+
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb3TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -112,7 +132,7 @@ export default function VehicleListScreen({ navigation }) {
 
       const updatedVehicles = vehiclesData.map(vehicle => {
         const hasIssue = activeIssues.some(issue => issue.handover.noPolisi === vehicle.noPolisi);
-        vehicle.dynamicStatus = hasIssue ? 'Buruk' : 'Baik';
+        vehicle.dynamicStatus = hasIssue ? 'Isu' : 'Normal';
         return vehicle;
       });
 
@@ -137,12 +157,21 @@ export default function VehicleListScreen({ navigation }) {
   const handleDownloadBarcode = async () => {
     if (!selectedVehicle) return;
 
-    const imageUrl = `${API_URL}/barcodes/${selectedVehicle.barcode}.png`;
+    const imageUrl = `${API_BASE}/vehicles/poster/${selectedVehicle.barcode}`;
 
     if (Platform.OS === 'web') {
-      window.open(imageUrl, '_blank');
-      setFullScreenBarcode(false);
-      showSuccessModal('Barcode dibuka di tab baru! Silakan klik kanan dan Simpan Gambar.');
+      try {
+        window.open(`${API_BASE}/vehicles/poster/${selectedVehicle.barcode}?download=true`, '_blank');
+        
+        setFullScreenBarcode(false);
+        setManageModalVisible(false);
+        
+        setTimeout(() => {
+          showSuccessModal(`Poster barcode untuk kendaraan ${selectedVehicle.noPolisi} berhasil diunduh!`);
+        }, 300);
+      } catch (err) {
+        console.error('Download error:', err);
+      }
       return;
     }
 
@@ -157,23 +186,25 @@ export default function VehicleListScreen({ navigation }) {
         return;
       }
 
-      const fileUri = FileSystem.documentDirectory + `${selectedVehicle.barcode}.png`;
+      const cleanPlate = (selectedVehicle.noPolisi || selectedVehicle.barcode).replace(/\s+/g, '');
+      const fileUri = FileSystem.documentDirectory + `QR_Handover_${cleanPlate}.png`;
       const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri);
 
       await Sharing.shareAsync(uri, {
-        mimeType: 'image/jpeg',
-        dialogTitle: 'Simpan Barcode Kendaraan',
-        UTI: 'public.jpeg'
+        mimeType: 'image/png',
+        dialogTitle: `Simpan Poster Barcode ${selectedVehicle.noPolisi}`,
+        UTI: 'public.png'
       });
 
       setFullScreenBarcode(false);
+      setManageModalVisible(false);
     } catch (error) {
       console.error(error);
       try {
         if (imageUrl && (await Linking.canOpenURL(imageUrl))) {
           await Linking.openURL(imageUrl);
           setFullScreenBarcode(false);
-          Toast.show({ type: 'info', text1: 'Membuka Barcode', text2: 'Gambar barcode dibuka di browser perangkat Anda.' });
+          Toast.show({ type: 'info', text1: 'Membuka Barcode', text2: 'Gambar template barcode dibuka di browser perangkat Anda.' });
           return;
         }
       } catch (linkErr) {
@@ -213,7 +244,8 @@ export default function VehicleListScreen({ navigation }) {
     return vehicles.filter((item) => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = item.noPolisi.toLowerCase().includes(q) || (item.brand && item.brand.toLowerCase().includes(q));
-      const status = item.dynamicStatus || item.status || 'Baik';
+      const isIssue = item.dynamicStatus === 'Isu' || item.status === 'Buruk' || item.status === 'Maintenance' || item.status === 'Isu';
+      const status = isIssue ? 'Isu' : 'Normal';
       const matchesStatus = selectedStatus === 'Semua' || status === selectedStatus;
       return matchesSearch && matchesStatus;
     });
@@ -360,24 +392,24 @@ export default function VehicleListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     // Gunakan dynamicStatus yang sudah dikalkulasi dari laporan handover terbaru
-    const currentStatus = item.dynamicStatus || item.status || 'Baik';
-    const isMaintenance = currentStatus === 'Buruk' || currentStatus === 'Maintenance';
+    const isIssue = item.dynamicStatus === 'Isu' || item.status === 'Buruk' || item.status === 'Maintenance' || item.status === 'Isu';
+    const currentStatus = isIssue ? 'Isu' : 'Normal';
 
     return (
       <TouchableOpacity
         style={[
-          tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isMaintenance ? 'border-red-100' : 'border-gray-100'} flex-row justify-between items-center`,
+          tw`bg-white p-5 rounded-2xl mb-4 shadow-sm border ${isIssue ? 'border-red-100' : 'border-gray-100'} flex-row justify-between items-center`,
           isLargeScreen ? { width: 'calc(33.333% - 11px)' } : tw`w-full`
         ]}
         onPress={() => openManageModal(item)}
         activeOpacity={0.7}
       >
         <View style={tw`flex-row items-center flex-1`}>
-          <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isMaintenance ? 'bg-red-100' : 'bg-green-100'}`}>
-            <MaterialCommunityIcons name="truck" size={26} color={isMaintenance ? "#ED1C24" : "#00A651"} />
+          <View style={tw`w-12 h-12 rounded-full items-center justify-center mr-3 ${isIssue ? 'bg-red-100' : 'bg-green-100'}`}>
+            <MaterialCommunityIcons name="truck" size={26} color={isIssue ? "#ED1C24" : "#00A651"} />
           </View>
           <View style={tw`flex-1 pr-2`}>
-            <Text style={tw`text-xl font-black ${isMaintenance ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
+            <Text style={tw`text-xl font-black ${isIssue ? 'text-red-900' : 'text-gray-800'}`}>{item.noPolisi}</Text>
             <Text style={tw`text-sm font-bold text-gray-500`} numberOfLines={1}>
               {item.brand ? `${item.brand} • ` : ''}{item.kapasitas ? `Mobil Tanki ${item.kapasitas} KL` : (item.jenisKendaraan || 'Mobil Tanki')}
             </Text>
@@ -385,9 +417,9 @@ export default function VehicleListScreen({ navigation }) {
         </View>
 
         <View style={tw`items-end`}>
-          <View style={tw`px-3 py-1.5 rounded-lg mb-1 flex-row items-center ${isMaintenance ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-            <View style={tw`w-1.5 h-1.5 rounded-full mr-1.5 ${isMaintenance ? 'bg-red-500' : 'bg-green-500'}`} />
-            <Text style={tw`text-[10px] font-black uppercase tracking-widest ${isMaintenance ? 'text-red-600' : 'text-green-600'}`}>
+          <View style={tw`px-3 py-1.5 rounded-lg mb-1 flex-row items-center ${isIssue ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+            <View style={tw`w-1.5 h-1.5 rounded-full mr-1.5 ${isIssue ? 'bg-red-500' : 'bg-green-500'}`} />
+            <Text style={tw`text-[10px] font-black uppercase tracking-widest ${isIssue ? 'text-red-600' : 'text-green-600'}`}>
               {currentStatus}
             </Text>
           </View>
@@ -421,43 +453,24 @@ export default function VehicleListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        {isLargeScreen && user ? (
-          <WebNavbar
-            user={user}
-            title="Daftar Kendaraan"
-            subtitle="Monitoring & Kelola Armada Mobil Tangki"
-            navigation={navigation}
-            showBack={true}
-            rightAction={
-              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
-                <TouchableOpacity
-                  onPress={openAddModal}
-                  style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
-                >
-                  <MaterialCommunityIcons name="truck-plus" size={18} color="white" />
-                  <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Kendaraan</Text>
-                </TouchableOpacity>
-              ) : null
-            }
-          />
-        ) : (
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <View style={tw`flex-row items-center z-30`}>
-              <TouchableOpacity onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('AdminDashboard'); }} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <View>
-                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Kendaraan</Text>
-                <Text style={tw`text-xs font-bold text-gray-500`}>Monitoring & Kelola Armada Mobil Tangki</Text>
-              </View>
-            </View>
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-              <TouchableOpacity onPress={openAddModal} style={tw`p-2.5 bg-[#0055A5] rounded-2xl shadow-md flex-row items-center`}>
+        <WebNavbar
+          user={user}
+          title="Daftar Kendaraan"
+          subtitle="Monitoring & Kelola Armada Mobil Tangki"
+          navigation={navigation}
+          showBack={true}
+          rightAction={
+            isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+              <TouchableOpacity
+                onPress={openAddModal}
+                style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+              >
                 <MaterialCommunityIcons name="truck-plus" size={18} color="white" />
+                <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Kendaraan</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
+            ) : null
+          }
+        />
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           <View style={tw`px-6 pt-2 flex-row items-center justify-between`}>
@@ -465,7 +478,13 @@ export default function VehicleListScreen({ navigation }) {
               <Ionicons name="search" size={20} color="#9CA3AF" />
               <TextInput style={tw`flex-1 ml-3 text-gray-800 font-medium`} placeholder="Cari Plat Nomor atau Merk..." placeholderTextColor="#9CA3AF" value={searchQuery} onChangeText={setSearchQuery} />
             </View>
-            <TouchableOpacity style={tw`bg-[#0055A5] p-3 rounded-2xl shadow-md shadow-blue-500/30`} onPress={() => setIsFilterVisible(true)}>
+            <TouchableOpacity
+              style={tw`bg-[#0055A5] p-3 rounded-2xl shadow-md shadow-blue-500/30`}
+              onPress={() => {
+                setTempSelectedStatus(selectedStatus);
+                setIsFilterVisible(true);
+              }}
+            >
               <Feather name="filter" size={22} color="white" />
             </TouchableOpacity>
           </View>
@@ -521,13 +540,27 @@ export default function VehicleListScreen({ navigation }) {
             </View>
             <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Berdasarkan Status Isu</Text>
             <View style={tw`flex-row flex-wrap mb-6`}>
-              {['Semua', 'Baik', 'Buruk'].map(status => (
-                <TouchableOpacity key={status} style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${selectedStatus === status ? (status === 'Buruk' ? 'bg-[#ED1C24] border-[#ED1C24]' : 'bg-[#0055A5] border-[#0055A5]') : 'bg-transparent border-gray-300'}`} onPress={() => setSelectedStatus(status)}>
-                  <Text style={tw`text-sm font-bold ${selectedStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
+              {['Semua', 'Normal', 'Isu'].map(status => (
+                <TouchableOpacity
+                  key={status}
+                  style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${
+                    tempSelectedStatus === status
+                      ? (status === 'Isu' ? 'bg-[#ED1C24] border-[#ED1C24]' : 'bg-[#0055A5] border-[#0055A5]')
+                      : 'bg-transparent border-gray-300'
+                  }`}
+                  onPress={() => setTempSelectedStatus(status)}
+                >
+                  <Text style={tw`text-sm font-bold ${tempSelectedStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`} onPress={() => setIsFilterVisible(false)}>
+            <TouchableOpacity
+              style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`}
+              onPress={() => {
+                setSelectedStatus(tempSelectedStatus);
+                setIsFilterVisible(false);
+              }}
+            >
               <Text style={tw`text-white font-black text-lg tracking-wide`}>TERAPKAN FILTER</Text>
             </TouchableOpacity>
           </View>
@@ -562,9 +595,9 @@ export default function VehicleListScreen({ navigation }) {
                       <View style={tw`flex-1 ml-2 bg-gray-50 p-4 rounded-2xl border border-gray-100`}>
                         <Text style={tw`text-xs text-gray-400 uppercase font-bold mb-1`}>Status Saat Ini</Text>
                         <View style={tw`flex-row items-center mt-1`}>
-                          <View style={tw`w-2 h-2 rounded-full mr-2 ${selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'bg-red-500' : 'bg-green-500'}`} />
-                          <Text style={tw`text-sm font-black ${selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'text-red-600' : 'text-green-600'}`}>
-                            {selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'Maintenance' : 'Active'}
+                          <View style={tw`w-2 h-2 rounded-full mr-2 ${selectedVehicle.dynamicStatus === 'Isu' || selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' || selectedVehicle.status === 'Isu' ? 'bg-red-500' : 'bg-green-500'}`} />
+                          <Text style={tw`text-sm font-black ${selectedVehicle.dynamicStatus === 'Isu' || selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' || selectedVehicle.status === 'Isu' ? 'text-red-600' : 'text-green-600'}`}>
+                            {selectedVehicle.dynamicStatus === 'Isu' || selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' || selectedVehicle.status === 'Isu' ? 'Ada Isu' : 'Normal'}
                           </Text>
                         </View>
                       </View>
@@ -624,8 +657,8 @@ export default function VehicleListScreen({ navigation }) {
                       <Text style={tw`text-base font-black text-gray-800 mb-3`}>{selectedVehicle.brand ? `${selectedVehicle.brand} • ` : ''}{selectedVehicle.jenisKendaraan || 'Mobil Tanki'}{selectedVehicle.kapasitas ? ` (${selectedVehicle.kapasitas} KL)` : ''}</Text>
 
                       <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Status Truk</Text>
-                      <Text style={tw`text-base font-black ${selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'text-red-600' : 'text-green-600'} mb-3`}>
-                        {selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' ? 'Buruk (Maintenance)' : 'Baik (Active)'}
+                      <Text style={tw`text-base font-black ${selectedVehicle.dynamicStatus === 'Isu' || selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' || selectedVehicle.status === 'Isu' ? 'text-red-600' : 'text-green-600'} mb-3`}>
+                        {selectedVehicle.dynamicStatus === 'Isu' || selectedVehicle.status === 'Buruk' || selectedVehicle.status === 'Maintenance' || selectedVehicle.status === 'Isu' ? 'Isu (Perlu Perbaikan)' : 'Normal (Siap Operasi)'}
                       </Text>
 
                       <Text style={tw`text-xs text-gray-500 uppercase font-bold mb-1`}>Data Barcode</Text>
@@ -687,8 +720,15 @@ export default function VehicleListScreen({ navigation }) {
             <View style={[tw`bg-white rounded-[30px] shadow-2xl w-full max-w-md`, { maxHeight: '90%' }]}>
               <ScrollView contentContainerStyle={tw`p-6`} showsVerticalScrollIndicator={false}>
                 <View style={tw`flex-row justify-between items-center mb-6`}>
-                  <Text style={tw`text-2xl font-black text-gray-800`}>{isEditMode ? 'Edit Kendaraan' : 'Tambah Kendaraan'}</Text>
-                  <TouchableOpacity onPress={() => { setAddModalVisible(false); if (isEditMode) setManageModalVisible(true); }} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
+                  <Text style={tw`text-2xl font-black text-gray-800 flex-1 mr-3`}>{isEditMode ? 'Edit Kendaraan' : 'Tambah Kendaraan'}</Text>
+                  <TouchableOpacity 
+                    onPress={() => { setAddModalVisible(false); if (isEditMode) setManageModalVisible(true); }} 
+                    style={tw`w-9 h-9 bg-gray-100 rounded-full items-center justify-center shrink-0`}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={22} color="#6B7280" />
+                  </TouchableOpacity>
                 </View>
 
                 <View style={tw`mb-4`}>
@@ -817,7 +857,10 @@ export default function VehicleListScreen({ navigation }) {
 
       {/* SUCCESS NOTIFICATION MODAL */}
       <Modal visible={successModalVisible} transparent={true} animationType="fade">
-        <View style={tw`flex-1 justify-center items-center bg-black/40 px-6`}>
+        <View style={[
+          tw`flex-1 justify-center items-center bg-black/40 px-6`,
+          Platform.OS === 'web' ? { zIndex: 9999999, elevation: 9999999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 } : {}
+        ]}>
           <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl border border-green-100 relative overflow-hidden`}>
             <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full`} />
             <View style={tw`absolute -bottom-10 -left-10 w-32 h-32 bg-blue-50 rounded-full`} />
@@ -848,7 +891,10 @@ export default function VehicleListScreen({ navigation }) {
 
       {/* WARNING NOTIFICATION MODAL */}
       <Modal visible={warningModalVisible} transparent={true} animationType="fade">
-        <View style={tw`flex-1 justify-center items-center bg-black/40 px-6 z-50`}>
+        <View style={[
+          tw`flex-1 justify-center items-center bg-black/40 px-6`,
+          Platform.OS === 'web' ? { zIndex: 9999999, elevation: 9999999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 } : {}
+        ]}>
           <View style={tw`bg-white w-full max-w-sm rounded-[35px] p-8 items-center shadow-2xl border border-red-100 relative overflow-hidden`}>
             {/* Background Accent */}
             <View style={tw`absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full`} />
@@ -937,10 +983,10 @@ export default function VehicleListScreen({ navigation }) {
 
                 <TouchableOpacity style={tw`bg-[#0055A5] mt-6 px-8 py-4 rounded-full flex-row items-center shadow-lg shadow-blue-500/50 w-full justify-center`} onPress={handleDownloadBarcode}>
                   <Feather name="download" size={20} color="white" />
-                  <Text style={tw`text-white font-bold text-base ml-3 tracking-wide`}>Simpan Barcode</Text>
+                  <Text style={tw`text-white font-bold text-base ml-3 tracking-wide`}>Simpan Poster Barcode</Text>
                 </TouchableOpacity>
 
-                <Text style={tw`text-gray-300 text-xs mt-4 text-center px-4 leading-relaxed`}>Barcode akan diunduh dan Anda bisa menyimpannya ke galeri.</Text>
+                <Text style={tw`text-gray-300 text-xs mt-4 text-center px-4 leading-relaxed`}>Poster resmi Pertamina beserta QR code dan plat nomor akan diunduh dalam kualitas HD (siap cetak untuk truk).</Text>
               </View>
             )}
           </View>

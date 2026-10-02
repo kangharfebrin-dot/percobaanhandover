@@ -14,30 +14,32 @@ export default function WebNavbar({
   rightAction,
   style,
 }) {
-  // Animasi rotasi halus untuk border pelangi avatar (Pertamina tricolor)
+  // Animasi rotasi halus untuk border pelangi avatar (Pertamina tricolor) di dashboard
   const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 8000,
-        useNativeDriver: false,
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spinAnim]);
+    if (!title) {
+      const loop = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: false,
+        })
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [spinAnim, title]);
 
-  // Hanya tampil di web dan saat user terautentikasi (dieksekusi SETELAH hooks)
-  if (Platform.OS !== 'web' || !user) return null;
+  // Sembunyikan navbar jika tidak ada title DAN user belum ada
+  if (!title && !user) return null;
 
   const spinInterpolate = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  // Dynamic greeting berdasarkan waktu lokal
+  // Dynamic greeting berdasarkan waktu lokal (untuk dashboard)
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 11) return 'SELAMAT PAGI,';
@@ -62,36 +64,37 @@ export default function WebNavbar({
   return (
     <View
       style={[
-        tw`mx-5 mt-3 mb-2 rounded-[24px] overflow-hidden relative z-20 border border-gray-100 bg-white`,
+        tw`mx-4 sm:mx-5 mt-3 mb-2 rounded-[26px] overflow-hidden relative z-20 border ${
+          title ? 'border-gray-100 bg-white' : 'border-blue-50/80 bg-white'
+        }`,
         {
-          height: 64,
+          height: 72,
           shadowColor: '#0055A5',
-          shadowOpacity: 0.08,
-          shadowRadius: 15,
+          shadowOpacity: 0.10,
+          shadowRadius: 18,
           shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
         },
         style,
       ]}
     >
-      {/* Aksen Coretan Pertamina (Top Right) */}
-      <View style={tw`absolute top-[-2px] right-[-2px] opacity-15`}>
-        <View style={[tw`absolute border-b-[3px] border-l-[3px] border-[#ED1C24] rounded-bl-[40px]`, { top: 0, right: 0, width: 90, height: 90 }]} />
-        <View style={[tw`absolute border-b-[3px] border-l-[3px] border-[#00A651] rounded-bl-[30px]`, { top: 0, right: 0, width: 70, height: 70 }]} />
-        <View style={[tw`absolute border-b-[3px] border-l-[3px] border-[#0055A5] rounded-bl-[20px]`, { top: 0, right: 0, width: 50, height: 50 }]} />
+      {/* Aksen Coretan Geometris Khas Pertamina - DITAMPILKAN DI SEMUA HALAMAN */}
+      <View style={tw`absolute top-[-2px] right-[-2px] opacity-25`} pointerEvents="none">
+        <View style={[tw`absolute border-b-[3.5px] border-l-[3.5px] border-[#ED1C24] rounded-bl-[42px]`, { top: 0, right: 0, width: 96, height: 96 }]} />
+        <View style={[tw`absolute border-b-[3.5px] border-l-[3.5px] border-[#00A651] rounded-bl-[32px]`, { top: 0, right: 0, width: 74, height: 74 }]} />
+        <View style={[tw`absolute border-b-[3.5px] border-l-[3.5px] border-[#0055A5] rounded-bl-[22px]`, { top: 0, right: 0, width: 52, height: 52 }]} />
       </View>
 
-      {/* Aksen Coretan Pertamina (Bottom Left) */}
-      <View style={tw`absolute bottom-[-2px] left-[-2px] opacity-15`}>
-        <View style={[tw`absolute border-t-[3px] border-r-[3px] border-[#ED1C24] rounded-tr-[40px]`, { bottom: 0, left: 0, width: 90, height: 90 }]} />
-        <View style={[tw`absolute border-t-[3px] border-r-[3px] border-[#00A651] rounded-tr-[30px]`, { bottom: 0, left: 0, width: 70, height: 70 }]} />
-        <View style={[tw`absolute border-t-[3px] border-r-[3px] border-[#0055A5] rounded-tr-[20px]`, { bottom: 0, left: 0, width: 50, height: 50 }]} />
+      <View style={tw`absolute bottom-[-2px] left-[-2px] opacity-25`} pointerEvents="none">
+        <View style={[tw`absolute border-t-[3.5px] border-r-[3.5px] border-[#ED1C24] rounded-tr-[42px]`, { bottom: 0, left: 0, width: 96, height: 96 }]} />
+        <View style={[tw`absolute border-t-[3.5px] border-r-[3.5px] border-[#00A651] rounded-tr-[32px]`, { bottom: 0, left: 0, width: 74, height: 74 }]} />
+        <View style={[tw`absolute border-t-[3.5px] border-r-[3.5px] border-[#0055A5] rounded-tr-[22px]`, { bottom: 0, left: 0, width: 52, height: 52 }]} />
       </View>
-
       {/* Content Overlay */}
-      <View style={tw`flex-1 flex-row items-center justify-between px-5 relative z-10`}>
+      <View style={tw`flex-1 flex-row items-center justify-between px-4 sm:px-5 relative z-10`}>
         {/* SISI KIRI: Profil User atau Judul Halaman */}
         {title ? (
-          <View style={tw`flex-row items-center flex-1 pr-4`}>
+          <View style={tw`flex-row items-center flex-1 pr-2 sm:pr-4 min-w-0`}>
             {(showBack || (navigation && navigation.canGoBack && navigation.canGoBack())) && (
               <TouchableOpacity
                 onPress={() => {
@@ -100,30 +103,30 @@ export default function WebNavbar({
                   } else if (navigation && navigation.canGoBack && navigation.canGoBack()) {
                     navigation.goBack();
                   } else if (navigation && typeof navigation.replace === 'function') {
-                    navigation.replace(user.role === 'PENGAWAS' ? 'PengawasDashboard' : user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
+                    navigation.replace(user?.role === 'PENGAWAS' ? 'PengawasDashboard' : user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
                   }
                 }}
-                style={tw`w-9 h-9 bg-white/85 rounded-full items-center justify-center mr-3 shadow-sm border border-blue-100 hover:bg-white active:scale-95`}
+                style={tw`w-[44px] h-[44px] bg-gray-50 rounded-full items-center justify-center mr-3.5 shadow-sm border border-gray-200/90 active:scale-95`}
                 activeOpacity={0.8}
               >
-                <Ionicons name="arrow-back" size={20} color="#0055A5" />
+                <Ionicons name="arrow-back" size={22} color="#1A2E44" />
               </TouchableOpacity>
             )}
-            <View>
-              <Text style={tw`text-xl font-black text-[#1A2E44] tracking-tight leading-tight`} numberOfLines={1} className="notranslate" translate="no">
+            <View style={tw`flex-1 min-w-0 justify-center`}>
+              <Text style={tw`text-[19px] sm:text-xl font-black text-[#1A2E44] tracking-tight leading-tight`} numberOfLines={1} className="notranslate" translate="no">
                 {title}
               </Text>
               {subtitle ? (
-                <Text style={tw`text-xs font-bold text-[#4B637B] mt-0.5 tracking-normal`} numberOfLines={1} className="notranslate" translate="no">
+                <Text style={tw`text-[12px] sm:text-xs font-bold text-[#4B637B] mt-0.5 tracking-normal`} numberOfLines={1} className="notranslate" translate="no">
                   {subtitle}
                 </Text>
               ) : null}
             </View>
           </View>
         ) : (
-          <View style={tw`flex-row items-center flex-1 pr-4`}>
+          <View style={tw`flex-row items-center flex-1 pr-3 min-w-0`}>
             {/* Avatar Pill dengan Rainbow Ring Border (Warna khas Pertamina: Merah, Hijau, Biru) */}
-            <View style={tw`w-[44px] h-[44px] mr-3 justify-center items-center relative shadow-sm`}>
+            <View style={tw`w-[48px] h-[48px] mr-3 justify-center items-center relative shadow-sm shrink-0`}>
               <Animated.View
                 style={[
                   tw`absolute w-full h-full rounded-full overflow-hidden`,
@@ -137,43 +140,34 @@ export default function WebNavbar({
                   style={tw`flex-1 w-full h-full`}
                 />
               </Animated.View>
-              <View style={tw`w-[38px] h-[38px] rounded-full bg-white items-center justify-center border border-gray-100`}>
-                <Text style={tw`text-[#1A2E44] font-black text-base tracking-widest`} className="notranslate" translate="no">
+              <View style={tw`w-[40px] h-[40px] rounded-full bg-white items-center justify-center border border-gray-100`}>
+                <Text style={tw`text-[#1A2E44] font-black text-[15px] tracking-widest`} className="notranslate" translate="no">
                   {getInitials()}
                 </Text>
               </View>
             </View>
 
             {/* Greeting & User Name */}
-            <View style={tw`justify-center`}>
-              <Text style={tw`text-[#4B637B] text-[10px] font-black uppercase tracking-[1.4px] mb-0.5`}>
+            <View style={tw`justify-center flex-1 min-w-0 mr-2`}>
+              <Text style={tw`text-[#4B637B] text-[10px] sm:text-[11px] font-black uppercase tracking-[1.4px] mb-0.5`} numberOfLines={1}>
                 {getGreeting()}
               </Text>
               <Text
-                style={tw`text-[#1A2E44] text-[18px] font-black tracking-tight max-w-[250px] leading-tight`}
+                style={tw`text-[#1A2E44] text-[17px] sm:text-[18px] font-black tracking-tight leading-tight`}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                {user.name || 'Yoann'}
+                {user?.name || 'User'}
               </Text>
             </View>
           </View>
         )}
 
         {/* SISI KANAN: Custom Action Buttons dan Logo Handover */}
-        <View style={tw`flex-row items-center gap-4 z-20`}>
+        <View style={tw`flex-row items-center gap-3 sm:gap-4 z-20 shrink-0`}>
           {rightAction && (
             <View style={tw`flex-row items-center`}>
               {rightAction}
-            </View>
-          )}
-          {!title && (
-            <View style={[tw`flex-row items-center pr-1 select-none`, rightAction ? tw`border-l border-gray-200/50 pl-4` : {}]}>
-              <Image
-                source={require('../assets/exact_logo_handover.png')}
-                style={{ width: 130, height: 24 }}
-                resizeMode="contain"
-              />
             </View>
           )}
         </View>

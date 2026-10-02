@@ -7,10 +7,43 @@ const prisma = require('../config/prisma');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { vehicleSchema } = require('../validators/schemas');
 
+const { generateQrPosterBuffer } = require('../utils/qrPosterGenerator');
+
 const barcodesDir = path.join(__dirname, '../../barcodes');
 if (!fs.existsSync(barcodesDir)) {
   fs.mkdirSync(barcodesDir, { recursive: true });
 }
+
+// 0. API Unduh / Lihat Poster Template QR Siap Cetak (Pertamina Layout)
+router.get('/poster/:barcode', async (req, res) => {
+  try {
+    const rawBarcode = req.params.barcode;
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        OR: [
+          { barcode: rawBarcode },
+          { noPolisi: rawBarcode }
+        ]
+      }
+    });
+
+    const noPolisi = vehicle ? vehicle.noPolisi : rawBarcode;
+    const barcode = vehicle ? vehicle.barcode : rawBarcode;
+
+    const posterBuffer = await generateQrPosterBuffer(noPolisi, barcode);
+
+    res.setHeader('Content-Type', 'image/png');
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="QR_Handover_${noPolisi.replace(/\s+/g, '_')}.png"`);
+    } else {
+      res.setHeader('Content-Disposition', `inline; filename="QR_Handover_${noPolisi.replace(/\s+/g, '_')}.png"`);
+    }
+    return res.send(posterBuffer);
+  } catch (err) {
+    console.error('Error generating QR poster:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // 0. API Scan Barcode Kendaraan (A5: Terproteksi otentikasi)
 router.get('/scan/:barcode', authenticateToken, async (req, res) => {

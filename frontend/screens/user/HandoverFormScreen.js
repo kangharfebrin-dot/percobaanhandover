@@ -11,6 +11,9 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebSidebar from '../../components/WebSidebar';
+import { getItemOptionLabels } from '../../utils/checklistHelper';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 
 
 const DEFAULT_ITEMS = [
@@ -29,15 +32,15 @@ const DEFAULT_ITEMS = [
   { id: 'A13', category: 'A', name: 'Keberadaan Selang bongkar', severity: 'Major' },
   { id: 'A14', category: 'A', name: 'Keberadaan Grounding Cable', severity: 'Major' },
   { id: 'A15', category: 'A', name: 'Keberadaan Spill Kit', severity: 'Minor' },
-  { id: 'B1', category: 'B', name: 'Membawa SIM Sesuai Kendaraan', severity: 'Major' },
-  { id: 'B2', category: 'B', name: 'ID/ HSE Paspor Berlaku', severity: 'Major' },
-  { id: 'B3', category: 'B', name: 'Dokumen KIM', severity: 'Major' },
-  { id: 'B4', category: 'B', name: 'Menggunakan Seragam Kerja', severity: 'Minor' },
-  { id: 'B5', category: 'B', name: 'Menggunakan Safety Shoes', severity: 'Major' },
-  { id: 'B6', category: 'B', name: 'Menggunakan Safety Helm', severity: 'Major' },
-  { id: 'B7', category: 'B', name: 'Menggunakan Safety Glove', severity: 'Minor' },
-  { id: 'B8', category: 'B', name: 'Membawa Jas Hujan', severity: 'Minor' },
-  { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: 'Minor' }
+  { id: 'B1', category: 'B', name: 'Membawa SIM Sesuai Kendaraan', severity: null },
+  { id: 'B2', category: 'B', name: 'ID/ HSE Paspor Berlaku', severity: null },
+  { id: 'B3', category: 'B', name: 'Dokumen KIM', severity: null },
+  { id: 'B4', category: 'B', name: 'Menggunakan Seragam Kerja', severity: null },
+  { id: 'B5', category: 'B', name: 'Menggunakan Safety Shoes', severity: null },
+  { id: 'B6', category: 'B', name: 'Menggunakan Safety Helm', severity: null },
+  { id: 'B7', category: 'B', name: 'Menggunakan Safety Glove', severity: null },
+  { id: 'B8', category: 'B', name: 'Membawa Jas Hujan', severity: null },
+  { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: null }
 ];
 
 const REQUIRED_PHOTOS = ['Depan', 'Belakang', 'Kanan', 'Kiri'];
@@ -77,8 +80,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'token']);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   const now = new Date();
@@ -154,7 +156,6 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activePhotoType, setActivePhotoType] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
-  const [catatanFoto, setCatatanFoto] = useState(''); // Catatan umum untuk section C (foto)
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState('USER');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -162,6 +163,9 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [validationModalVisible, setValidationModalVisible] = useState(false);
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
+  const [showConfirmSubmitModal, setShowConfirmSubmitModal] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const isSubmittingRef = useRef(false);
   const cameraRef = useRef(null);
 
 
@@ -170,6 +174,49 @@ export default function HandoverFormScreen({ route, navigation }) {
     setValidationMessage(message);
     setValidationModalVisible(true);
   };
+
+  const hasUnsavedChanges = () => {
+    const hasChecked = items.some(item => item.status !== null);
+    const hasPhotos = Object.values(photos).some(p => p !== null && p !== undefined);
+    const hasNotes = Boolean(notes && notes.trim());
+    const hasOdoChanged = Boolean(odoMeter && odoMeter !== (previousOdometer ? String(previousOdometer) : ''));
+    return hasChecked || hasPhotos || hasNotes || hasOdoChanged;
+  };
+
+  const handleBackPress = () => {
+    if (hasUnsavedChanges()) {
+      setShowExitConfirmModal(true);
+    } else {
+      goToDashboard();
+    }
+  };
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!previewPhoto, close: () => setPreviewPhoto(null) },
+      { isOpen: isCameraOpen, close: () => setIsCameraOpen(false) },
+      { isOpen: showExitConfirmModal, close: () => setShowExitConfirmModal(false) },
+      { isOpen: showConfirmSubmitModal, close: () => setShowConfirmSubmitModal(false) },
+      { isOpen: validationModalVisible, close: () => setValidationModalVisible(false) },
+    ],
+    onBack: () => {
+      handleBackPress();
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isSubmittingRef.current || showSuccessModal || !hasUnsavedChanges()) {
+        return;
+      }
+      e.preventDefault();
+      setShowExitConfirmModal(true);
+    });
+    return unsubscribe;
+  }, [navigation, items, photos, notes, odoMeter, previousOdometer, showSuccessModal]);
 
   useEffect(() => {
 
@@ -209,7 +256,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             category: item.category,
             name: item.name,
             status: status,
-            severity: item.severity || 'Minor',
+            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : 'Minor'),
             catatan: catatan
           };
         }));
@@ -229,7 +276,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             category: item.category,
             name: item.name,
             status: status,
-            severity: item.severity || 'Minor',
+            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : 'Minor'),
             catatan: catatan
           };
         }));
@@ -530,7 +577,10 @@ export default function HandoverFormScreen({ route, navigation }) {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+    // Guard double-tap
+    if (loading || isSubmittingRef.current) return;
+
     // 1. Validasi Info Dasar & Odometer
     if (!noPolisi || !odoMeter || !shift) {
       showValidationError("Perhatian", "Informasi perjalanan (Plat, Shift, Odo Meter) tidak boleh kosong.");
@@ -568,8 +618,8 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
-    // 3. Deteksi Blokir Major (Tidak memblokir pengiriman, diteruskan ke admin)
-    const hasMajor = items.some(item => item.status === 'RUSAK' && item.severity === 'Major');
+    // 3. Deteksi Blokir Major (Hanya berlaku untuk Kategori A / Mobil Tangki)
+    const hasMajor = items.some(item => item.status === 'RUSAK' && item.category === 'A' && item.severity === 'Major');
     if (hasMajor) {
       // Untuk notifikasi peringatan saja sebelum lanjut (bisa diabaikan jika butuh blocking)
       // showValidationError("KENDARAAN DIBLOKIR", "Terdapat temuan MAJOR. Kendaraan diblokir dan laporan akan langsung diteruskan ke Admin!");
@@ -591,7 +641,14 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
-    // SEMUA VALIDASI LULUS -> KIRIM DATA
+    // SEMUA VALIDASI LULUS -> Tampilkan modal konfirmasi
+    setShowConfirmSubmitModal(true);
+  };
+
+  const confirmAndSubmit = async () => {
+    setShowConfirmSubmitModal(false);
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       const userStr = await AsyncStorage.getItem('user');
@@ -609,12 +666,9 @@ export default function HandoverFormScreen({ route, navigation }) {
       const finalItems = items.map(i => ({
         ...i,
         isGood: i.status === 'BAIK',
-        name: i.name + (i.status === 'RUSAK' && i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
+        name: i.name + (i.status === 'RUSAK' && i.category === 'A' && i.severity ? ` [${i.severity.toUpperCase()}]` : '') + (i.catatan ? ` - ${i.catatan}` : '')
       }));
       finalItems.push({ category: 'C', name: `Odo Meter: ${odoMeter}`, isGood: true });
-      if (catatanFoto && catatanFoto.trim()) {
-        finalItems.push({ category: 'C', name: `Catatan Foto: ${catatanFoto.trim()}`, isGood: true });
-      }
       formData.append('items', JSON.stringify(finalItems));
       if (notes && notes.trim()) {
         formData.append('notes', notes.trim());
@@ -673,7 +727,7 @@ export default function HandoverFormScreen({ route, navigation }) {
       });
 
       const issueItems = finalItems.filter(i => !i.isGood);
-      const hasMajorIssue = issueItems.some(i => i.name.includes('[MAJOR]'));
+      const hasMajorIssue = issueItems.some(i => i.category === 'A' && i.name.includes('[MAJOR]'));
 
       if (issueItems.length > 0 && response.data.handover) {
         // Jika ada temuan, backend bisa mengirim notifikasi email dll (diurus di backend)
@@ -698,6 +752,7 @@ export default function HandoverFormScreen({ route, navigation }) {
 
     } catch (error) {
       setLoading(false);
+      isSubmittingRef.current = false;
       console.error(error);
       showValidationError('Error', 'Gagal mengirim laporan. Pastikan Backend sudah menyala dan internet stabil.');
     }
@@ -708,6 +763,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     const originalIdx = items.findIndex(x => x.name === item.name);
     const isBaik = item.status === 'BAIK';
     const isRusak = item.status === 'RUSAK';
+    const optionLabels = getItemOptionLabels(item);
 
     return (
       <View key={originalIdx} style={tw`border-b border-gray-100 p-5 ${isRusak ? 'bg-red-50/50' : isBaik ? 'bg-green-50/30' : 'bg-white'}`}>
@@ -723,8 +779,8 @@ export default function HandoverFormScreen({ route, navigation }) {
                 colors={isBaik ? PERTAMINA_GREEN : ['#F3F4F6', '#E5E7EB']}
                 style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
-                <Text style={tw`font-bold ${isBaik ? 'text-white' : 'text-gray-500'}`}>
-                  NORMAL
+                <Text style={tw`font-extrabold text-sm ${isBaik ? 'text-white' : 'text-gray-500'}`} numberOfLines={1}>
+                  {optionLabels.good}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -738,8 +794,8 @@ export default function HandoverFormScreen({ route, navigation }) {
                 colors={isRusak ? PERTAMINA_RED : ['#F3F4F6', '#E5E7EB']}
                 style={tw`py-3 px-2 items-center justify-center border ${isRusak ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
-                <Text style={tw`font-bold ${isRusak ? 'text-white' : 'text-gray-500'}`}>
-                  ISU
+                <Text style={tw`font-extrabold text-sm ${isRusak ? 'text-white' : 'text-gray-500'}`} numberOfLines={1}>
+                  {optionLabels.bad}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -830,7 +886,7 @@ export default function HandoverFormScreen({ route, navigation }) {
           <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
             <View style={tw`w-full flex-row items-center justify-between`}>
               <View style={tw`flex-row items-center`}>
-                <TouchableOpacity onPress={() => goToDashboard()} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
+                <TouchableOpacity onPress={handleBackPress} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
                   <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>
                 <View>
@@ -1093,28 +1149,6 @@ export default function HandoverFormScreen({ route, navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
-
-            {/* Catatan umum untuk section C */}
-            <View style={tw`mt-4 border-t border-gray-100 pt-4`}>
-              <View style={tw`flex-row items-center justify-between mb-2`}>
-                <Text style={tw`text-xs font-black text-gray-600 uppercase tracking-wider`}>Catatan Foto Kendaraan</Text>
-                <View style={tw`bg-gray-100 px-2 py-0.5 rounded-full`}>
-                  <Text style={tw`text-[10px] font-bold text-gray-400`}>OPSIONAL</Text>
-                </View>
-              </View>
-              <TextInput
-                style={[tw`bg-gray-50 rounded-2xl p-4 text-sm text-gray-800 border border-gray-200`, { minHeight: 90, textAlignVertical: 'top', fontFamily: 'System' }]}
-                placeholder="Contoh: baret kecil di panel kanan, kondisi ban aus, dll."
-                placeholderTextColor="#9CA3AF"
-                multiline
-                maxLength={500}
-                value={catatanFoto}
-                onChangeText={setCatatanFoto}
-              />
-              {catatanFoto.length > 0 && (
-                <Text style={tw`text-[11px] text-gray-400 text-right mt-1 font-medium`}>{catatanFoto.length}/500</Text>
-              )}
-            </View>
           </View>
 
           {/* Catatan Umum Handover */}
@@ -1132,7 +1166,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             </View>
             <TextInput
               style={[tw`bg-gray-50 rounded-2xl p-4 text-sm text-gray-800 border border-gray-200`, { minHeight: 120, textAlignVertical: 'top', fontFamily: 'System' }]}
-              placeholder="Tambahkan catatan umum terkait serah terima kendaraan di sini..."
+              placeholder="Tambahkan catatan umum terkait serah terima atau kondisi fisik kendaraan (misal: baret panel kanan, ban aus, dll)..."
               placeholderTextColor="#9CA3AF"
               multiline
               maxLength={1000}
@@ -1381,6 +1415,67 @@ export default function HandoverFormScreen({ route, navigation }) {
             </View>
           </View>
         )}
+      </Modal>
+
+      {/* MODAL KONFIRMASI KELUAR (UNSAVED CHANGES) */}
+      <Modal visible={showExitConfirmModal} transparent={true} animationType="fade" onRequestClose={() => setShowExitConfirmModal(false)}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl relative overflow-hidden`}>
+            <View style={tw`w-20 h-20 bg-amber-50 rounded-full items-center justify-center mb-5 border-4 border-amber-100`}>
+              <Ionicons name="warning-outline" size={48} color="#D97706" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center tracking-tight`}>Keluar dari Form?</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6 px-2`}>
+              Checklist dan foto yang telah Anda ambil akan hilang jika Anda meninggalkan halaman ini.
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 py-4 rounded-2xl mr-2 items-center`}
+                onPress={() => setShowExitConfirmModal(false)}
+              >
+                <Text style={tw`text-gray-700 font-bold`}>Lanjut Isi</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#ED1C24] py-4 rounded-2xl ml-2 items-center shadow-md`}
+                onPress={() => {
+                  setShowExitConfirmModal(false);
+                  goToDashboard();
+                }}
+              >
+                <Text style={tw`text-white font-bold`}>Ya, Keluar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL KONFIRMASI SUBMIT */}
+      <Modal visible={showConfirmSubmitModal} transparent={true} animationType="fade" onRequestClose={() => setShowConfirmSubmitModal(false)}>
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-[30px] p-8 items-center shadow-2xl relative overflow-hidden`}>
+            <View style={tw`w-20 h-20 bg-blue-50 rounded-full items-center justify-center mb-5 border-4 border-blue-100`}>
+              <Ionicons name="help-circle" size={48} color="#0055A5" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2 text-center tracking-tight`}>Konfirmasi Kirim</Text>
+            <Text style={tw`text-gray-500 text-center mb-8 font-medium leading-6 px-2`}>
+              Apakah Anda yakin seluruh data sudah benar dan ingin mengirim laporan {type === 'akhiri' ? 'akhir' : 'mulai'} perjalanan ini?
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 py-4 rounded-2xl mr-2 items-center`}
+                onPress={() => setShowConfirmSubmitModal(false)}
+              >
+                <Text style={tw`text-gray-600 font-bold`}>Periksa Lagi</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#0055A5] py-4 rounded-2xl ml-2 items-center shadow-md`}
+                onPress={confirmAndSubmit}
+              >
+                <Text style={tw`text-white font-bold`}>Ya, Kirim</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* MODAL SUKSES (BERHASIL KIRIM) */}

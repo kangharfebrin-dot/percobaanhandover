@@ -11,6 +11,9 @@ import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import { getItemOptionLabels } from '../../utils/checklistHelper';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -35,6 +38,15 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!selectedPhoto, close: () => setSelectedPhoto(null) },
+      { isOpen: showExportModal, close: () => setShowExportModal(false) },
+    ]
+  });
+
   useEffect(() => {
     const onChange = ({ window }) => setScreenWidth(window.width);
     const subscription = Dimensions.addEventListener('change', onChange);
@@ -48,8 +60,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'token']);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   const handleExportExcel = async () => {
@@ -240,7 +251,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
               activeMenu={'History'}
               title="Detail Handover"
               subtitle="Memuat riwayat..."
-              onBack={() => navigation.goBack()}
+              onBack={() => {
+                if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                  navigation.goBack();
+                } else if (navigation && typeof navigation.replace === 'function') {
+                  navigation.replace('History');
+                }
+              }}
             />
             <View style={tw`flex-1 items-center justify-center p-6`}>
               <ActivityIndicator size="large" color="#0055A5" />
@@ -270,7 +287,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
               activeMenu={'History'}
               title="Detail Handover"
               subtitle="Data Tidak Ditemukan"
-              onBack={() => navigation.goBack()}
+              onBack={() => {
+                if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                  navigation.goBack();
+                } else if (navigation && typeof navigation.replace === 'function') {
+                  navigation.replace('History');
+                }
+              }}
             />
             <View style={tw`flex-1 items-center justify-center p-6`}>
               <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
@@ -314,7 +337,9 @@ export default function HandoverDetailScreen({ route, navigation }) {
   // Parse items by category
   const itemsA = (handover?.items || []).filter(i => i.category === 'A');
   const itemsB = (handover?.items || []).filter(i => i.category === 'B');
-  const itemsC = (handover?.items || []).filter(i => i.category === 'C');
+  const itemsC = (handover?.items || []).filter(i => i.category === 'C' && !i.name?.startsWith('Catatan Foto:'));
+  const legacyPhotoNote = (handover?.items || []).find(i => i.category === 'C' && i.name?.startsWith('Catatan Foto:'))?.name?.replace('Catatan Foto:', '').trim();
+  const effectiveNotes = (handover?.notes && handover.notes.trim()) || legacyPhotoNote;
 
   // Parse name to extract original name, severity, and catatan
   // Format from submit: "Nama Item [SEVERITY] - catatan"
@@ -345,6 +370,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
   const renderChecklistItem = (item, index) => {
     const parsed = parseItemName(item.name);
     const isBaik = item.isGood;
+    const optionLabels = getItemOptionLabels(item);
 
     // Sembunyikan keterangan Major/Minor untuk role USER/AMT
     const showSeverity = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'PENGAWAS');
@@ -383,7 +409,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
               {/* Status Badge */}
               <View style={tw`px-3 py-1 rounded-full ${isBaik ? 'bg-green-100' : 'bg-red-100'}`}>
                 <Text style={tw`text-xs font-bold ${isBaik ? 'text-green-700' : 'text-red-600'}`}>
-                  {isBaik ? 'NORMAL' : 'ISU'}
+                  {isBaik ? optionLabels.good : optionLabels.bad}
                 </Text>
               </View>
 
@@ -473,7 +499,13 @@ export default function HandoverDetailScreen({ route, navigation }) {
             activeMenu={'History'}
             title="Detail Handover"
             subtitle={`Truk: ${handover?.noPolisi || '-'}`}
-            onBack={() => navigation.goBack()}
+            onBack={() => {
+              if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else if (navigation && typeof navigation.replace === 'function') {
+                navigation.replace('History');
+              }
+            }}
             rightAction={
               isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
                 <View style={tw`flex-row items-center gap-2.5`}>
@@ -704,7 +736,7 @@ export default function HandoverDetailScreen({ route, navigation }) {
             </View>
 
             {/* Catatan Umum */}
-            {handover.notes && (
+            {effectiveNotes ? (
               <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
                 <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
                   <View style={tw`bg-gray-100 p-2 rounded-xl mr-3 shadow-sm`}>
@@ -713,10 +745,10 @@ export default function HandoverDetailScreen({ route, navigation }) {
                   <Text style={tw`font-extrabold text-lg text-gray-800`}>Catatan Umum</Text>
                 </LinearGradient>
                 <View style={tw`p-5 bg-gray-50`}>
-                  <Text style={tw`text-gray-700 text-sm leading-6`}>{handover.notes}</Text>
+                  <Text style={tw`text-gray-700 text-sm leading-6`}>{effectiveNotes}</Text>
                 </View>
               </View>
-            )}
+            ) : null}
 
             {/* Issue Status Card */}
             {handover.issue && (

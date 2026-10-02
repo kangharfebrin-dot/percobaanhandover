@@ -12,6 +12,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 
 const getPhotoUrl = (path) => {
   if (!path) return `${API_URL}/uploads/default.png`;
@@ -44,8 +46,7 @@ export default function FixVerificationScreen({ route, navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'token']);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   // Camera & Location State
@@ -57,6 +58,16 @@ export default function FixVerificationScreen({ route, navigation }) {
   const [selectedPreviewPhoto, setSelectedPreviewPhoto] = useState(null);
   const [previewRotation, setPreviewRotation] = useState(0);
   const cameraRef = useRef(null);
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!selectedPreviewPhoto, close: () => setSelectedPreviewPhoto(null) },
+      { isOpen: isCameraOpen, close: () => setIsCameraOpen(false) },
+      { isOpen: showSuccessModal, close: () => setShowSuccessModal(false) },
+    ]
+  });
 
   useEffect(() => {
     fetchIssue();
@@ -314,7 +325,13 @@ export default function FixVerificationScreen({ route, navigation }) {
           activeMenu={'FixVerification'}
           title="Verifikasi Perbaikan"
           subtitle={`Truk: ${issue?.handover?.noPolisi || noPolisi}`}
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+              navigation.goBack();
+            } else if (navigation && typeof navigation.replace === 'function') {
+              navigation.replace('UserDashboard');
+            }
+          }}
         />
 
         <ScrollView style={tw`flex-1 px-4 py-6 max-w-4xl mx-auto w-full`} showsVerticalScrollIndicator={false}>

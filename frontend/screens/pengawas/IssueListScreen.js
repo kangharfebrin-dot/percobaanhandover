@@ -15,7 +15,12 @@ const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {}
 const API_BASE = `${API_URL}/api`;
 
 const { Dimensions } = require('react-native');
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function IssueListScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN', 'PENGAWAS', 'AMT']);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -41,11 +46,19 @@ export default function IssueListScreen({ navigation }) {
   const handleCancelLogout = () => setIsLogoutVisible(false);
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: manageModalVisible, close: () => setManageModalVisible(false) },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: successModalVisible, close: () => setSuccessModalVisible(false) },
+      { isOpen: isLogoutVisible, close: handleCancelLogout },
+    ]
+  });
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -198,7 +211,13 @@ export default function IssueListScreen({ navigation }) {
             user={user}
             activeMenu={'IssueList'}
             title="Isu Ditemukan"
-            onBack={() => navigation.goBack()}
+            onBack={() => {
+              if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else if (navigation && typeof navigation.replace === 'function') {
+                navigation.replace(user?.role === 'PENGAWAS' ? 'PengawasDashboard' : user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
+              }
+            }}
             showBack={true}
             navigation={navigation}
           />

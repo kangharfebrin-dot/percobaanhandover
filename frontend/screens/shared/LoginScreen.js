@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, TextInput, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground, Modal, Linking, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Animated, KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground, Modal, Linking, Dimensions, BackHandler } from 'react-native';
 import tw from 'twrnc';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+
+import { useFocusEffect } from '@react-navigation/native';
 
 const PERTAMINA_BLUE = ['#0055A5', '#003366'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -21,6 +23,23 @@ export default function LoginScreen({ navigation }) {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+
+  // Tangani tombol back hardware Android saat di halaman Login agar keluar dari aplikasi (tidak balik ke dashboard)
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showForgotPasswordModal) {
+          setShowForgotPasswordModal(false);
+          return true;
+        }
+        BackHandler.exitApp();
+        return true;
+      };
+
+      const backSubscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => backSubscription.remove();
+    }, [showForgotPasswordModal])
+  );
 
   // Animasi crossfade untuk maskot
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -69,13 +88,16 @@ export default function LoginScreen({ navigation }) {
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        if (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN') {
-          navigation.replace('AdminDashboard');
-        } else if (loggedInUser.role === 'PENGAWAS') {
-          navigation.replace('PengawasDashboard');
-        } else {
-          navigation.replace('UserDashboard');
-        }
+        const targetDashboard = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN')
+          ? 'AdminDashboard'
+          : loggedInUser.role === 'PENGAWAS'
+          ? 'PengawasDashboard'
+          : 'UserDashboard';
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: targetDashboard }],
+        });
       }
     } catch (error) {
       setErrorMessage(error.response?.data?.error || 'Login gagal, periksa kembali username & password');

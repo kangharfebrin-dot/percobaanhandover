@@ -41,7 +41,12 @@ const DEFAULT_ITEMS = [
   { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: 'Minor' }
 ];
 
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function ChecklistManagerScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
   const [items, setItems] = useState([]);
   const [notificationModal, setNotificationModal] = useState({ visible: false, title: '', message: '', type: 'success' });
   const showNotification = (title, message, type = 'success') => {
@@ -77,10 +82,12 @@ export default function ChecklistManagerScreen({ navigation }) {
     setActiveMenu(previousMenu);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
+
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
@@ -129,6 +136,17 @@ export default function ChecklistManagerScreen({ navigation }) {
     return () => subscription?.remove();
   }, []);
 
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: modalVisible, close: () => setModalVisible(false) },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: isLogoutVisible, close: handleCancelLogout },
+      { isOpen: notificationModal.visible, close: () => setNotificationModal(prev => ({ ...prev, visible: false })) }
+    ]
+  });
+
   const loadUser = async () => {
     const userStr = await AsyncStorage.getItem('user');
     if (userStr) {
@@ -155,17 +173,18 @@ export default function ChecklistManagerScreen({ navigation }) {
     }
 
     try {
+      const severityToSave = newCategory === 'B' ? '-' : newSeverity;
       if (editingItem) {
         await axios.put(`${API_URL}/api/checklists/${editingItem.id}`, {
           name: newName,
           category: newCategory,
-          severity: newSeverity
+          severity: severityToSave
         });
       } else {
         await axios.post(`${API_URL}/api/checklists`, {
           name: newName,
           category: newCategory,
-          severity: newSeverity
+          severity: severityToSave
         });
       }
       loadItems();
@@ -220,9 +239,11 @@ export default function ChecklistManagerScreen({ navigation }) {
           <View style={tw`bg-blue-100 px-2 py-0.5 rounded-md mr-2`}>
             <Text style={tw`text-blue-700 text-[10px] font-black`}>KATEGORI {item.category}</Text>
           </View>
-          <View style={tw`${item.severity === 'Major' ? 'bg-red-100' : 'bg-amber-100'} px-2 py-0.5 rounded-md`}>
-            <Text style={tw`${item.severity === 'Major' ? 'text-red-700' : 'text-amber-700'} text-[10px] font-black uppercase`}>{item.severity || 'Minor'}</Text>
-          </View>
+          {item.category !== 'B' && item.severity && item.severity !== '-' && (
+            <View style={tw`${item.severity === 'Major' ? 'bg-red-100' : 'bg-amber-100'} px-2 py-0.5 rounded-md`}>
+              <Text style={tw`${item.severity === 'Major' ? 'text-red-700' : 'text-amber-700'} text-[10px] font-black uppercase`}>{item.severity}</Text>
+            </View>
+          )}
         </View>
         <Text style={tw`text-gray-800 font-bold text-base`}>{item.name}</Text>
       </View>
@@ -259,37 +280,28 @@ export default function ChecklistManagerScreen({ navigation }) {
 
         {/* MAIN CONTENT AREA */}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-          {isLargeScreen ? (
-            <WebNavbar
-              user={user}
-              title="Manajer Checklist"
-              subtitle="Kustomisasi parameter inspeksi & form serah terima"
-              navigation={navigation}
-              showBack={true}
-              rightAction={
-                (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
-                  <TouchableOpacity onPress={openAddModal} style={tw`flex-row items-center bg-[#00A651] px-4 py-2.5 rounded-2xl shadow-md`}>
-                    <Ionicons name="add-circle-outline" size={20} color="white" />
-                    <Text style={tw`text-white font-bold text-sm ml-1.5`}>Tambah Item</Text>
-                  </TouchableOpacity>
-                ) : null
+          <WebNavbar
+            user={user}
+            title="Manajer Checklist"
+            subtitle="Kustomisasi parameter inspeksi & form serah terima"
+            navigation={navigation}
+            showBack={true}
+            onBack={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('AdminDashboard');
               }
-            />
-          ) : (
-            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-4 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-              <View style={tw`flex-row items-center`}>
-                <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                  <Ionicons name="arrow-back" size={24} color="#00A651" />
+            }}
+            rightAction={
+              isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+                <TouchableOpacity onPress={openAddModal} style={tw`flex-row items-center bg-[#00A651] px-4 py-2.5 rounded-2xl shadow-md`}>
+                  <Ionicons name="add-circle-outline" size={20} color="white" />
+                  <Text style={tw`text-white font-bold text-sm ml-1.5`}>Tambah Item</Text>
                 </TouchableOpacity>
-                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Manajer Checklist</Text>
-              </View>
-              {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
-                <TouchableOpacity onPress={openAddModal}>
-                  <Ionicons name="add-circle" size={28} color="#00A651" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+              ) : null
+            }
+          />
 
           <View style={tw`px-6 mb-2`}>
             <Text style={tw`text-gray-500 font-medium text-sm`}>Edit pertanyaan yang akan muncul di Form Handover AMT secara real-time.</Text>
@@ -302,6 +314,16 @@ export default function ChecklistManagerScreen({ navigation }) {
             renderItem={renderItem}
             initialNumToRender={100}
           />
+
+          {/* Floating Action Button (Only for Admin on Mobile - Pindah ke Bawah Seperti Menu Lain) */}
+          {!isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+            <TouchableOpacity
+              style={tw`absolute bottom-28 right-6 bg-[#00A651] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-green-600/50 z-40 active:scale-95`}
+              onPress={openAddModal}
+            >
+              <Feather name="plus" size={28} color="white" />
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
 
@@ -391,18 +413,28 @@ export default function ChecklistManagerScreen({ navigation }) {
               ))}
             </View>
 
-            <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Keparahan (Tingkat Isu)</Text>
-            <View style={tw`flex-row gap-2 mb-8`}>
-              {['Minor', 'Major'].map(sev => (
-                <TouchableOpacity
-                  key={sev}
-                  style={tw`flex-1 py-3 rounded-lg border ${newSeverity === sev ? (sev === 'Major' ? 'bg-red-600 border-red-600' : 'bg-amber-500 border-amber-500') : 'bg-white border-gray-300'} items-center`}
-                  onPress={() => setNewSeverity(sev)}
-                >
-                  <Text style={tw`font-bold ${newSeverity === sev ? 'text-white' : 'text-gray-600'} uppercase`}>{sev}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {newCategory !== 'B' ? (
+              <>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Keparahan (Tingkat Isu)</Text>
+                <View style={tw`flex-row gap-2 mb-8`}>
+                  {['Minor', 'Major'].map(sev => (
+                    <TouchableOpacity
+                      key={sev}
+                      style={tw`flex-1 py-3 rounded-lg border ${newSeverity === sev ? (sev === 'Major' ? 'bg-red-600 border-red-600' : 'bg-amber-500 border-amber-500') : 'bg-white border-gray-300'} items-center`}
+                      onPress={() => setNewSeverity(sev)}
+                    >
+                      <Text style={tw`font-bold ${newSeverity === sev ? 'text-white' : 'text-gray-600'} uppercase`}>{sev}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <View style={tw`bg-blue-50 p-3.5 rounded-xl border border-blue-200 mb-8`}>
+                <Text style={tw`text-xs text-[#0055A5] font-semibold text-center leading-4`}>
+                  Perlengkapan AMT bersifat personal dan tidak memiliki tingkat keparahan (Major/Minor).
+                </Text>
+              </View>
+            )}
 
             <View style={tw`flex-row justify-end gap-3`}>
               <TouchableOpacity style={tw`px-6 py-3 rounded-xl bg-gray-100`} onPress={() => setModalVisible(false)}>

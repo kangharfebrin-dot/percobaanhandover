@@ -51,3 +51,13 @@ frontend/fix_*.js
 frontend/replace*.js
 frontend/.claude/
 implementation_plan.md
+
+# Screenshots & Presentation Assets (Not needed for app execution)
+screenshots/
+foto perbaikan/
+tampilan aplikasi DIGIHandover/
+*.rar
+*.zip
+
+# Local Reference Data
+daftar_plat_nomor.txt

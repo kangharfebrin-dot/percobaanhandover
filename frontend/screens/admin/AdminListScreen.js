@@ -13,7 +13,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 const API_BASE = `${API_URL}/api`;
 
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function AdminListScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
   const [admins, setAdmins] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);
@@ -25,9 +30,7 @@ export default function AdminListScreen({ navigation }) {
   const handleLogout = () => setIsLogoutVisible(true);
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   useEffect(() => {
@@ -137,6 +140,17 @@ export default function AdminListScreen({ navigation }) {
     setUsername('');
     setPassword('');
   };
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: manageModalVisible, close: closeManageModal },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: isLogoutVisible, close: () => setIsLogoutVisible(false) },
+      { isOpen: notificationModal.visible, close: () => setNotificationModal(prev => ({ ...prev, visible: false })) }
+    ]
+  });
 
   const openEditModal = (admin) => {
     setSelectedAdmin(admin);
@@ -276,14 +290,14 @@ export default function AdminListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
           {/* Header Card */}
-          {isLargeScreen ? (
-            <WebNavbar
-              user={user}
-              title="Daftar Administrator"
-              subtitle="Kelola Akun Admin & Hak Akses Sistem"
-              navigation={navigation}
-              showBack={true}
-              rightAction={
+          <WebNavbar
+            user={user}
+            title="Daftar Administrator"
+            subtitle="Kelola Akun Admin & Hak Akses Sistem"
+            navigation={navigation}
+            showBack={true}
+            rightAction={
+              isLargeScreen ? (
                 <TouchableOpacity
                   onPress={openAddModal}
                   style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
@@ -291,21 +305,9 @@ export default function AdminListScreen({ navigation }) {
                   <Feather name="user-plus" size={18} color="white" />
                   <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Admin</Text>
                 </TouchableOpacity>
-              }
-            />
-          ) : (
-            <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-              <View style={tw`flex-row items-center z-30`}>
-                <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm`}>
-                  <Ionicons name="arrow-back" size={24} color="#0055A5" />
-                </TouchableOpacity>
-                <View>
-                  <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Daftar Administrator</Text>
-                  <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Admin & Hak Akses Sistem</Text>
-                </View>
-              </View>
-            </View>
-          )}
+              ) : null
+            }
+          />
 
           {/* Search & Filter Bar */}
           <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
@@ -371,15 +373,20 @@ export default function AdminListScreen({ navigation }) {
         <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`w-full max-w-xl`}>
             <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full mx-auto max-h-[90%]`}>
-              <View style={tw`flex-row justify-between items-center mb-6`}>
-              <View>
-                <Text style={tw`text-2xl font-black text-gray-800`}>{selectedAdmin ? 'Ubah Data Admin' : 'Tambah Admin Baru'}</Text>
-                <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan dan konfigurasi sistem</Text>
+              <View style={tw`flex-row justify-between items-start mb-6`}>
+                <View style={tw`flex-1 mr-3`}>
+                  <Text style={tw`text-2xl font-black text-gray-800`}>{selectedAdmin ? 'Ubah Data Admin' : 'Tambah Admin Baru'}</Text>
+                  <Text style={tw`text-xs font-bold text-gray-500 mt-1`}>Akses pengawasan dan konfigurasi sistem</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={closeManageModal} 
+                  style={tw`w-9 h-9 bg-gray-100 rounded-full items-center justify-center shrink-0 mt-0.5`}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={22} color="#6B7280" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={closeManageModal} style={tw`p-2 bg-gray-100 rounded-full`}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={tw`mb-4`}>

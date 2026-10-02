@@ -34,7 +34,7 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
     const id = `CHK-${String(nextNum).padStart(2, '0')}`;
 
     const newItem = await prisma.checklistItem.create({
-      data: { id, name, category, severity: severity || 'Minor' }
+      data: { id, name, category, severity: category === 'B' ? '-' : (severity || 'Minor') }
     });
     res.status(201).json(newItem);
   } catch (error) {
@@ -48,7 +48,7 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), a
     const { name, category, severity } = req.body;
     const updated = await prisma.checklistItem.update({
       where: { id: req.params.id },
-      data: { name, category, severity }
+      data: { name, category, severity: category === 'B' ? '-' : (severity || 'Minor') }
     });
     res.json(updated);
   } catch (error) {

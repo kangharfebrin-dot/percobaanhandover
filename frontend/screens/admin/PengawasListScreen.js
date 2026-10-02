@@ -18,7 +18,12 @@ const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {}
 const API_BASE = `${API_URL}/api`; // Sesuaikan IP backend
 
 const { Dimensions } = require('react-native');
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function PengawasListScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
   const [pengawass, setPengawass] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);
@@ -27,9 +32,7 @@ export default function PengawasListScreen({ navigation }) {
   const handleCancelLogout = () => setIsLogoutVisible(false);
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
   const [loading, setLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -147,6 +150,17 @@ export default function PengawasListScreen({ navigation }) {
     setJabatan('');
   };
 
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: manageModalVisible, close: closeManageModal },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: isLogoutVisible, close: handleCancelLogout },
+      { isOpen: notificationModal.visible, close: () => setNotificationModal(prev => ({ ...prev, visible: false })) }
+    ]
+  });
+
   const openEditModal = (pengawas) => {
     setSelectedPengawas(pengawas);
     setName(pengawas.name);
@@ -260,38 +274,24 @@ export default function PengawasListScreen({ navigation }) {
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
 
-        {isLargeScreen ? (
-          <WebNavbar
-            user={user}
-            title="Daftar Pengawas"
-            subtitle="Kelola Akun Pengawas Lapangan"
-            navigation={navigation}
-            showBack={true}
-            rightAction={
-              (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
-                <TouchableOpacity
-                  onPress={openAddModal}
-                  style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
-                >
-                  <Feather name="user-plus" size={18} color="white" />
-                  <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Pengawas</Text>
-                </TouchableOpacity>
-              ) : null
-            }
-          />
-        ) : (
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <View style={tw`flex-row items-center z-30`}>
-              <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('AdminDashboard')} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
+        <WebNavbar
+          user={user}
+          title="Daftar Pengawas"
+          subtitle="Kelola Akun Pengawas Lapangan"
+          navigation={navigation}
+          showBack={true}
+          rightAction={
+            isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+              <TouchableOpacity
+                onPress={openAddModal}
+                style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
+              >
+                <Feather name="user-plus" size={18} color="white" />
+                <Text style={tw`text-white font-bold text-sm ml-2`}>Tambah Pengawas</Text>
               </TouchableOpacity>
-              <View>
-                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Daftar Pengawas</Text>
-                <Text style={tw`text-xs font-bold text-gray-500`}>Kelola Akun Pengawas Lapangan</Text>
-              </View>
-            </View>
-          </View>
-        )}
+            ) : null
+          }
+        />
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           <View style={tw`px-6 pt-2`}>
@@ -359,15 +359,20 @@ export default function PengawasListScreen({ navigation }) {
         <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={tw`w-full max-w-xl`}>
             <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full mx-auto max-h-[90%]`}>
-              <View style={tw`flex-row justify-between items-center mb-6`}>
-              <View>
-                <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Ubah Data Pengawas' : 'Tambah Pengawas Baru'}</Text>
-                <Text style={tw`text-xs font-bold text-gray-500`}>Akses pengawasan operasional dan persetujuan checklist</Text>
+              <View style={tw`flex-row justify-between items-start mb-6`}>
+                <View style={tw`flex-1 mr-3`}>
+                  <Text style={tw`text-2xl font-black text-gray-800`}>{selectedPengawas ? 'Ubah Data Pengawas' : 'Tambah Pengawas Baru'}</Text>
+                  <Text style={tw`text-xs font-bold text-gray-500 mt-1`}>Akses pengawasan operasional dan persetujuan checklist</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={closeManageModal} 
+                  style={tw`w-9 h-9 bg-gray-100 rounded-full items-center justify-center shrink-0 mt-0.5`}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={22} color="#6B7280" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={closeManageModal} style={tw`p-2 bg-gray-100 rounded-full`}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={tw`mb-4`}>

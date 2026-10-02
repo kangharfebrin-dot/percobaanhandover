@@ -17,7 +17,12 @@ const getPhotoUrl = (path) => {
   const cleanPath = path.replace(/\\/g, '/');
   return cleanPath.startsWith('http') ? cleanPath : `${API_URL}/${cleanPath.replace(/^\/+/, '')}`;
 };
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function IssueDetailScreen({ route, navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN', 'PENGAWAS', 'AMT']);
   const targetId = route.params?.issueId || route.params?.handoverId || route.params?.actionId || route.params?.id;
   const targetNopol = route.params?.noPolisi;
 
@@ -31,8 +36,7 @@ export default function IssueDetailScreen({ route, navigation }) {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['user', 'token']);
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   const [issue, setIssue] = useState(null);
@@ -47,6 +51,16 @@ export default function IssueDetailScreen({ route, navigation }) {
   const [isResolving, setIsResolving] = useState(false);
   const [selectedPreviewPhoto, setSelectedPreviewPhoto] = useState(null);
   const [previewRotation, setPreviewRotation] = useState(0);
+
+  useSubpageBackHandler({
+    navigation,
+    user: currentUser,
+    modals: [
+      { isOpen: !!selectedPreviewPhoto, close: () => setSelectedPreviewPhoto(null) },
+      { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
+      { isOpen: resolveModalVisible, close: () => setResolveModalVisible(false) },
+    ]
+  });
 
   useEffect(() => {
     loadUser();
@@ -291,7 +305,13 @@ export default function IssueDetailScreen({ route, navigation }) {
             activeMenu={'IssueList'}
             title="Detail Isu Kendaraan"
             subtitle="Isu Tidak Ditemukan"
-            onBack={() => navigation.goBack()}
+            onBack={() => {
+              if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else if (navigation && typeof navigation.replace === 'function') {
+                navigation.replace('IssueList');
+              }
+            }}
           />
 
           {/* Empty State Card */}
@@ -347,7 +367,13 @@ export default function IssueDetailScreen({ route, navigation }) {
             activeMenu={'IssueList'}
             title="Detail Isu Kendaraan"
             subtitle={issue.handover?.noPolisi || 'Kendaraan'}
-            onBack={() => navigation.navigate('MessageCenter')}
+            onBack={() => {
+              if (navigation && navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else if (navigation && typeof navigation.replace === 'function') {
+                navigation.replace('IssueList');
+              }
+            }}
             rightAction={
               issue.handoverId ? (
                 <TouchableOpacity 

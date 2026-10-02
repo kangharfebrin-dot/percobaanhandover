@@ -14,6 +14,8 @@ import * as Sharing from 'expo-sharing';
 import Toast from 'react-native-toast-message';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -54,6 +56,18 @@ export default function HistoryScreen({ route, navigation }) {
 
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: showStartPicker, close: () => setShowStartPicker(false) },
+      { isOpen: showEndPicker, close: () => setShowEndPicker(false) },
+      { isOpen: isFilterVisible, close: () => setIsFilterVisible(false) },
+      { isOpen: showExportModal, close: () => setShowExportModal(false) },
+      { isOpen: isLogoutVisible, close: () => setIsLogoutVisible(false) },
+    ]
+  });
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const fetchUnreadNotificationsCount = async () => {
@@ -334,9 +348,7 @@ export default function HistoryScreen({ route, navigation }) {
 
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   const getDashboardRoute = () => {

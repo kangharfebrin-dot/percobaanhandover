@@ -12,7 +12,12 @@ import WebNavbar from '../../components/WebNavbar';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import { handleLogoutAndReset } from '../../utils/authHelper';
+
 export default function MessageCenterScreen({ navigation }) {
+  useRoleGuard(['SUPER_ADMIN', 'ADMIN', 'PENGAWAS', 'AMT']);
   const [messages, setMessages] = useState([]);
   const unreadNotificationsCount = 0;
   const [loading, setLoading] = useState(true);
@@ -23,6 +28,15 @@ export default function MessageCenterScreen({ navigation }) {
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const isLargeScreen = screenWidth > 768;
+
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!selectedMessage, close: () => setSelectedMessage(null) },
+      { isOpen: isLogoutVisible, close: () => setIsLogoutVisible(false) },
+    ]
+  });
 
   const orb1TranslateY = React.useRef(new Animated.Value(0)).current;
   const orb2TranslateY = React.useRef(new Animated.Value(0)).current;
@@ -86,8 +100,7 @@ export default function MessageCenterScreen({ navigation }) {
     } catch (error) {
       console.log("Error fetching notifications:", error.message);
       if (error.response?.status === 401 || error.response?.status === 403) {
-        await AsyncStorage.multiRemove(['user', 'token']);
-        navigation.replace('Login');
+        await handleLogoutAndReset(navigation);
       }
     } finally {
       setLoading(false);
@@ -107,9 +120,7 @@ export default function MessageCenterScreen({ navigation }) {
   };
   const confirmLogout = async () => {
     setIsLogoutVisible(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    delete axios.defaults.headers.common['Authorization'];
-    navigation.replace('Login');
+    await handleLogoutAndReset(navigation);
   };
 
   const markAsRead = async (id) => {
