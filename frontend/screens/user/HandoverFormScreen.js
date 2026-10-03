@@ -11,6 +11,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebSidebar from '../../components/WebSidebar';
+import WebNavbar from '../../components/WebNavbar';
 import { getItemOptionLabels } from '../../utils/checklistHelper';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
@@ -882,26 +883,14 @@ export default function HandoverFormScreen({ route, navigation }) {
       )}
 
       <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-        <View style={tw`z-10 rounded-b-[40px] shadow-xl bg-white overflow-hidden`}>
-          <LinearGradient colors={PERTAMINA_BLUE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tw`pt-8 pb-10 px-6 rounded-b-[40px]`}>
-            <View style={tw`w-full flex-row items-center justify-between`}>
-              <View style={tw`flex-row items-center`}>
-                <TouchableOpacity onPress={handleBackPress} style={tw`p-3 bg-white/20 rounded-2xl mr-4 border border-white/30`}>
-                  <Ionicons name="arrow-back" size={24} color="white" />
-                </TouchableOpacity>
-                <View>
-                  <Text style={tw`text-3xl font-extrabold text-white tracking-tight`}>Form Handover</Text>
-                  <Text style={tw`text-blue-100 font-medium text-sm mt-1 flex-row items-center`}>
-                    <Ionicons name="location" size={14} color="#93C5FD" /> Area TBBM Pertamina
-                  </Text>
-                </View>
-              </View>
-              <View style={tw`bg-white/20 p-3 rounded-2xl border border-white/30`}>
-                <Ionicons name="document-text" size={28} color="white" />
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
+        <WebNavbar
+          user={user}
+          title="Form Handover"
+          subtitle="Pemeriksaan & Serah Terima Truk Tangki"
+          showBack={true}
+          onBack={handleBackPress}
+          navigation={navigation}
+        />
 
         <ScrollView
           style={tw`flex-1`}

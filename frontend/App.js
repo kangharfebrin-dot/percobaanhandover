@@ -99,7 +99,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const checkLogin = async () => {
+    const determineRoute = async () => {
       try {
         await loadSavedApiUrl();
 
@@ -107,8 +107,7 @@ export default function App() {
         if (Platform.OS !== 'web') {
           await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
           delete axios.defaults.headers.common['Authorization'];
-          setInitialRoute('Login');
-          return;
+          return 'Login';
         }
 
         // Pada Web browser: Tetap pertahankan session jika token masih valid agar tidak logout saat refresh (F5)
@@ -131,14 +130,12 @@ export default function App() {
               } catch (refreshErr) {
                 console.log('Sesi login telah berakhir, silakan login kembali');
                 await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
-                setInitialRoute('Login');
-                return;
+                return 'Login';
               }
             } else {
               console.log('Token telah kadaluarsa, reset session ke Login');
               await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
-              setInitialRoute('Login');
-              return;
+              return 'Login';
             }
           }
 
@@ -146,21 +143,31 @@ export default function App() {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
           if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-            setInitialRoute('AdminDashboard');
+            return 'AdminDashboard';
           } else if (user.role === 'PENGAWAS') {
-            setInitialRoute('PengawasDashboard');
+            return 'PengawasDashboard';
           } else {
-            setInitialRoute('UserDashboard');
+            return 'UserDashboard';
           }
         } else {
-          setInitialRoute('Login');
+          return 'Login';
         }
       } catch (error) {
         console.error('Failed to load user from AsyncStorage:', error);
-        setInitialRoute('Login'); // Fallback ke Login jika error
+        return 'Login'; // Fallback ke Login jika error
       }
     };
-    checkLogin();
+
+    const runChecks = async () => {
+      // Tampilkan animasi loading screen sekitar 1 detik (1000ms)
+      const [route] = await Promise.all([
+        determineRoute(),
+        new Promise(resolve => setTimeout(resolve, 1000))
+      ]);
+      setInitialRoute(route);
+    };
+
+    runChecks();
   }, []);
 
   const scaleAnim = React.useRef(new Animated.Value(0.95)).current;
@@ -202,7 +209,10 @@ export default function App() {
             transform: [{ scale: scaleAnim }],
             alignItems: 'center'
           }}>
-            <TextLogo style={{ marginBottom: 20, transform: [{ scale: 1.2 }] }} />
+            <Image
+              source={require('./assets/exact_digihandover_logo.png')}
+              style={{ width: 260, height: 42, resizeMode: 'contain', marginBottom: 28 }}
+            />
             <ActivityIndicator size="large" color="#0055A5" />
           </Animated.View>
         </View>

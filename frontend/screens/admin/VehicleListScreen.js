@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
+import VehicleFilterModal from '../../components/VehicleFilterModal';
 import { API_URL } from '../../config';
 import TextLogo from '../../components/TextLogo';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, Animated, Image, Easing, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, Linking } from 'react-native';
@@ -15,7 +16,7 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-const API_BASE = `${API_URL}/api`;
+const API_BASE = { toString: () => `${API_URL}/api` };
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
 const { Dimensions } = require('react-native');
@@ -531,41 +532,12 @@ export default function VehicleListScreen({ navigation }) {
       </SafeAreaView>
 
       {/* FILTER MODAL */}
-      <Modal visible={isFilterVisible} transparent={true} animationType="fade" onRequestClose={() => setIsFilterVisible(false)}>
-        <View style={tw`flex-1 justify-center items-center bg-black/60 p-4`}>
-          <View style={tw`bg-white rounded-[30px] p-6 shadow-2xl w-full max-w-md`}>
-            <View style={tw`flex-row justify-between items-center mb-6`}>
-              <Text style={tw`text-2xl font-black text-gray-800`}>Filter Kendaraan</Text>
-              <TouchableOpacity onPress={() => setIsFilterVisible(false)} style={tw`p-2 bg-gray-100 rounded-full`}><Ionicons name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-            <Text style={tw`text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider`}>Berdasarkan Status Isu</Text>
-            <View style={tw`flex-row flex-wrap mb-6`}>
-              {['Semua', 'Normal', 'Isu'].map(status => (
-                <TouchableOpacity
-                  key={status}
-                  style={tw`px-5 py-2.5 rounded-full mr-3 mb-3 border ${
-                    tempSelectedStatus === status
-                      ? (status === 'Isu' ? 'bg-[#ED1C24] border-[#ED1C24]' : 'bg-[#0055A5] border-[#0055A5]')
-                      : 'bg-transparent border-gray-300'
-                  }`}
-                  onPress={() => setTempSelectedStatus(status)}
-                >
-                  <Text style={tw`text-sm font-bold ${tempSelectedStatus === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={tw`bg-[#0055A5] p-4 rounded-2xl items-center shadow-lg shadow-blue-500/40`}
-              onPress={() => {
-                setSelectedStatus(tempSelectedStatus);
-                setIsFilterVisible(false);
-              }}
-            >
-              <Text style={tw`text-white font-black text-lg tracking-wide`}>TERAPKAN FILTER</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <VehicleFilterModal
+        visible={isFilterVisible}
+        onClose={() => setIsFilterVisible(false)}
+        selectedStatus={selectedStatus}
+        onApply={(status) => setSelectedStatus(status)}
+      />
 
       {/* MANAGE VEHICLE MODAL (For ADMIN & PENGAWAS) */}
       {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'PENGAWAS') && (

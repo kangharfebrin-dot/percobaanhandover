@@ -11,7 +11,7 @@ export const getDefaultApiUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  let host = '192.168.1.58';
+  let host = 'localhost';
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location?.hostname) {
       host = window.location.hostname;

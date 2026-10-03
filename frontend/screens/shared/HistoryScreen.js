@@ -595,40 +595,29 @@ export default function HistoryScreen({ route, navigation }) {
 
         {/* MAIN CONTENT AREA */}
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}]}>
-        {/* STICKY NAVBAR (Floating Modern Style) */}
-        {isLargeScreen && user ? (
-          <WebNavbar
-            user={user}
-            title="Lihat Seluruh Laporan"
-            navigation={navigation}
-            showBack={true}
-            rightAction={
-              user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? (
-                <>
-                  <View style={tw`flex-row gap-3`}>
-                    <TouchableOpacity onPress={handleExportPdf} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
-                      <Ionicons name="document-outline" size={16} color="white" />
-                      <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleExportExcel} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
-                      <Ionicons name="document-text" size={16} color="white" />
-                      <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : null
-            }
-          />
-        ) : (
-          <View style={[tw`flex-row items-center justify-between px-5 py-3 mx-5 mt-4 mb-2 rounded-3xl border border-white/60 relative z-20`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.15, shadowRadius: 25, shadowOffset: { width: 0, height: 10 } }]}>
-            <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())} style={tw`p-2 bg-gray-100 rounded-full mr-4 shadow-sm z-30`}>
-                <Ionicons name="arrow-back" size={24} color="#0055A5" />
-              </TouchableOpacity>
-              <Text style={tw`text-2xl font-black text-gray-800 tracking-tight z-30`}>Lihat Seluruh Laporan</Text>
-            </View>
-          </View>
-        )}
+        {/* STICKY NAVBAR (Floating Modern Style - Sama persis Mobile & Web) */}
+        <WebNavbar
+          user={user}
+          title="Lihat Seluruh Laporan"
+          subtitle="Data Riwayat Handover & Inspeksi"
+          navigation={navigation}
+          showBack={true}
+          onBack={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace(getDashboardRoute())}
+          rightAction={
+            isLargeScreen && user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? (
+              <View style={tw`flex-row gap-3`}>
+                <TouchableOpacity onPress={handleExportPdf} style={tw`bg-[#ED1C24] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                  <Ionicons name="document-outline" size={16} color="white" />
+                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export PDF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleExportExcel} style={tw`bg-[#00A651] px-4 py-2 rounded-xl flex-row items-center shadow-md active:scale-95`}>
+                  <Ionicons name="document-text" size={16} color="white" />
+                  <Text style={tw`text-white font-bold text-xs ml-1.5`}>Export Excel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
 
         <View style={[tw`flex-1 relative`, Platform.OS === 'web' ? { minHeight: 0, overflow: 'hidden' } : {}]}>
           {/* Modern Search & Filter Button with comfortable spacing */}
