@@ -812,14 +812,13 @@ export default function HandoverFormScreen({ route, navigation }) {
 
             <View style={tw`bg-white rounded-xl shadow-sm border border-red-100 p-1`}>
               <TextInput
-                style={[tw`p-3 text-sm text-gray-800 font-medium`, { minHeight: 80 }]}
+                style={[tw`p-3 text-sm text-gray-800 font-medium`, { minHeight: 80, textAlignVertical: 'top' }]}
                 placeholder="Ketik detail kerusakan di sini... (Opsional)"
                 placeholderTextColor="#9CA3AF"
                 value={item.catatan}
                 onChangeText={(text) => updateItemCatatan(originalIdx, text)}
                 multiline
-                scrollEnabled={false} // Supaya otomatis memanjang ke bawah
-                textAlignVertical="top"
+                maxLength={500}
               />
             </View>
 
