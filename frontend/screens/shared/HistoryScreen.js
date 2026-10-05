@@ -225,11 +225,11 @@ export default function HistoryScreen({ route, navigation }) {
       Toast.show({ type: 'error', text1: 'Akses Ditolak', text2: 'Hanya Admin yang dapat mengekspor laporan.' });
       return;
     }
+    let url = '';
     try {
       const token = await AsyncStorage.getItem('token');
       let queryParams = `?token=${token}`;
       if (selectedStatus && selectedStatus !== 'Semua') queryParams += `&status=${selectedStatus}`;
-      if (selectedShift && selectedShift !== 'Semua') queryParams += `&shift=${selectedShift}`;
       if (selectedMonth && selectedMonth !== 'Semua') queryParams += `&month=${selectedMonth}`;
       if (selectedYear && selectedYear !== 'Semua') queryParams += `&year=${selectedYear}`;
       if (startDate && endDate) {
@@ -238,14 +238,40 @@ export default function HistoryScreen({ route, navigation }) {
       if (searchQuery && searchQuery.trim() !== '') {
         queryParams += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
-      const url = `${API_URL}/api/reports/excel${queryParams}`;
+      url = `${API_URL}/api/reports/excel${queryParams}`;
+      
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      };
+
       if (Platform.OS === 'web') {
-        window.open(url, '_blank');
+        const response = await axios.get(url, { headers, responseType: 'blob' });
+        
+        const contentType = response.headers['content-type'];
+        if (contentType && contentType.includes('text/html')) {
+            throw new Error('Server tidak mengembalikan file Excel yang valid (kemungkinan ngrok warning).');
+        }
+
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'Laporan_Handover.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        Toast.show({ type: 'success', text1: 'Sukses', text2: 'File berhasil diunduh.' });
       } else {
         const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.xlsx`;
-        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri, { headers });
 
         if (downloadRes.status === 200) {
+          const contentType = downloadRes.headers['Content-Type'] || downloadRes.headers['content-type'];
+          if (contentType && contentType.includes('text/html')) {
+            throw new Error('Server tidak mengembalikan file Excel yang valid (kemungkinan ngrok warning).');
+          }
           if (await Sharing.isAvailableAsync()) {
             try {
               await Sharing.shareAsync(downloadRes.uri, {
@@ -266,7 +292,7 @@ export default function HistoryScreen({ route, navigation }) {
     } catch (err) {
       console.log('Gagal export excel:', err);
       try {
-        if (await Linking.canOpenURL(url)) {
+        if (url && await Linking.canOpenURL(url)) {
           await Linking.openURL(url);
           Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File diunduh melalui browser perangkat Anda.' });
           return;
@@ -274,7 +300,7 @@ export default function HistoryScreen({ route, navigation }) {
       } catch (linkErr) {
         console.log('Fallback linking failed:', linkErr);
       }
-      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh Excel: ' + err.message });
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh Excel: ' + (err.response?.data?.message || err.message) });
     }
   };
 
@@ -297,13 +323,39 @@ export default function HistoryScreen({ route, navigation }) {
         queryParams += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
       url = `${API_URL}/api/reports/pdf${queryParams}`;
+      
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      };
+
       if (Platform.OS === 'web') {
-        window.open(url, '_blank');
+        const response = await axios.get(url, { headers, responseType: 'blob' });
+        
+        const contentType = response.headers['content-type'];
+        if (contentType && contentType.includes('text/html')) {
+            throw new Error('Server tidak mengembalikan file PDF yang valid (kemungkinan ngrok warning).');
+        }
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'Laporan_Handover.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        Toast.show({ type: 'success', text1: 'Sukses', text2: 'File PDF berhasil diunduh.' });
       } else {
         const fileUri = `${FileSystem.documentDirectory}Laporan_Handover.pdf`;
-        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri, { headers });
 
         if (downloadRes.status === 200) {
+          const contentType = downloadRes.headers['Content-Type'] || downloadRes.headers['content-type'];
+          if (contentType && contentType.includes('text/html')) {
+            throw new Error('Server tidak mengembalikan file PDF yang valid (kemungkinan ngrok warning).');
+          }
           if (await Sharing.isAvailableAsync()) {
             try {
               await Sharing.shareAsync(downloadRes.uri, {
@@ -324,7 +376,7 @@ export default function HistoryScreen({ route, navigation }) {
     } catch (err) {
       console.log('Gagal export PDF:', err);
       try {
-        if (url && (await Linking.canOpenURL(url))) {
+        if (url && await Linking.canOpenURL(url)) {
           await Linking.openURL(url);
           Toast.show({ type: 'info', text1: 'Membuka Browser', text2: 'File PDF dibuka/diunduh melalui browser perangkat Anda.' });
           return;
@@ -332,7 +384,7 @@ export default function HistoryScreen({ route, navigation }) {
       } catch (linkErr) {
         console.log('Fallback linking failed:', linkErr);
       }
-      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh PDF: ' + err.message });
+      Toast.show({ type: 'error', text1: 'Gagal Mengunduh', text2: 'Tidak dapat mengunduh PDF: ' + (err.response?.data?.message || err.message) });
     }
   };
 
@@ -453,10 +505,12 @@ export default function HistoryScreen({ route, navigation }) {
     }
 
     const isNormal = item.status === 'Siap Operasi (Normal)';
+    const isResolved = item.issue && item.issue.status === 'RESOLVED';
 
     let matchesStatus = true;
     if (selectedStatus === 'Normal') matchesStatus = isNormal;
-    if (selectedStatus === 'Isu') matchesStatus = !isNormal;
+    if (selectedStatus === 'Isu') matchesStatus = !isNormal && !isResolved;
+    if (selectedStatus === 'Selesai') matchesStatus = isResolved;
 
     let matchesMonth = true;
     if (selectedMonth !== 'Semua') {
@@ -678,7 +732,7 @@ export default function HistoryScreen({ route, navigation }) {
                     <Ionicons name="shield-checkmark" size={14} color="#9CA3AF" />  Status
                   </Text>
                   <View style={tw`flex-row flex-wrap mb-5`}>
-                    {['Semua', 'Normal', 'Isu'].map(status => (
+                    {['Semua', 'Normal', 'Isu', 'Selesai'].map(status => (
                       <TouchableOpacity
                         key={status}
                         style={tw`px-4 py-2.5 rounded-full mr-2 mb-2 border ${tempStatus === status ? 'bg-[#0055A5] border-[#0055A5]' : 'bg-transparent border-gray-300'}`}

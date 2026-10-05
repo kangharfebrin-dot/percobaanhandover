@@ -706,20 +706,28 @@ const exportExcel = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
 
     if (req.user && req.user.id) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'EXPORT_EXCEL',
-          userId: req.user.id,
-          details: `User exported handover reports to Excel (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
-        }
-      });
+      try {
+        await prisma.auditLog.create({
+          data: {
+            action: 'EXPORT_EXCEL',
+            userId: req.user.id,
+            details: `User exported handover reports to Excel (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
+          }
+        });
+      } catch (auditError) {
+        console.error('Audit log export gagal:', auditError);
+      }
     }
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
     console.error('Error exportExcel:', error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.end();
+    }
   }
 };
 
@@ -1335,19 +1343,27 @@ const exportPdf = async (req, res) => {
     });
 
     if (req.user && req.user.id) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'EXPORT_PDF',
-          userId: req.user.id,
-          details: `User exported handover reports to PDF (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
-        }
-      });
+      try {
+        await prisma.auditLog.create({
+          data: {
+            action: 'EXPORT_PDF',
+            userId: req.user.id,
+            details: `User exported handover reports to PDF (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
+          }
+        });
+      } catch (auditError) {
+        console.error('Audit log export gagal:', auditError);
+      }
     }
 
     doc.end();
   } catch (error) {
     console.error('Error exportPdf:', error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.end();
+    }
   }
 };
 

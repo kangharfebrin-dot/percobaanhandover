@@ -106,13 +106,6 @@ export default function App() {
       try {
         await loadSavedApiUrl();
 
-        // Pada aplikasi Android / Mobile: Wajibkan login ulang setiap aplikasi dibuka dari awal (Cold Start / dihapus dari RAM)
-        if (Platform.OS !== 'web') {
-          await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
-          delete axios.defaults.headers.common['Authorization'];
-          return 'Login';
-        }
-
         // Pada Web browser: Tetap pertahankan session jika token masih valid agar tidak logout saat refresh (F5)
         const userStr = await AsyncStorage.getItem('user');
         let token = await AsyncStorage.getItem('token');

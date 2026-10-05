@@ -78,7 +78,11 @@ export default function HandoverDetailScreen({ route, navigation }) {
         window.open(url, '_blank');
       } else {
         const fileUri = `${FileSystem.documentDirectory}Detail_Handover_${handover.noPolisi || 'Report'}.xlsx`;
-        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
 
         if (downloadRes.status === 200) {
           if (await Sharing.isAvailableAsync()) {
@@ -132,7 +136,11 @@ export default function HandoverDetailScreen({ route, navigation }) {
         window.open(url, '_blank');
       } else {
         const fileUri = `${FileSystem.documentDirectory}Detail_Handover_${handover.noPolisi || 'Report'}.pdf`;
-        const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
 
         if (downloadRes.status === 200) {
           if (await Sharing.isAvailableAsync()) {
@@ -184,7 +192,8 @@ export default function HandoverDetailScreen({ route, navigation }) {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/handovers/${targetId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
       const data = await response.json();

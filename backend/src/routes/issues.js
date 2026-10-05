@@ -25,8 +25,8 @@ router.get('/ongoing', authenticateToken, async (req, res) => {
   }
 });
 
-// 2. GET All Issues
-router.get('/', authenticateToken, async (req, res) => {
+// 2. GET All Issues (Hanya untuk Admin & Pengawas)
+router.get('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PENGAWAS']), async (req, res) => {
   try {
     const issues = await prisma.issue.findMany({
       include: {
@@ -122,10 +122,16 @@ router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADM
         }
       });
       if (!otherOngoing) {
-        await prisma.vehicle.update({
+        const vehicle = await prisma.vehicle.findUnique({
           where: { noPolisi: target.handover.noPolisi },
-          data: { status: 'READY_TO_START' }
+          select: { status: true }
         });
+        if (vehicle && vehicle.status === 'Maintenance') {
+          await prisma.vehicle.update({
+            where: { noPolisi: target.handover.noPolisi },
+            data: { status: 'READY_TO_START' }
+          });
+        }
       }
     }
 

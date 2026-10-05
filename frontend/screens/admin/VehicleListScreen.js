@@ -186,7 +186,11 @@ export default function VehicleListScreen({ navigation }) {
 
       const cleanPlate = (selectedVehicle.noPolisi || selectedVehicle.barcode).replace(/\s+/g, '');
       const fileUri = FileSystem.documentDirectory + `QR_Handover_${cleanPlate}.png`;
-      const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri);
+      const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
 
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
