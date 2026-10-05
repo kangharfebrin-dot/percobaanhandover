@@ -187,8 +187,8 @@ export default function HistoryScreen({ route, navigation }) {
       let data = res.data.data || res.data; // fallback jika API lama
 
       if (userData && (userData.role === 'AMT' || userData.role === 'USER')) {
-        data = data.filter(h => 
-          h.userId === userData.id || 
+        data = data.filter(h =>
+          h.userId === userData.id ||
           (h.user && h.user.id === userData.id) ||
           (h.amt1 && userData.name && h.amt1.trim().toLowerCase() === userData.name.trim().toLowerCase()) ||
           (h.amt2 && userData.name && h.amt2.trim().toLowerCase() === userData.name.trim().toLowerCase())
@@ -383,7 +383,7 @@ export default function HistoryScreen({ route, navigation }) {
     setTempYear(selectedYear);
     setTempStartDate(startDate);
     setTempEndDate(endDate);
-    
+
     // Check if the current applied dates match a quick select
     const dObj = new Date();
     const defaultDate = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
@@ -404,7 +404,7 @@ export default function HistoryScreen({ route, navigation }) {
     } else {
       setTempQuickSelect(null);
     }
-    
+
     setIsFilterVisible(true);
   };
 
@@ -510,8 +510,8 @@ export default function HistoryScreen({ route, navigation }) {
                 ) : null}
               </View>
               <Text style={tw`text-xs text-gray-500 mt-1`} numberOfLines={1} ellipsizeMode="tail">
-                {item.amt1 
-                  ? `AMT: ${item.amt1}${item.amt2 ? ` & ${item.amt2}` : ''}` 
+                {item.amt1
+                  ? `AMT: ${item.amt1}${item.amt2 ? ` & ${item.amt2}` : ''}`
                   : (item.user ? `${item.user.name}${item.user.jabatan ? ` (${item.user.jabatan})` : ''}` : '-')}
               </Text>
             </View>
@@ -575,14 +575,14 @@ export default function HistoryScreen({ route, navigation }) {
 
       <SafeAreaView style={tw`flex-1 relative ${isLargeScreen ? 'flex-row' : 'flex-col'}`}>
 
-        
+
         {isLargeScreen && user && (
-          <WebSidebar 
-            user={user} 
-            activeMenu={'History'} 
-            navigation={navigation} 
-            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })} 
-            unreadNotificationsCount={unreadNotificationsCount || 0} 
+          <WebSidebar
+            user={user}
+            activeMenu={'History'}
+            navigation={navigation}
+            handleLogout={handleLogout || (() => { setIsLogoutVisible(true); })}
+            unreadNotificationsCount={unreadNotificationsCount || 0}
           />
         )}
 
@@ -737,7 +737,7 @@ export default function HistoryScreen({ route, navigation }) {
                         />
                       ) : (
                         <>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => setShowStartPicker(true)}
                             style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
                           >
@@ -773,7 +773,7 @@ export default function HistoryScreen({ route, navigation }) {
                         />
                       ) : (
                         <>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => setShowEndPicker(true)}
                             style={tw`p-3 border border-gray-200 rounded-2xl bg-gray-50 flex-row items-center justify-between`}
                           >
@@ -870,7 +870,7 @@ export default function HistoryScreen({ route, navigation }) {
           >
             <View style={tw`flex-1 justify-end sm:justify-center items-center bg-black/50 px-4 sm:px-0 z-50`}>
               <View style={tw`bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl relative overflow-hidden pb-8 sm:pb-6`}>
-                
+
                 {/* Header Modal */}
                 <View style={tw`flex-row justify-between items-center mb-2`}>
                   <View style={tw`flex-row items-center`}>
