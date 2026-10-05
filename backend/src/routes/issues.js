@@ -84,6 +84,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (!issue) {
       return res.status(404).json({ error: 'Isu tidak ditemukan' });
     }
+
+    if (['USER', 'AMT'].includes(req.user.role)) {
+      if (issue.handover?.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Tidak ada akses untuk isu ini' });
+      }
+    }
+
     res.json(issue);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -150,9 +157,16 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
           { id: req.params.id },
           { handoverId: req.params.id }
         ]
-      }
+      },
+      include: { handover: true }
     });
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
+
+    if (['USER', 'AMT'].includes(req.user.role)) {
+      if (target.handover?.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Tidak ada akses untuk memverifikasi perbaikan ini' });
+      }
+    }
     const issueId = target.id;
     const { itemsData } = req.body;
     const items = JSON.parse(itemsData || '[]');

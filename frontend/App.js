@@ -89,9 +89,32 @@ export default function App() {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
+        const originalRequest = error.config;
         const status = error.response?.status;
         const errMessage = error.response?.data?.error || '';
-        if (status === 401 || (status === 403 && (errMessage.includes('Token') || errMessage.includes('kadaluarsa')))) {
+        
+        const isAuthError = status === 401 || (status === 403 && (errMessage.includes('Token') || errMessage.includes('kadaluarsa')));
+
+        if (isAuthError && !originalRequest._retry && originalRequest.url !== `${API_URL}/api/auth/refresh`) {
+          originalRequest._retry = true;
+          try {
+            const refreshToken = await AsyncStorage.getItem('refreshToken');
+            if (refreshToken) {
+              const refreshRes = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+              if (refreshRes.data?.token) {
+                const newToken = refreshRes.data.token;
+                await AsyncStorage.setItem('token', newToken);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+                return axios(originalRequest); // Retry the original request
+              }
+            }
+          } catch (refreshErr) {
+            console.log('Refresh token gagal pada interceptor, session berakhir.');
+          }
+        }
+
+        if (isAuthError) {
           await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
           delete axios.defaults.headers.common['Authorization'];
         }
