@@ -36,6 +36,17 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
     const newItem = await prisma.checklistItem.create({
       data: { id, name, category, severity: category === 'B' ? '-' : (severity || 'Minor') }
     });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CHECKLIST_ITEM_CREATE',
+        actionType: 'CHECKLIST',
+        actionId: newItem.id,
+        details: JSON.stringify({ name: newItem.name, category: newItem.category, severity: newItem.severity })
+      }
+    }).catch(() => {});
+
     res.status(201).json(newItem);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -50,6 +61,17 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), a
       where: { id: req.params.id },
       data: { name, category, severity: category === 'B' ? '-' : (severity || 'Minor') }
     });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CHECKLIST_ITEM_UPDATE',
+        actionType: 'CHECKLIST',
+        actionId: updated.id,
+        details: JSON.stringify({ name: updated.name, category: updated.category, severity: updated.severity })
+      }
+    }).catch(() => {});
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -59,7 +81,19 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), a
 // 4. DELETE Checklist Item (A4: Admin only)
 router.delete('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {
+    const existing = await prisma.checklistItem.findUnique({ where: { id: req.params.id } });
     await prisma.checklistItem.delete({ where: { id: req.params.id } });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CHECKLIST_ITEM_DELETE',
+        actionType: 'CHECKLIST',
+        actionId: req.params.id,
+        details: JSON.stringify({ name: existing?.name || req.params.id })
+      }
+    }).catch(() => {});
+
     res.json({ success: true, message: 'Item checklist berhasil dihapus' });
   } catch (error) {
     res.status(500).json({ error: error.message });

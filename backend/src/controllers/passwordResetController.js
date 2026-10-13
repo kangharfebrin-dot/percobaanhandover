@@ -292,7 +292,7 @@ exports.verifyAndResetPassword = async (req, res) => {
         data: {
           userId: adminId,
           action: 'USER_PASSWORD_RESET_APPROVED',
-          actionType: 'USER_MANAGEMENT',
+          actionType: 'PASSWORD_RESET',
           actionId: targetUser.id,
           details: JSON.stringify({
             actorRole,
@@ -342,7 +342,7 @@ exports.verifyAndResetPassword = async (req, res) => {
         data: {
           userId: adminId,
           action: 'USER_PASSWORD_RESET_REJECTED',
-          actionType: 'USER_MANAGEMENT',
+          actionType: 'PASSWORD_RESET',
           actionId: targetUser.id,
           details: JSON.stringify({
             actorRole,

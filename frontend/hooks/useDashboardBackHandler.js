@@ -10,14 +10,16 @@ import { useFocusEffect } from '@react-navigation/native';
  * 3. Jika sedang di beranda dan belum ada konfirmasi keluar, buka modal Konfirmasi Keluar.
  * Tombol kembali TIDAK akan langsung menutup aplikasi tanpa konfirmasi.
  */
-export function useDashboardBackHandler({
-  isLogoutVisible,
-  setIsLogoutVisible,
-  handleLogout,
-  handleCancelLogout,
-  showNotificationsModal,
-  setShowNotificationsModal,
-}) {
+export function useDashboardBackHandler(options = {}) {
+  const {
+    isLogoutVisible,
+    setIsLogoutVisible,
+    handleLogout,
+    handleCancelLogout,
+    showNotificationsModal,
+    setShowNotificationsModal,
+  } = options || {};
+
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== 'android') return;

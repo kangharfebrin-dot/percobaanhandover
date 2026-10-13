@@ -711,6 +711,7 @@ const exportExcel = async (req, res) => {
         await prisma.auditLog.create({
           data: {
             action: 'EXPORT_EXCEL',
+            actionType: 'REPORT_EXPORT',
             userId: req.user.id,
             details: `User exported handover reports to Excel (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
           }
@@ -1348,6 +1349,7 @@ const exportPdf = async (req, res) => {
         await prisma.auditLog.create({
           data: {
             action: 'EXPORT_PDF',
+            actionType: 'REPORT_EXPORT',
             userId: req.user.id,
             details: `User exported handover reports to PDF (${isSingle ? `ID: ${handovers[0]?.id}` : `${handovers.length} records`})`
           }

@@ -177,6 +177,17 @@ router.post('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), asy
       color: { dark: '#000000', light: '#FFFFFF' }
     });
 
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'VEHICLE_CREATE',
+        actionType: 'VEHICLE',
+        actionId: vehicle.id,
+        noPolisi: vehicle.noPolisi,
+        details: JSON.stringify({ noPolisi, barcode, jenisKendaraan, kapasitas, brand, status: vehicle.status })
+      }
+    }).catch(() => {});
+
     res.status(201).json({ success: true, vehicle });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -212,6 +223,17 @@ router.put('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), a
       });
     }
 
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'VEHICLE_UPDATE',
+        actionType: 'VEHICLE',
+        actionId: vehicle.id,
+        noPolisi: vehicle.noPolisi,
+        details: JSON.stringify({ noPolisi, barcode, jenisKendaraan, kapasitas, brand, status: vehicle.status })
+      }
+    }).catch(() => {});
+
     res.json({ success: true, vehicle });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -234,6 +256,17 @@ router.delete('/:id', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN'])
       fs.unlinkSync(qrPath);
     }
 
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'VEHICLE_DELETE',
+        actionType: 'VEHICLE',
+        actionId: vehicle.id,
+        noPolisi: vehicle.noPolisi,
+        details: JSON.stringify({ noPolisi: vehicle.noPolisi, barcode: vehicle.barcode })
+      }
+    }).catch(() => {});
+
     res.json({ success: true, message: 'Kendaraan berhasil dihapus' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -250,6 +283,18 @@ router.put('/:id/status', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMI
       where: { id: req.params.id },
       data: { status }
     });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'VEHICLE_STATUS_CHANGE',
+        actionType: 'VEHICLE',
+        actionId: vehicle.id,
+        noPolisi: vehicle.noPolisi,
+        details: JSON.stringify({ noPolisi: vehicle.noPolisi, newStatus: status })
+      }
+    }).catch(() => {});
+
     res.json({ success: true, vehicle });
   } catch (error) {
     res.status(500).json({ error: error.message });

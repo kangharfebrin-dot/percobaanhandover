@@ -139,39 +139,120 @@ router.get('/system-summary', authenticateToken, authorizeRole(['ADMIN', 'SUPER_
 // 1.2 GET Audit Logs Paginated (Untuk Admin & Super Admin)
 router.get('/audit-logs', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const rawPage = req.query.page;
+    const rawLimit = req.query.limit;
+
+    // Validasi page & limit
+    if (rawPage !== undefined && (isNaN(parseInt(rawPage)) || parseInt(rawPage) < 1)) {
+      return res.status(400).json({ error: 'Parameter page harus berupa bilangan bulat positif >= 1' });
+    }
+    if (rawLimit !== undefined && (isNaN(parseInt(rawLimit)) || parseInt(rawLimit) < 1)) {
+      return res.status(400).json({ error: 'Parameter limit harus berupa bilangan bulat positif >= 1' });
+    }
+
+    const page = Math.max(1, parseInt(rawPage) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(rawLimit) || 20));
     const skip = (page - 1) * limit;
 
-    const { search, actionType, startDate, endDate } = req.query;
+    const { search, actionType, role, startDate, endDate } = req.query;
 
-    const where = {};
+    const andConditions = [];
 
-    if (actionType && actionType.trim() !== '') {
-      where.actionType = actionType.trim();
-    }
-
+    // 1. Validasi & Filter Rentang Tanggal
     if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+      const dateFilter = {};
+      let startObj = null;
+      let endObj = null;
+
+      if (startDate && startDate.trim() !== '') {
+        const d = new Date(startDate.trim());
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({ error: 'Format parameter startDate tidak valid' });
+        }
+        d.setHours(0, 0, 0, 0);
+        startObj = d;
+        dateFilter.gte = startObj;
       }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt.lte = end;
+
+      if (endDate && endDate.trim() !== '') {
+        const d = new Date(endDate.trim());
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({ error: 'Format parameter endDate tidak valid' });
+        }
+        d.setHours(23, 59, 59, 999);
+        endObj = d;
+        dateFilter.lte = endObj;
       }
+
+      if (startObj && endObj && startObj > endObj) {
+        return res.status(400).json({ error: 'Parameter startDate tidak boleh lebih besar daripada endDate' });
+      }
+
+      andConditions.push({ createdAt: dateFilter });
     }
 
+    // 2. Filter Kategori Aksi (actionType)
+    if (actionType && actionType.trim() !== '' && actionType.trim() !== 'ALL') {
+      andConditions.push({ actionType: actionType.trim() });
+    }
+
+    // 3. Filter Role Aktor
+    if (role && role.trim() !== '' && role.trim() !== 'ALL') {
+      const normRole = normalizeRole(role.trim());
+      const validRoles = ['SUPER_ADMIN', 'ADMIN', 'PENGAWAS', 'AMT'];
+      if (!validRoles.includes(normRole)) {
+        return res.status(400).json({
+          error: `Parameter role tidak valid. Pilihan role yang didukung: ${validRoles.join(', ')}`
+        });
+      }
+
+      // Ambil seluruh user ID dengan role ini (termasuk yang deletedAt != null agar riwayat log masa lalu tidak hilang)
+      const roleUsers = await prisma.user.findMany({
+        where: { role: normRole },
+        select: { id: true }
+      });
+      const roleUserIds = roleUsers.map(u => u.id);
+
+      andConditions.push({
+        userId: { in: roleUserIds.length > 0 ? roleUserIds : ['__NO_MATCH_USER_ROLE__'] }
+      });
+    }
+
+    // 4. Pencarian Komprehensif (Kata Kunci)
     if (search && search.trim() !== '') {
       const q = search.trim();
-      where.OR = [
+      if (q.length > 100) {
+        return res.status(400).json({ error: 'Kata kunci pencarian maksimal 100 karakter' });
+      }
+
+      // Cari user ID yang nama atau username-nya cocok dengan kata kunci
+      const matchedUsers = await prisma.user.findMany({
+        where: {
+          OR: [
+            { name: { contains: q } },
+            { username: { contains: q } }
+          ]
+        },
+        select: { id: true }
+      });
+      const matchedUserIds = matchedUsers.map(u => u.id);
+
+      const searchOrList = [
         { action: { contains: q } },
         { actionType: { contains: q } },
         { noPolisi: { contains: q } },
+        { actionId: { contains: q } },
         { details: { contains: q } }
       ];
+
+      if (matchedUserIds.length > 0) {
+        searchOrList.push({ userId: { in: matchedUserIds } });
+      }
+
+      andConditions.push({ OR: searchOrList });
     }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [total, logs] = await Promise.all([
       prisma.auditLog.count({ where }),
@@ -202,11 +283,12 @@ router.get('/audit-logs', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMI
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
+        totalPages: total > 0 ? Math.ceil(total / limit) : 1
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Audit log fetch error:', error);
+    res.status(500).json({ error: 'Terjadi kesalahan pada server saat mengambil data audit log' });
   }
 });
 
