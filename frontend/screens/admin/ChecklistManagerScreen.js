@@ -30,15 +30,15 @@ const DEFAULT_ITEMS = [
   { id: 'A13', category: 'A', name: 'Keberadaan Selang bongkar', severity: 'Major' },
   { id: 'A14', category: 'A', name: 'Keberadaan Grounding Cable', severity: 'Major' },
   { id: 'A15', category: 'A', name: 'Keberadaan Spill Kit', severity: 'Minor' },
-  { id: 'B1', category: 'B', name: 'Membawa SIM Sesuai Kendaraan', severity: 'Major' },
-  { id: 'B2', category: 'B', name: 'ID/ HSE Paspor Berlaku', severity: 'Major' },
-  { id: 'B3', category: 'B', name: 'Dokumen KIM', severity: 'Major' },
-  { id: 'B4', category: 'B', name: 'Menggunakan Seragam Kerja', severity: 'Minor' },
-  { id: 'B5', category: 'B', name: 'Menggunakan Safety Shoes', severity: 'Major' },
-  { id: 'B6', category: 'B', name: 'Menggunakan Safety Helm', severity: 'Major' },
-  { id: 'B7', category: 'B', name: 'Menggunakan Safety Glove', severity: 'Minor' },
-  { id: 'B8', category: 'B', name: 'Membawa Jas Hujan', severity: 'Minor' },
-  { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: 'Minor' }
+  { id: 'B1', category: 'B', name: 'Membawa SIM Sesuai Kendaraan', severity: '-' },
+  { id: 'B2', category: 'B', name: 'ID/ HSE Paspor Berlaku', severity: '-' },
+  { id: 'B3', category: 'B', name: 'Dokumen KIM', severity: '-' },
+  { id: 'B4', category: 'B', name: 'Menggunakan Seragam Kerja', severity: '-' },
+  { id: 'B5', category: 'B', name: 'Menggunakan Safety Shoes', severity: '-' },
+  { id: 'B6', category: 'B', name: 'Menggunakan Safety Helm', severity: '-' },
+  { id: 'B7', category: 'B', name: 'Menggunakan Safety Glove', severity: '-' },
+  { id: 'B8', category: 'B', name: 'Membawa Jas Hujan', severity: '-' },
+  { id: 'B9', category: 'B', name: 'Membawa Buku Saku AMT', severity: '-' }
 ];
 
 import { useRoleGuard } from '../../hooks/useRoleGuard';

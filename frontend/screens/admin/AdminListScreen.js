@@ -247,21 +247,29 @@ export default function AdminListScreen({ navigation }) {
             </View>
             <Text style={tw`text-xs font-bold text-gray-500 mb-1.5`}>@{item.username} • {item.jabatan || 'Administrator'}</Text>
             <View style={tw`flex-row items-center`}>
-              <View style={tw`px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200`}>
-                <Text style={tw`text-[11px] font-extrabold text-blue-700`}>
-                  ADMIN (AKSES PENUH)
+              <View style={[
+                tw`px-2.5 py-0.5 rounded-full border`,
+                item.role === 'SUPER_ADMIN' ? tw`bg-purple-50 border-purple-200` : tw`bg-blue-50 border-blue-200`
+              ]}>
+                <Text style={[
+                  tw`text-[11px] font-extrabold`,
+                  item.role === 'SUPER_ADMIN' ? tw`text-purple-700` : tw`text-blue-700`
+                ]}>
+                  {item.role === 'SUPER_ADMIN' ? 'SUPER ADMIN (OTORITAS TERTINGGI)' : 'ADMINISTRATOR'}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => openEditModal(item)}
-          style={tw`p-2.5 bg-gray-50 rounded-full border border-gray-200 hover:bg-gray-100`}
-        >
-          <Feather name="edit-2" size={18} color="#4B5563" />
-        </TouchableOpacity>
+        {user?.role === 'SUPER_ADMIN' && (
+          <TouchableOpacity
+            onPress={() => openEditModal(item)}
+            style={tw`p-2.5 bg-gray-50 rounded-full border border-gray-200 hover:bg-gray-100`}
+          >
+            <Feather name="edit-2" size={18} color="#4B5563" />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -298,7 +306,7 @@ export default function AdminListScreen({ navigation }) {
             navigation={navigation}
             showBack={true}
             rightAction={
-              isLargeScreen ? (
+              isLargeScreen && user?.role === 'SUPER_ADMIN' ? (
                 <TouchableOpacity
                   onPress={openAddModal}
                   style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
@@ -357,8 +365,8 @@ export default function AdminListScreen({ navigation }) {
             />
           </View>
 
-          {/* Floating Action Button (Only on Mobile) */}
-          {!isLargeScreen && (
+          {/* Floating Action Button (Only on Mobile for Super Admin) */}
+          {!isLargeScreen && user?.role === 'SUPER_ADMIN' && (
             <TouchableOpacity
               style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-40`}
               onPress={openAddModal}
@@ -418,15 +426,32 @@ export default function AdminListScreen({ navigation }) {
               </View>
 
               <View style={tw`mb-4`}>
-                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Hak Akses Sistem</Text>
-                <View style={tw`p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex-row items-center`}>
-                  <View style={tw`w-10 h-10 bg-blue-100 rounded-xl items-center justify-center mr-3`}>
-                    <Feather name="shield" size={20} color="#0055A5" />
-                  </View>
-                  <View style={tw`flex-1`}>
-                    <Text style={tw`font-extrabold text-[#0055A5] text-sm`}>ADMINISTRATOR</Text>
-                    <Text style={tw`text-[11px] text-blue-800 mt-0.5`}>Akses penuh ke seluruh modul, armada, dan manajemen sistem.</Text>
-                  </View>
+                <Text style={tw`text-xs font-bold text-gray-500 uppercase mb-2`}>Tingkat Hak Akses</Text>
+                <View style={tw`flex-row gap-3`}>
+                  <TouchableOpacity
+                    style={[
+                      tw`flex-1 p-3 rounded-xl border flex-row items-center justify-center`,
+                      role === 'ADMIN' ? tw`border-[#0055A5] bg-blue-50` : tw`border-slate-200 bg-slate-50`
+                    ]}
+                    onPress={() => setRole('ADMIN')}
+                  >
+                    <Feather name="user-check" size={16} color={role === 'ADMIN' ? '#0055A5' : '#64748B'} />
+                    <Text style={[tw`ml-2 font-black text-xs`, role === 'ADMIN' ? tw`text-[#0055A5]` : tw`text-gray-600`]}>
+                      ADMINISTRATOR
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      tw`flex-1 p-3 rounded-xl border flex-row items-center justify-center`,
+                      role === 'SUPER_ADMIN' ? tw`border-purple-600 bg-purple-50` : tw`border-slate-200 bg-slate-50`
+                    ]}
+                    onPress={() => setRole('SUPER_ADMIN')}
+                  >
+                    <Feather name="shield" size={16} color={role === 'SUPER_ADMIN' ? '#7C3AED' : '#64748B'} />
+                    <Text style={[tw`ml-2 font-black text-xs`, role === 'SUPER_ADMIN' ? tw`text-purple-700` : tw`text-gray-600`]}>
+                      SUPER ADMIN
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 

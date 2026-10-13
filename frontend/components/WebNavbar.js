@@ -51,7 +51,8 @@ export default function WebNavbar({
   // Inisial avatar yang elegan (menggunakan zero-width space \u200B agar Chrome tidak auto-translate 'AD' ke 'IKLAN')
   const getInitials = () => {
     if (!user) return 'PT';
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'A\u200BD';
+    if (user.role === 'SUPER_ADMIN') return 'S\u200BA';
+    if (user.role === 'ADMIN') return 'A\u200BD';
     if (user.role === 'PENGAWAS') return 'P\u200BS';
     if (!user.name) return 'PT';
     const parts = user.name.trim().split(' ');

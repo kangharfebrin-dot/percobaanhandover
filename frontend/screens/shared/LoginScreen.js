@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useFocusEffect } from '@react-navigation/native';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
+import AppModal from '../../components/AppModal';
 
 const PERTAMINA_BLUE = ['#0055A5', '#003366'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -22,6 +23,7 @@ export default function LoginScreen({ navigation }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [showThreeFailuresModal, setShowThreeFailuresModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingReset, setIsSubmittingReset] = useState(false);
 
@@ -61,6 +63,7 @@ export default function LoginScreen({ navigation }) {
   }, [isPasswordFocused]);
 
   const handleLogin = async () => {
+    if (loading) return; // Cegah double-submit
     setErrorMessage('');
 
     const isUsernameEmpty = !username.trim();
@@ -70,7 +73,6 @@ export default function LoginScreen({ navigation }) {
       setErrorMessage('Mohon isi Username dan Password terlebih dahulu!');
       return;
     }
-    // Remove restrictive regex validation, just check for empty strings
     if (isUsernameEmpty) {
       setErrorMessage('Mohon isi Username terlebih dahulu!');
       return;
@@ -82,12 +84,18 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, { username, password });
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
+        username: username.trim(),
+        password
+      });
       const loggedInUser = res.data.user;
       const token = res.data.token;
       const refreshToken = res.data.refreshToken;
 
       if (loggedInUser && token) {
+        setShowThreeFailuresModal(false);
+        setErrorMessage('');
+
         await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
         await AsyncStorage.setItem('token', token);
         if (refreshToken) {
@@ -108,7 +116,18 @@ export default function LoginScreen({ navigation }) {
         });
       }
     } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Login gagal, periksa kembali username & password');
+      if (error.response) {
+        const data = error.response.data || {};
+        setErrorMessage(data.error || 'Login gagal, periksa kembali username & password');
+
+        // Picu modal bantuan setelah 3 kali gagal berturut-turut sesuai respons backend
+        if (data.showForgotPasswordPrompt || (data.failedAttempts && data.failedAttempts >= 3)) {
+          setShowThreeFailuresModal(true);
+        }
+      } else {
+        // Gangguan jaringan / timeout - tidak meningkatkan kegagalan kredensial
+        setErrorMessage('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+      }
     } finally {
       setLoading(false);
     }
@@ -120,30 +139,34 @@ export default function LoginScreen({ navigation }) {
     setNotificationModal({ visible: true, title, message, type });
   };
 
-  const handleForgotPassword = async () => {
-    if (isSubmittingReset) return; // Cegah double-tap
+  const handleForgotPassword = async (submittedUsername) => {
+    if (isSubmittingReset) return; // Cegah double-submit
 
-    if (!username.trim()) {
+    const targetUsername = (submittedUsername || username || '').trim();
+    if (!targetUsername) {
       setShowForgotPasswordModal(false);
-      showNotification('Username Kosong', 'Mohon isi username Anda pada form login sebelum meminta reset password.', 'error');
+      showNotification('Username Kosong', 'Mohon isi username Anda sebelum meminta reset password.', 'error');
       return;
     }
 
     setIsSubmittingReset(true);
-    setShowForgotPasswordModal(false);
-
-    // Langsung tampilkan notif sukses (optimistic)
-    showNotification('Berhasil', `Permintaan reset password untuk '${username}' telah dikirim ke Admin.`, 'success');
-
-    // Kirim API di background
     try {
-      await axios.post(`${API_URL}/api/password-reset/request`, {
-        email: username,
+      const res = await axios.post(`${API_URL}/api/password-reset/request`, {
+        username: targetUsername,
         reason: 'Lupa password dari aplikasi'
       });
+
+      setShowForgotPasswordModal(false);
+      // Tampilkan notifikasi sukses HANYA setelah server mengonfirmasi permintaan berhasil disimpan
+      showNotification(
+        'Permintaan Terkirim',
+        res.data?.message || `Permintaan reset password untuk '${targetUsername}' telah berhasil dikirim ke Admin.`,
+        'success'
+      );
     } catch (error) {
-      // Jika gagal, timpa notif sukses dengan notif error
-      showNotification('Gagal', error.response?.data?.message || "Gagal mengirim permintaan reset password.", 'error');
+      setShowForgotPasswordModal(false);
+      const serverMsg = error.response?.data?.message || 'Gagal mengirim permintaan reset password ke server.';
+      showNotification('Gagal', serverMsg, 'error');
     } finally {
       setIsSubmittingReset(false);
     }
@@ -283,7 +306,11 @@ export default function LoginScreen({ navigation }) {
                     style={tw`flex-1 p-4 text-gray-800 font-bold`}
                     placeholder="Ketik username Anda"
                     value={username}
-                    onChangeText={(text) => { setUsername(text); setErrorMessage(''); }}
+                    onChangeText={(text) => { 
+                      setUsername(text); 
+                      setErrorMessage(''); 
+                      setShowThreeFailuresModal(false);
+                    }}
                     onFocus={() => { setIsUsernameFocused(true); setIsPasswordFocused(false); }}
                     onBlur={() => setIsUsernameFocused(false)}
                     autoCapitalize="none"
@@ -341,10 +368,6 @@ export default function LoginScreen({ navigation }) {
               <TouchableOpacity
                 style={tw`mt-6 items-center`}
                 onPress={() => {
-                  if (!username.trim()) {
-                    setErrorMessage('Silakan isi Username terlebih dahulu agar admin tahu akun siapa yang lupa password.');
-                    return;
-                  }
                   setShowForgotPasswordModal(true);
                 }}
               >
@@ -355,6 +378,45 @@ export default function LoginScreen({ navigation }) {
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
+
+      {/* Modal Bantuan setelah 3 Kali Gagal Kredensial Berturut-turut */}
+      <AppModal
+        visible={showThreeFailuresModal}
+        type="warning"
+        tone="warning"
+        title="Apakah Anda Lupa Password?"
+        message="Username atau password yang dimasukkan tidak sesuai sebanyak 3 kali. Apakah Anda lupa password? Silakan hubungi Admin untuk mendapatkan bantuan reset password."
+        primaryText="Lupa Password / Hubungi Admin"
+        onPrimary={() => {
+          setShowThreeFailuresModal(false);
+          setShowForgotPasswordModal(true);
+        }}
+        secondaryText="Coba Lagi"
+        onSecondary={() => setShowThreeFailuresModal(false)}
+        onClose={() => setShowThreeFailuresModal(false)}
+        buttonsDirection="column"
+      />
+
+      {/* Modal Pengajuan Lupa Password / Hubungi Admin */}
+      <ForgotPasswordModal
+        visible={showForgotPasswordModal}
+        username={username}
+        onUsernameChange={(val) => setUsername(val)}
+        onClose={() => setShowForgotPasswordModal(false)}
+        onSubmit={handleForgotPassword}
+        isSubmitting={isSubmittingReset}
+      />
+
+      {/* Modal Notifikasi Feedback (Status Berhasil / Gagal) */}
+      <AppModal
+        visible={notificationModal.visible}
+        type={notificationModal.type === 'error' ? 'error' : 'success'}
+        title={notificationModal.title}
+        message={notificationModal.message}
+        primaryText="Tutup"
+        onPrimary={() => setNotificationModal((prev) => ({ ...prev, visible: false }))}
+        onClose={() => setNotificationModal((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }

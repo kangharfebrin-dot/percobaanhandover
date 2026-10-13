@@ -26,12 +26,28 @@ const getAnalytics = async (req, res) => {
     const handoversWithIssues = await prisma.handover.count({ where: { status: 'Ada Masalah' } });
     const driverComplianceRate = totalHandovers === 0 ? 100 : Math.round(((totalHandovers - handoversWithIssues) / totalHandovers) * 100);
 
+    // Isu Kendaraan (Kategori A)
+    const totalVehicleIssues = totalIssues;
+    const resolvedVehicleIssues = resolvedIssues;
+    const activeVehicleIssues = await prisma.issue.count({ where: { status: { in: ['ONGOING', 'PENDING_APPROVAL'] } } });
+
+    // Temuan Kepatuhan AMT (Kategori B)
+    const totalAmtComplianceFindings = await prisma.amtComplianceFinding.count();
+    const openAmtComplianceFindings = await prisma.amtComplianceFinding.count({ where: { status: 'OPEN' } });
+    const resolvedAmtComplianceFindings = await prisma.amtComplianceFinding.count({ where: { status: 'RESOLVED' } });
+
     res.json({
       success: true,
       data: {
         totalHandovers,
         totalIssues,
         resolvedIssues,
+        totalVehicleIssues,
+        resolvedVehicleIssues,
+        activeVehicleIssues,
+        totalAmtComplianceFindings,
+        openAmtComplianceFindings,
+        resolvedAmtComplianceFindings,
         repairSuccessRate: `${repairSuccessRate}%`,
         averageRepairTime: `${averageRepairTime} Jam`,
         driverComplianceRate: `${driverComplianceRate}%`

@@ -160,6 +160,9 @@ export default function WorkerListScreen({ navigation }) {
     }
 
     try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const data = {
         name: name.trim(),
         username: username.trim(),
@@ -172,11 +175,11 @@ export default function WorkerListScreen({ navigation }) {
 
       if (selectedWorker) {
         // Update
-        await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data);
+        await axios.put(`${API_BASE}/workers/${selectedWorker.id}`, data, { headers });
         showNotification('Berhasil', `Data pekerja '${name}' berhasil diperbarui!`, 'success');
       } else {
         // Create
-        await axios.post(`${API_BASE}/workers`, data);
+        await axios.post(`${API_BASE}/workers`, data, { headers });
         showNotification('Berhasil', `Pekerja baru '${name}' berhasil ditambahkan!`, 'success');
         setSearchQuery('');
       }
@@ -197,7 +200,9 @@ export default function WorkerListScreen({ navigation }) {
   const confirmDelete = async () => {
     if(!workerToDelete) return;
     try {
-      await axios.delete(`${API_BASE}/workers/${workerToDelete.id}`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.delete(`${API_BASE}/workers/${workerToDelete.id}`, { headers });
       setConfirmModalVisible(false);
       setManageModalVisible(false);
       fetchWorkers();
@@ -205,7 +210,7 @@ export default function WorkerListScreen({ navigation }) {
     } catch (error) {
       console.error(error);
       setConfirmModalVisible(false);
-      showNotification('Error', 'Gagal menghapus pekerja', 'error');
+      showNotification('Error', error.response?.data?.error || 'Gagal menghapus pekerja', 'error');
     }
   };
 

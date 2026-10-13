@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const emailTemplates = require('./emailTemplates');
+const prisma = require('../config/prisma');
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {

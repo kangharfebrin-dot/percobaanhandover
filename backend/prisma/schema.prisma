@@ -31,14 +31,16 @@ model Handover {
   amt2        String?  @db.VarChar(100)
   timestamp   DateTime @default(now())
   notes       String?  @db.Text
+  odometer    Int?
   userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user   User           @relation(fields: [userId], references: [id])
-  items  HandoverItem[]
-  photos Photo[]
-  issue  Issue?
+  user                  User                   @relation(fields: [userId], references: [id])
+  items                 HandoverItem[]
+  photos                Photo[]
+  issue                 Issue?
+  amtComplianceFindings AmtComplianceFinding[]
   emailNotificationLogs EmailNotificationLog[]
 
   @@index([userId], map: "Handover_userId_fkey")
@@ -77,6 +79,28 @@ model Issue {
   handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
 
   @@map("issue")
+}
+
+model AmtComplianceFinding {
+  id              String    @id @default(cuid())
+  handoverId      String
+  itemName        String
+  amtName         String?   @db.VarChar(100)
+  amtUserId       String?
+  status          String    @default("OPEN")
+  notes           String?   @db.Text
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolutionNotes String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+
+  @@index([handoverId])
+  @@index([status])
+  @@index([amtUserId])
+  @@map("amt_compliance_finding")
 }
 
 model Photo {
@@ -215,3 +239,15 @@ model SystemSetting {
 
   @@map("system_setting")
 }
+
+model LoginAttempt {
+  id             String    @id @default(cuid())
+  username       String    @unique(map: "LoginAttempt_username_key")
+  failedAttempts Int       @default(0)
+  lastFailedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("login_attempt")
+}
+

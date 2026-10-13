@@ -11,20 +11,27 @@ const { sendNotification } = require('../services/notificationService');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Helper to generate official handover document code: HO-YYYYMMDD-XXXX
-const generateHandoverNo = async () => {
+// Helper to generate official handover document code: HO-YYYYMMDD-XXXX with collision prevention
+const generateHandoverNo = async (tx = prisma) => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const datePrefix = `HO-${year}${month}${day}-`;
   try {
-    const countResult = await prisma.$queryRaw`
+    const countResult = await tx.$queryRaw`
       SELECT COUNT(*) as count FROM handover 
       WHERE handoverNo LIKE ${datePrefix + '%'}
     `;
-    const seqNum = Number(countResult[0]?.count || 0) + 1;
-    return `${datePrefix}${String(seqNum).padStart(4, '0')}`;
+    let seqNum = Number(countResult[0]?.count || 0) + 1;
+    let candidate = `${datePrefix}${String(seqNum).padStart(4, '0')}`;
+    let exists = await tx.handover.findFirst({ where: { handoverNo: candidate } });
+    while (exists) {
+      seqNum++;
+      candidate = `${datePrefix}${String(seqNum).padStart(4, '0')}`;
+      exists = await tx.handover.findFirst({ where: { handoverNo: candidate } });
+    }
+    return candidate;
   } catch (e) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     return `${datePrefix}${randomSuffix}`;
@@ -37,13 +44,17 @@ router.get('/my-active', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true }
+      select: { id: true, name: true, username: true }
     });
 
     const conditions = [{ userId }];
     if (user?.name) {
       conditions.push({ amt1: user.name });
       conditions.push({ amt2: user.name });
+    }
+    if (user?.username) {
+      conditions.push({ amt1: user.username });
+      conditions.push({ amt2: user.username });
     }
 
     const lastHandover = await prisma.handover.findFirst({
@@ -93,10 +104,10 @@ router.get('/my-active', authenticateToken, async (req, res) => {
   }
 });
 
-// 2. Submit Handover (B1: No dummy user, B6: Schema validation, Photo handling)
+// 2. Submit Handover (Pemisahan Kategori A & B, Odometer Numerik, Transaksi Bersama)
 router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, res) => {
   try {
-    // B6: Validasi request body menggunakan Joi
+    // Validasi request body menggunakan Joi
     const { error, value } = submitHandoverSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
@@ -104,7 +115,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
 
     const { noPolisi, shift, type, locationLat, locationLng, items, amt1, amt2 } = value;
 
-    // B1: Selalu gunakan authenticated userId dari req.user.id
+    // Selalu gunakan authenticated userId dari req.user.id
     const userId = req.user.id;
     const existingUser = await prisma.user.findFirst({
       where: { id: userId, deletedAt: null }
@@ -124,10 +135,36 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       parsedItems = items;
     }
 
-    // Cek jika ada item yang "Tidak Baik / Tidak Ada" (isGood == false)
-    const issueItems = parsedItems.filter(item => !item.isGood);
-    const hasMajorIssue = issueItems.some(item => item.name && item.name.includes('[MAJOR]'));
-    const status = issueItems.length > 0 ? 'Ada Masalah' : 'Siap Operasi (Normal)';
+    // PEMISAHAN KATEGORI A (Kendaraan) dan KATEGORI B (Pribadi/Kepatuhan AMT)
+    const vehicleIssueItems = parsedItems.filter(item => (item.category || 'A') === 'A' && !item.isGood);
+    const amtComplianceItems = parsedItems.filter(item => item.category === 'B' && !item.isGood);
+
+    // Severity Major HANYA ditentukan oleh Kategori A (Kendaraan), Kategori B DILARANG memicu Major
+    const hasMajorIssue = vehicleIssueItems.some(item => {
+      const isMajorText = item.name && item.name.includes('[MAJOR]');
+      const isMajorField = item.severity && String(item.severity).toLowerCase() === 'major';
+      return isMajorText || isMajorField;
+    });
+
+    const status = vehicleIssueItems.length > 0 ? 'Ada Masalah' : 'Siap Operasi (Normal)';
+
+    // Validasi Odometer Numerik
+    let odometerNum = null;
+    if (req.body.odometer !== undefined && req.body.odometer !== null && req.body.odometer !== '') {
+      odometerNum = parseInt(String(req.body.odometer).replace(/[^0-9]/g, ''), 10);
+    } else {
+      const odoItem = parsedItems.find(i => i.name && i.name.toLowerCase().includes('odo'));
+      if (odoItem) {
+        const match = odoItem.name.match(/\d[\d.,]*/);
+        if (match) {
+          odometerNum = parseInt(match[0].replace(/[.,]/g, ''), 10);
+        }
+      }
+    }
+
+    if (odometerNum !== null && (isNaN(odometerNum) || odometerNum < 0)) {
+      return res.status(400).json({ error: 'Nilai odometer harus berupa angka nonnegatif' });
+    }
 
     // Filter file foto: pastikan foto 'Kerusakan_' hanya disimpan jika memang ada item terkait yang rusak
     const validFiles = (req.files || []).filter(file => {
@@ -135,7 +172,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
         let decodedName = file.originalname;
         try { decodedName = decodeURIComponent(file.originalname); } catch (e) { }
         if (decodedName.startsWith('Kerusakan_')) {
-          if (issueItems.length === 0) {
+          if (vehicleIssueItems.length === 0) {
             try {
               if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
               if (file.thumbnailUrl && fs.existsSync(file.thumbnailUrl)) fs.unlinkSync(file.thumbnailUrl);
@@ -145,7 +182,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           }
 
           const rawPhotoItemName = decodedName.replace('Kerusakan_', '').split('.')[0].replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
-          const isItemDamaged = issueItems.some(it => {
+          const isItemDamaged = vehicleIssueItems.some(it => {
             const cleanItemName = (it.name || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
             return cleanItemName.includes(rawPhotoItemName) || rawPhotoItemName.includes(cleanItemName);
           });
@@ -163,123 +200,180 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       return true;
     });
 
-    // Validasi dua lapis untuk State Machine Kendaraan
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { noPolisi }
-    });
+    // TRANSAKSI ATOMIK UNTUK VALIDASI SIKLUS & PENYIMPANAN
+    const result = await prisma.$transaction(async (tx) => {
+      const vehicle = await tx.vehicle.findUnique({
+        where: { noPolisi }
+      });
 
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
-    }
-
-    const lastHandover = await prisma.handover.findFirst({
-      where: { noPolisi },
-      orderBy: { timestamp: 'desc' },
-      include: { issue: true }
-    });
-
-    if (type === 'mulai') {
-      if (vehicle.status !== 'READY_TO_START') {
-        return res.status(409).json({
-          error: 'Kendaraan masih memiliki pekerjaan aktif atau belum siap untuk Mulai Pekerjaan.'
-        });
+      if (!vehicle) {
+        throw new Error('Kendaraan tidak ditemukan');
       }
-    }
 
-    if (type === 'akhiri') {
-      if (
-        !lastHandover ||
-        lastHandover.type !== 'mulai' ||
-        vehicle.status !== 'Active'
-      ) {
-        return res.status(409).json({
-          error: 'Kendaraan belum memiliki pekerjaan aktif yang dapat diakhiri.'
-        });
+      const lastHandover = await tx.handover.findFirst({
+        where: { noPolisi },
+        orderBy: { timestamp: 'desc' },
+        include: { issue: true }
+      });
+
+      // Validasi Odometer Akhir >= Odometer Awal
+      if (type === 'akhiri' && lastHandover?.odometer && odometerNum !== null) {
+        if (odometerNum < lastHandover.odometer) {
+          throw new Error(`Odometer Akhir (${odometerNum} km) tidak boleh lebih kecil dari Odometer Awal (${lastHandover.odometer} km).`);
+        }
       }
-    }
 
-    // Simpan ke DB
-    const handoverNo = await generateHandoverNo();
-    const handover = await prisma.handover.create({
-      data: {
-        id: handoverNo,
-        handoverNo,
-        userId,
-        noPolisi,
-        shift,
-        type: type || 'mulai',
-        status,
-        amt1: amt1 || null,
-        amt2: amt2 || null,
-        notes: req.body.notes || null,
-        locationLat: locationLat ? parseFloat(locationLat) : null,
-        locationLng: locationLng ? parseFloat(locationLng) : null,
-        items: {
-          create: parsedItems.map(item => ({
-            category: item.category || 'A',
-            name: item.name,
-            isGood: Boolean(item.isGood)
-          }))
-        },
-        photos: {
-          create: validFiles.map(file => {
-            let photoType = 'TERLAMPIR';
-            if (file.originalname) {
-              let decodedOrig = file.originalname;
-              try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) { }
-              const nameWithoutExt = decodedOrig.split('.')[0];
-              if (nameWithoutExt.startsWith('photo_')) {
-                photoType = nameWithoutExt.replace('photo_', '');
-              } else if (nameWithoutExt.startsWith('Kerusakan_')) {
-                photoType = nameWithoutExt.replace('Kerusakan_', 'Kerusakan: ');
-              } else {
-                photoType = nameWithoutExt;
+      // Validasi Siklus Mulai:
+      if (type === 'mulai') {
+        if (vehicle.status !== 'READY_TO_START') {
+          throw new Error('Kendaraan masih memiliki pekerjaan aktif atau belum siap untuk Mulai Pekerjaan.');
+        }
+
+        // Cek apakah masih ada Isu Major kendaraan yang belum diselesaikan
+        const unresolvedMajorIssue = await tx.issue.findFirst({
+          where: {
+            status: { in: ['ONGOING', 'PENDING_APPROVAL'] },
+            handover: {
+              noPolisi,
+              items: {
+                some: {
+                  category: 'A',
+                  isGood: false,
+                  name: { contains: '[MAJOR]' }
+                }
               }
             }
-            return {
-              type: photoType,
-              url: (file.path || '').replace(/\\/g, '/'),
-              thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
-              previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
-              originalSize: file.originalSize || 0
-            };
-          })
-        },
-        issue: status === 'Ada Masalah' ? {
-          create: { status: 'ONGOING' }
-        } : undefined
+          }
+        });
+
+        if (unresolvedMajorIssue || vehicle.status === 'Maintenance') {
+          throw new Error('Kendaraan memiliki Isu Kendaraan Major yang belum diselesaikan. Operasi diblokir.');
+        }
       }
+
+      // Validasi Siklus Akhiri:
+      if (type === 'akhiri') {
+        if (!lastHandover || lastHandover.type !== 'mulai' || vehicle.status !== 'Active') {
+          throw new Error('Kendaraan belum memiliki pekerjaan aktif yang dapat diakhiri.');
+        }
+      }
+
+      // Generate handover number yang unik dan simpan record
+      const handoverNo = await generateHandoverNo(tx);
+      const createdHandover = await tx.handover.create({
+        data: {
+          id: handoverNo,
+          handoverNo,
+          userId,
+          noPolisi,
+          shift,
+          type: type || 'mulai',
+          status,
+          odometer: odometerNum,
+          amt1: amt1 || null,
+          amt2: amt2 || null,
+          notes: req.body.notes || null,
+          locationLat: locationLat ? parseFloat(locationLat) : null,
+          locationLng: locationLng ? parseFloat(locationLng) : null,
+          items: {
+            create: parsedItems.map(item => ({
+              category: item.category || 'A',
+              name: item.name,
+              isGood: Boolean(item.isGood)
+            }))
+          },
+          photos: {
+            create: validFiles.map(file => {
+              let photoType = 'TERLAMPIR';
+              if (file.originalname) {
+                let decodedOrig = file.originalname;
+                try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) { }
+                const nameWithoutExt = decodedOrig.split('.')[0];
+                if (nameWithoutExt.startsWith('photo_')) {
+                  photoType = nameWithoutExt.replace('photo_', '');
+                } else if (nameWithoutExt.startsWith('Kerusakan_')) {
+                  photoType = nameWithoutExt.replace('Kerusakan_', 'Kerusakan: ');
+                } else {
+                  photoType = nameWithoutExt;
+                }
+              }
+              return {
+                type: photoType,
+                url: (file.path || '').replace(/\\/g, '/'),
+                thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
+                previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
+                originalSize: file.originalSize || 0
+              };
+            })
+          },
+          // Issue kendaraan HANYA dibuat jika terdapat kerusakan kendaraan Kategori A
+          issue: vehicleIssueItems.length > 0 ? {
+            create: { status: 'ONGOING' }
+          } : undefined
+        }
+      });
+
+      // Simpan Temuan Kepatuhan AMT (Kategori B) secara independen di tabel amt_compliance_finding
+      if (amtComplianceItems.length > 0) {
+        for (const bItem of amtComplianceItems) {
+          await tx.amtComplianceFinding.create({
+            data: {
+              handoverId: createdHandover.id,
+              itemName: bItem.name,
+              amtName: amt1 || existingUser.name,
+              amtUserId: userId,
+              status: 'OPEN',
+              notes: bItem.catatan || null
+            }
+          });
+        }
+      }
+
+      // Update status kendaraan: Temuan Kategori B tidak boleh mengubah status ke Maintenance
+      if (hasMajorIssue) {
+        await tx.vehicle.update({
+          where: { noPolisi },
+          data: { status: 'Maintenance' }
+        });
+      } else if (type === 'mulai') {
+        await tx.vehicle.update({
+          where: { noPolisi },
+          data: { status: 'Active' }
+        });
+      } else if (type === 'akhiri') {
+        await tx.vehicle.update({
+          where: { noPolisi },
+          data: { status: 'READY_TO_START' }
+        });
+      }
+
+      return {
+        handover: createdHandover,
+        vehicleIssueItems,
+        amtComplianceItems,
+        hasMajorIssue
+      };
     });
 
-    // Jika ada masalah, kirim notifikasi & push notif
-    if (issueItems.length > 0) {
-      await sendNotification(handover.id, noPolisi, issueItems, hasMajorIssue, 'NEW_ISSUE');
+    // PENGIRIMAN NOTIFIKASI SECARA TERPISAH
+    if (result.vehicleIssueItems.length > 0) {
+      const { sendVehicleIssueNotification } = require('../services/notificationService');
+      await sendVehicleIssueNotification(result.handover.id, noPolisi, result.vehicleIssueItems, result.hasMajorIssue);
     }
 
-    if (hasMajorIssue) {
-      await prisma.vehicle.update({
-        where: { noPolisi },
-        data: { status: 'Maintenance' }
-      });
-    } else if (type === 'mulai') {
-      await prisma.vehicle.update({
-        where: { noPolisi },
-        data: { status: 'Active' }
-      });
-    } else if (type === 'akhiri') {
-      await prisma.vehicle.update({
-        where: { noPolisi },
-        data: { status: 'READY_TO_START' }
-      });
+    if (result.amtComplianceItems.length > 0) {
+      const { sendAmtComplianceNotification } = require('../services/notificationService');
+      await sendAmtComplianceNotification(result.handover.id, noPolisi, result.amtComplianceItems, amt1 || existingUser.name, userId);
     }
 
     // Invalidate semua cache handovers
     await CacheService.delPattern('handovers:*');
 
-    res.status(201).json({ success: true, handover });
+    res.status(201).json({ success: true, handover: result.handover });
   } catch (error) {
     console.error('Submit handover error:', error);
-    res.status(500).json({ error: error.message });
+    const statusCode = error.message.includes('aktif') || error.message.includes('diblokir') || error.message.includes('Odometer') ? 409 : 500;
+    res.status(statusCode).json({ error: error.message });
   }
 });
 
@@ -294,6 +388,29 @@ router.post('/force-release', authenticateToken, async (req, res) => {
     const vehicle = await prisma.vehicle.findUnique({ where: { noPolisi } });
     if (!vehicle) {
       return res.status(404).json({ error: 'Kendaraan tidak ditemukan' });
+    }
+
+    // Periksa apakah kendaraan memiliki Isu Major yang belum selesai (Timeout tidak boleh melewati blokir Major)
+    const activeMajorIssue = await prisma.issue.findFirst({
+      where: {
+        status: { in: ['ONGOING', 'PENDING_APPROVAL'] },
+        handover: {
+          noPolisi,
+          items: {
+            some: {
+              category: 'A',
+              isGood: false,
+              name: { contains: '[MAJOR]' }
+            }
+          }
+        }
+      }
+    });
+
+    if (activeMajorIssue) {
+      return res.status(403).json({
+        error: 'Kendaraan memiliki Isu Kendaraan Major yang belum selesai. Force release tidak dapat melewati pemblokiran Major.'
+      });
     }
 
     const lastHandover = await prisma.handover.findFirst({
@@ -353,13 +470,16 @@ router.post('/force-release', authenticateToken, async (req, res) => {
       data: { status: 'READY_TO_START' }
     });
 
+    // Catat ke Audit Log
     try {
       await prisma.auditLog.create({
         data: {
           userId: req.user ? req.user.id : 'SYSTEM',
           action: 'FORCE_RELEASE_SHIFT',
           noPolisi,
-          details: `Shift gantung kendaraan ${noPolisi} ditutup paksa oleh ${req.user ? req.user.name : 'Pengawas'}. Alasan: ${releaseReason}`
+          details: `Shift gantung kendaraan ${noPolisi} ditutup paksa oleh ${req.user ? req.user.name : 'Pengawas'}. Alasan: ${releaseReason}`,
+          actionType: 'FORCE_RELEASE',
+          actionId: forceClose.id
         }
       });
     } catch (auditErr) {

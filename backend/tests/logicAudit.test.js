@@ -18,6 +18,8 @@ describe('Logic Audit Fixes Verification', () => {
         shift: '1',
         type: 'mulai',
         status: 'Siap Operasi (Normal)',
+        locationLat: -6.2088,
+        locationLng: 106.8456,
         items: []
       });
       expect(valid.error).toBeUndefined();

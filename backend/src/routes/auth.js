@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const rateLimit = require('express-rate-limit');
 const prisma = require('../config/prisma');
 const { loginSchema } = require('../validators/schemas');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, normalizeRole } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.REFRESH_SECRET;
@@ -14,40 +14,43 @@ if (!JWT_SECRET || !REFRESH_SECRET) {
   console.error('FATAL: JWT_SECRET or REFRESH_SECRET is missing from environment!');
 }
 
-// C5: Limiter khusus login (Maks 10 percobaan per 15 menit)
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam 15 menit.' }
-});
+const LoginAttemptService = require('../services/loginAttemptService');
 
-// 1. Auth Login (A1: Bcrypt only, C7: Token 1 jam)
-router.post('/login', loginLimiter, async (req, res, next) => {
+// 1. Auth Login (Bcrypt verification, consecutive failure tracking without 15-minute lockout)
+router.post('/login', async (req, res, next) => {
   try {
     const { error, value } = loginSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
     const { username, password } = value;
+    const normalizedUsername = LoginAttemptService.normalizeUsername(username);
 
     const user = await prisma.user.findFirst({
       where: {
-        username,
+        username: normalizedUsername,
         deletedAt: null // B7: Jangan izinkan user yang telah di-soft-delete login
       }
     });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Username atau password salah' });
+    let isPasswordValid = false;
+    if (user) {
+      isPasswordValid = await bcrypt.compare(password, user.password);
     }
 
-    // A1: Verifikasi password secara aman via bcrypt tanpa plain-text fallback
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Username atau password salah' });
+    if (!user || !isPasswordValid) {
+      // Hitung kegagalan kredensial secara server-side tanpa membocorkan keberadaan username
+      const attemptInfo = await LoginAttemptService.recordFailedAttempt(normalizedUsername);
+      return res.status(401).json({
+        error: 'Username atau password salah',
+        failedAttempts: attemptInfo.failedAttempts,
+        showForgotPasswordPrompt: attemptInfo.showForgotPasswordPrompt
+      });
     }
 
-    const payload = { id: user.id, username: user.username, role: user.role };
+    // Reset kegagalan login untuk username terkait setelah autentikasi berhasil
+    await LoginAttemptService.resetFailedAttempts(normalizedUsername);
+
+    const effectiveRole = normalizeRole(user.role);
+    const payload = { id: user.id, username: user.username, role: effectiveRole };
     
     // Access token berdurasi 1 hari (1d / 24 jam)
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
@@ -58,33 +61,6 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       data: { refreshToken }
     });
 
-    // Reset/selesaikan permohonan lupa password yang masih PENDING karena user berhasil login
-    try {
-      await prisma.passwordResetRequest.updateMany({
-        where: {
-          userId: user.id,
-          status: 'PENDING'
-        },
-        data: {
-          status: 'RESOLVED',
-          adminNotes: 'Otomatis diselesaikan oleh sistem karena user berhasil mengingat password dan login.'
-        }
-      });
-
-      // Tandai notifikasi lupa password terkait sebagai sudah terbaca
-      await prisma.notification.updateMany({
-        where: {
-          type: 'AUTH',
-          title: 'Permintaan Reset Password',
-          message: { contains: `(${user.username})` },
-          isRead: false
-        },
-        data: { isRead: true }
-      });
-    } catch (resetErr) {
-      console.log('Non-critical: error resetting pending password reset on login:', resetErr.message);
-    }
-
     res.json({
       token,
       refreshToken,
@@ -92,7 +68,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
+        role: effectiveRole,
         jabatan: user.jabatan
       }
     });
@@ -118,7 +94,8 @@ router.post('/refresh', async (req, res, next) => {
         return res.status(403).json({ error: 'Refresh token tidak cocok atau telah dicabut' });
       }
 
-      const newPayload = { id: user.id, username: user.username, role: user.role };
+      const effectiveRole = normalizeRole(user.role);
+      const newPayload = { id: user.id, username: user.username, role: effectiveRole };
       const newToken = jwt.sign(newPayload, JWT_SECRET, { expiresIn: '1d' });
 
       res.json({ token: newToken });

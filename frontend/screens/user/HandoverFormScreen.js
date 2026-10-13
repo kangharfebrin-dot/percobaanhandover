@@ -130,6 +130,8 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   // Checklist State (Mulai dari null/kosong)
   const [items, setItems] = useState([]);
+  const [checklistLoading, setChecklistLoading] = useState(true);
+  const [checklistError, setChecklistError] = useState(null);
 
   // B5: Kelompokkan item checklist secara dinamis berdasarkan kategori
   const categoryGroups = useMemo(() => {
@@ -249,13 +251,15 @@ export default function HandoverFormScreen({ route, navigation }) {
     loadWorkers();
 
     const loadChecklist = async () => {
+      setChecklistLoading(true);
+      setChecklistError(null);
       try {
         const token = await AsyncStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`${API_URL}/api/checklists`, { headers });
         let sourceItems = res.data;
-        if (!sourceItems || sourceItems.length === 0) {
-          sourceItems = DEFAULT_ITEMS;
+        if (!sourceItems || !Array.isArray(sourceItems) || sourceItems.length === 0) {
+          throw new Error('Daftar item checklist master tidak ditemukan di server');
         }
         setItems(sourceItems.map(item => {
           let status = null;
@@ -268,6 +272,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             }
           }
           return {
+            id: item.id,
             category: item.category,
             name: item.name,
             status: status,
@@ -275,26 +280,11 @@ export default function HandoverFormScreen({ route, navigation }) {
             catatan: catatan
           };
         }));
+        setChecklistLoading(false);
       } catch (e) {
-        console.error("Gagal mengambil checklist dari API, menggunakan default:", e);
-        setItems(DEFAULT_ITEMS.map(item => {
-          let status = null;
-          let catatan = '';
-          if (lastHandover && lastHandover.items) {
-            const pastItem = lastHandover.items.find(i => i.name === item.name && i.category === item.category);
-            if (pastItem && !pastItem.isGood && !pastItem.isRepaired) {
-              status = 'RUSAK';
-              catatan = pastItem.repairNote || 'Masih rusak sejak inspeksi sebelumnya.';
-            }
-          }
-          return {
-            category: item.category,
-            name: item.name,
-            status: status,
-            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : 'Minor'),
-            catatan: catatan
-          };
-        }));
+        console.error("Gagal mengambil checklist dari API:", e.message);
+        setChecklistError(e.response?.data?.error || e.message || "Gagal memuat master checklist dari server. Periksa koneksi Anda.");
+        setChecklistLoading(false);
       }
     };
     loadChecklist();
@@ -1075,20 +1065,40 @@ export default function HandoverFormScreen({ route, navigation }) {
           </View>
 
           {/* Dynamic Checklist Categories (A & B) */}
-          {Object.keys(categoryGroups).sort().filter(cat => cat === 'A' || cat === 'B').map(cat => {
-            const meta = getCategoryMeta(cat);
-            return (
-              <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
-                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
-                  <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
-                    <Ionicons name={meta.icon} size={24} color={meta.color} />
-                  </View>
-                  <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
-                </LinearGradient>
-                {categoryGroups[cat].map(renderChecklistItem)}
-              </View>
-            );
-          })}
+          {checklistLoading ? (
+            <View style={tw`bg-white p-8 rounded-3xl items-center justify-center mb-8 shadow-sm border border-gray-100`}>
+              <ActivityIndicator size="large" color="#0055A5" />
+              <Text style={tw`text-sm font-bold text-gray-600 mt-3`}>Memuat master checklist...</Text>
+            </View>
+          ) : checklistError ? (
+            <View style={tw`bg-red-50 p-6 rounded-3xl items-center justify-center mb-8 border border-red-200 shadow-sm`}>
+              <Ionicons name="alert-circle" size={44} color="#DC2626" />
+              <Text style={tw`text-base font-black text-red-800 mt-2`}>Gagal Memuat Master Checklist</Text>
+              <Text style={tw`text-xs text-red-600 text-center mt-1 mb-4 leading-4`}>{checklistError}</Text>
+              <TouchableOpacity
+                style={tw`bg-[#0055A5] px-6 py-3 rounded-2xl flex-row items-center shadow-md active:opacity-90`}
+                onPress={loadChecklist}
+              >
+                <Ionicons name="refresh" size={18} color="white" style={tw`mr-2`} />
+                <Text style={tw`text-white font-black text-sm`}>Coba Lagi</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            Object.keys(categoryGroups).sort().filter(cat => cat === 'A' || cat === 'B').map(cat => {
+              const meta = getCategoryMeta(cat);
+              return (
+                <View key={cat} style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8`}>
+                  <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center border-b border-gray-200`}>
+                    <View style={tw`${meta.bg} p-2 rounded-xl mr-3 shadow-sm`}>
+                      <Ionicons name={meta.icon} size={24} color={meta.color} />
+                    </View>
+                    <Text style={tw`font-extrabold text-lg text-gray-800`}>{meta.title}</Text>
+                  </LinearGradient>
+                  {categoryGroups[cat].map(renderChecklistItem)}
+                </View>
+              );
+            })
+          )}
 
           {/* Area Foto 4 Sisi */}
           <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-8 p-5`}>

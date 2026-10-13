@@ -172,12 +172,20 @@ export default function PengawasListScreen({ navigation }) {
   };
 
   const handleSavePengawas = async () => {
+    if (user?.role !== 'SUPER_ADMIN') {
+      showNotification('Akses Ditolak', 'Hanya Super Admin yang berhak mengelola akun Pengawas.', 'error');
+      return;
+    }
+
     if (!name.trim() || !username.trim() || (!selectedPengawas && !password.trim())) {
       showNotification('Data Tidak Lengkap', 'Nama, Username, dan Password (untuk pengawas baru) wajib diisi.', 'info');
       return;
     }
 
     try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const data = {
         name: name.trim(),
         username: username.trim(),
@@ -190,11 +198,11 @@ export default function PengawasListScreen({ navigation }) {
 
       if (selectedPengawas) {
         // Update
-        await axios.put(`${API_BASE}/pengawas/${selectedPengawas.id}`, data);
+        await axios.put(`${API_BASE}/pengawas/${selectedPengawas.id}`, data, { headers });
         showNotification('Berhasil', `Data pengawas '${name}' berhasil diperbarui!`, 'success');
       } else {
         // Create
-        await axios.post(`${API_BASE}/pengawas`, data);
+        await axios.post(`${API_BASE}/pengawas`, data, { headers });
         showNotification('Berhasil', `Pengawas baru '${name}' berhasil ditambahkan!`, 'success');
       }
       closeManageModal();
@@ -205,6 +213,10 @@ export default function PengawasListScreen({ navigation }) {
   };
 
   const handleDeletePengawas = () => {
+    if (user?.role !== 'SUPER_ADMIN') {
+      showNotification('Akses Ditolak', 'Hanya Super Admin yang berhak menghapus akun Pengawas.', 'error');
+      return;
+    }
     if (!selectedPengawas) return;
     setPengawasToDelete(selectedPengawas);
     setManageModalVisible(false);
@@ -212,9 +224,16 @@ export default function PengawasListScreen({ navigation }) {
   };
 
   const confirmDeletePengawas = async () => {
+    if (user?.role !== 'SUPER_ADMIN') {
+      showNotification('Akses Ditolak', 'Hanya Super Admin yang berhak menghapus akun Pengawas.', 'error');
+      setConfirmModalVisible(false);
+      return;
+    }
     if (!pengawasToDelete) return;
     try {
-      await axios.delete(`${API_BASE}/pengawas/${pengawasToDelete.id}`);
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.delete(`${API_BASE}/pengawas/${pengawasToDelete.id}`, { headers });
       showNotification('Berhasil', 'Pengawas berhasil dihapus!', 'success');
       setManageModalVisible(false);
       setConfirmModalVisible(false);
@@ -241,7 +260,7 @@ export default function PengawasListScreen({ navigation }) {
           </View>
         </View>
 
-        {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+        {user?.role === 'SUPER_ADMIN' && (
           <TouchableOpacity onPress={() => openEditModal(item)} style={tw`p-2 bg-gray-50 rounded-full border border-gray-200`}>
             <Feather name="edit-2" size={18} color="#4B5563" />
           </TouchableOpacity>
@@ -281,7 +300,7 @@ export default function PengawasListScreen({ navigation }) {
           navigation={navigation}
           showBack={true}
           rightAction={
-            isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') ? (
+            isLargeScreen && user?.role === 'SUPER_ADMIN' ? (
               <TouchableOpacity
                 onPress={openAddModal}
                 style={tw`flex-row items-center bg-[#0055A5] px-4 py-2.5 rounded-2xl shadow-md`}
@@ -340,8 +359,8 @@ export default function PengawasListScreen({ navigation }) {
           />
         </View>
 
-        {/* Floating Action Button (Only for Admin on Mobile) */}
-        {!isLargeScreen && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+        {/* Floating Action Button (Only for Super Admin on Mobile) */}
+        {!isLargeScreen && user?.role === 'SUPER_ADMIN' && (
           <TouchableOpacity
             style={tw`absolute bottom-6 right-6 bg-[#0055A5] w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-40`}
             onPress={openAddModal}

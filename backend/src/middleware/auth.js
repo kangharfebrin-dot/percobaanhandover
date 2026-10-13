@@ -5,6 +5,21 @@ if (!JWT_SECRET) {
   console.error('FATAL: JWT_SECRET is not defined in environment variables!');
 }
 
+/**
+ * Normalisasi role resmi DIGI Handover:
+ * 1. SUPER_ADMIN tetap SUPER_ADMIN (wewenang tertinggi, role independen).
+ * 2. ADMIN tetap ADMIN.
+ * 3. PENGAWAS tetap PENGAWAS.
+ * 4. AMT tetap AMT.
+ * 5. USER (legacy) dinormalisasi menjadi AMT untuk kompatibilitas ke belakang.
+ */
+const normalizeRole = (role) => {
+  if (!role) return role;
+  const r = String(role).trim().toUpperCase();
+  if (r === 'USER') return 'AMT';
+  return r;
+};
+
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
@@ -34,14 +49,15 @@ const authorizeRole = (...allowedRoles) => {
       return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan' });
     }
 
-    // SUPER_ADMIN has full permissions for any ADMIN endpoint
-    const userRole = req.user.role;
-    if (userRole === 'SUPER_ADMIN' || roles.includes(userRole)) {
+    const effectiveRole = normalizeRole(req.user.role);
+    const normalizedAllowed = roles.map(normalizeRole);
+
+    if (normalizedAllowed.includes(effectiveRole)) {
       return next();
     }
 
     return res.status(403).json({
-      error: `Akses ditolak: Peran '${userRole}' tidak diizinkan mengakses resource ini`
+      error: `Akses ditolak: Peran '${req.user.role}' tidak diizinkan mengakses resource ini`
     });
   };
 };
@@ -52,9 +68,17 @@ const adminMiddleware = (req, res, next) => {
   });
 };
 
+const requireSuperAdmin = (req, res, next) => {
+  authMiddleware(req, res, () => {
+    authorizeRole('SUPER_ADMIN')(req, res, next);
+  });
+};
+
 module.exports = {
   authMiddleware,
   authenticateToken: authMiddleware,
   authorizeRole,
-  adminMiddleware
+  adminMiddleware,
+  requireSuperAdmin,
+  normalizeRole
 };

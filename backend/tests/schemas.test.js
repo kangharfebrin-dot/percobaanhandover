@@ -16,6 +16,8 @@ describe('Validation Schemas', () => {
       noPolisi: 'B 1234 CD',
       shift: 'Pagi',
       status: 'Aman',
+      locationLat: -6.2088,
+      locationLng: 106.8456,
       items: '[]'
     };
     const { error } = submitHandoverSchema.validate(validData);

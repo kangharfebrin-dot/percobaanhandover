@@ -157,7 +157,8 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
 
   // Zero-width space (\u200B) diselipkan agar Google Translate TIDAK menerjemahkan 'AD' menjadi 'IKLAN'
   const getInitials = () => {
-    if (isSuperAdmin || isAdmin) return 'A\u200BD';
+    if (isSuperAdmin) return 'S\u200BA';
+    if (isAdmin) return 'A\u200BD';
     if (isPengawas) return 'P\u200BS';
     const parts = (user.name || '').trim().split(' ');
     if (parts.length > 1) {

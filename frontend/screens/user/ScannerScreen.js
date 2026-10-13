@@ -146,17 +146,23 @@ export default function ScannerScreen({ route, navigation }) {
       const userRole = user ? user.role : 'USER';
       const isAdminOrPengawas = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'PENGAWAS';
 
-      // Fetch vehicle data dan ongoing issues secara paralel
+      const token = await AsyncStorage.getItem('token');
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Fetch vehicle data dan ongoing issues secara paralel (Hilangkan fail-open)
       const [vehicleRes, issueRes] = await Promise.all([
         Promise.race([
-          axios.get(`${API_URL}/api/vehicles/scan/${scannedText}?userId=${userId}`),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 5000))
+          axios.get(`${API_URL}/api/vehicles/scan/${scannedText}?userId=${userId}`, { headers: authHeader }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 7000))
         ]),
-        axios.get(`${API_URL}/api/issues/ongoing`).catch(() => ({ data: [] }))
+        Promise.race([
+          axios.get(`${API_URL}/api/issues/ongoing`, { headers: authHeader }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Network Timeout')), 7000))
+        ])
       ]);
 
       const res = vehicleRes;
-      const ongoingIssues = issueRes.data || [];
+      const ongoingIssues = Array.isArray(issueRes.data) ? issueRes.data : (issueRes.data?.issues || []);
 
       if (!(res && res.data && res.data.success && res.data.vehicle)) {
         throw new Error('Barcode tidak valid atau data kendaraan tidak ditemukan');

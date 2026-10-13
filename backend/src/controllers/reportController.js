@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
 const prisma = require('../config/prisma');
+const { normalizeRole } = require('../middleware/auth');
 
 // Helper to format date YYYY-MM-DD HH:mm
 const formatDate = (date) => {
@@ -101,7 +102,7 @@ const exportExcel = async (req, res) => {
   try {
     const { status, shift, month, year, startDate, endDate, handoverId, id, search, q } = req.query;
 
-    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
+    if (!req.user || !['ADMIN', 'SUPER_ADMIN'].includes(normalizeRole(req.user.role))) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
 
@@ -667,7 +668,7 @@ const exportExcel = async (req, res) => {
       { label: 'Total Handover Diperiksa', value: totalHandover, unit: 'Unit', note: 'Total proses serah terima tercatat pada sistem' },
       { label: 'Kendaraan Kondisi Normal', value: totalHandover - kendaraanAdaTemuan, unit: 'Unit', note: 'Kendaraan siap operasi tanpa catatan isu' },
       { label: 'Kendaraan Ada Temuan', value: kendaraanAdaTemuan, unit: 'Unit', note: 'Kendaraan dengan catatan temuan kendala checklist' },
-      { label: 'Temuan Kategori Major', value: temuanMajor, unit: 'Temuan', note: 'Perlu penanganan kritis / perbaikan segera' },
+      { label: 'Temuan Kategori Major', value: temuanMajor, unit: 'Temuan', note: 'Perlu penanganan perbaikan segera' },
       { label: 'Temuan Kategori Minor', value: temuanMinor, unit: 'Temuan', note: 'Temuan ringan yang masih dapat ditindaklanjuti' },
       { label: 'Status Follow Up Open', value: followUpOpen, unit: 'Isu', note: 'Temuan belum diselesaikan / diverifikasi' },
       { label: 'Status Follow Up Closed', value: followUpClosed, unit: 'Isu', note: 'Temuan telah diperbaiki & diverifikasi' },
@@ -742,7 +743,7 @@ const exportPdf = async (req, res) => {
   try {
     const { status, shift, month, year, startDate, endDate, handoverId, id, search, q } = req.query;
 
-    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN')) {
+    if (!req.user || !['ADMIN', 'SUPER_ADMIN'].includes(normalizeRole(req.user.role))) {
       return res.status(403).json({ error: 'Akses ditolak: Hanya Admin yang dapat mengekspor laporan' });
     }
 
