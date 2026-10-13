@@ -47,6 +47,10 @@ router.get('/my-active', authenticateToken, async (req, res) => {
     });
 
     const conditions = [{ userId }];
+    if (user?.id) {
+      conditions.push({ amt1Id: user.id });
+      conditions.push({ amt2Id: user.id });
+    }
     if (user?.name) {
       conditions.push({ amt1: user.name });
       conditions.push({ amt2: user.name });
@@ -88,6 +92,12 @@ router.get('/my-active', authenticateToken, async (req, res) => {
           where: { noPolisi: lastHandover.noPolisi }
         });
       } catch (e) {}
+    }
+
+    // Jika kendaraan berstatus Maintenance (misal terblokir akibat isu Major saat inspeksi awal),
+    // jangan tampilkan sesi aktif semu
+    if (vehicleData && vehicleData.status === 'Maintenance') {
+      return res.json({ success: true, activeHandover: null });
     }
 
     res.json({
@@ -238,7 +248,10 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
                 some: {
                   category: 'A',
                   isGood: false,
-                  name: { contains: '[MAJOR]' }
+                  OR: [
+                    { name: { contains: '[MAJOR]' } },
+                    { severity: { in: ['Major', 'MAJOR', 'major'] } }
+                  ]
                 }
               }
             }
@@ -271,6 +284,8 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           odometer: odometerNum,
           amt1: amt1 || null,
           amt2: amt2 || null,
+          amt1Id: req.body.amt1Id || (amt1 === existingUser.name ? userId : null),
+          amt2Id: req.body.amt2Id || null,
           notes: req.body.notes || null,
           locationLat: locationLat ? parseFloat(locationLat) : null,
           locationLng: locationLng ? parseFloat(locationLng) : null,
@@ -400,7 +415,10 @@ router.post('/force-release', authenticateToken, async (req, res) => {
             some: {
               category: 'A',
               isGood: false,
-              name: { contains: '[MAJOR]' }
+              OR: [
+                { name: { contains: '[MAJOR]' } },
+                { severity: { in: ['Major', 'MAJOR', 'major'] } }
+              ]
             }
           }
         }

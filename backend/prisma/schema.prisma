@@ -29,6 +29,8 @@ model Handover {
   locationLng Float?
   amt1        String?  @db.VarChar(100)
   amt2        String?  @db.VarChar(100)
+  amt1Id      String?  @db.VarChar(50)
+  amt2Id      String?  @db.VarChar(50)
   timestamp   DateTime @default(now())
   notes       String?  @db.Text
   odometer    Int?
@@ -134,6 +136,7 @@ model User {
 
   handovers               Handover[]
   notifications           Notification[]         @relation("UserNotifications")
+  notificationReads       NotificationRead[]     @relation("UserReads")
   passwordResetRequests   PasswordResetRequest[] @relation("UserPasswordResetRequests")
   passwordResetsPerformed PasswordResetRequest[] @relation("AdminPasswordResetRequests")
   emailNotificationLogs   EmailNotificationLog[]
@@ -168,11 +171,26 @@ model Notification {
   actionId     String?
   noPolisi     String?
 
-  targetUser User? @relation("UserNotifications", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUser User?              @relation("UserNotifications", fields: [targetUserId], references: [id], onDelete: Cascade)
+  reads      NotificationRead[]
 
   @@index([targetUserId])
   @@index([targetRole])
   @@map("notification")
+}
+
+model NotificationRead {
+  id             String       @id @default(cuid())
+  notificationId String       @db.VarChar(50)
+  userId         String       @db.VarChar(50)
+  readAt         DateTime     @default(now())
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserReads", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@map("notification_read")
 }
 
 model AuditLog {

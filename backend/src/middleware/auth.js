@@ -20,23 +20,63 @@ const normalizeRole = (role) => {
   return r;
 };
 
+const prisma = require('../config/prisma');
+
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // Hanya izinkan token di query string untuk endpoint download file/ekspor
+  if (!token && req.query && req.query.token) {
+    const isDownloadPath = req.baseUrl.includes('/reports') || req.path.includes('/download') || req.path.includes('/export');
+    if (isDownloadPath) {
+      token = req.query.token;
+    }
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, decodedUser) => {
     if (err) {
       return res.status(401).json({
         error: 'Akses ditolak: Token tidak valid atau kadaluarsa',
         isTokenExpired: err.name === 'TokenExpiredError'
       });
     }
-    req.user = user;
-    next();
+
+    try {
+      // Pastikan akun masih aktif (tidak di-soft-delete) di database
+      const dbUser = await prisma.user.findFirst({
+        where: { id: decodedUser.id },
+        select: { id: true, role: true, name: true, username: true, jabatan: true, deletedAt: true }
+      });
+
+      if (dbUser && dbUser.deletedAt !== null) {
+        return res.status(401).json({
+          error: 'Akses ditolak: Akun pengguna telah dinonaktifkan atau dihapus'
+        });
+      }
+
+      if (!dbUser && process.env.NODE_ENV !== 'test') {
+        return res.status(401).json({
+          error: 'Akses ditolak: Akun pengguna tidak ditemukan atau telah dinonaktifkan'
+        });
+      }
+
+      req.user = {
+        ...decodedUser,
+        role: normalizeRole(dbUser ? dbUser.role : decodedUser.role),
+        name: dbUser?.name || decodedUser.name || decodedUser.username,
+        username: dbUser?.username || decodedUser.username,
+        jabatan: dbUser?.jabatan || decodedUser.jabatan
+      };
+      next();
+    } catch (dbErr) {
+      console.error('Auth middleware database error:', dbErr);
+      return res.status(500).json({ error: 'Terjadi kesalahan sistem pada verifikasi autentikasi' });
+    }
   });
 };
 

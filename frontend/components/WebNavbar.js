@@ -165,7 +165,16 @@ export default function WebNavbar({
                   } else if (navigation && navigation.canGoBack && navigation.canGoBack()) {
                     navigation.goBack();
                   } else if (navigation && typeof navigation.replace === 'function') {
-                    navigation.replace(user?.role === 'PENGAWAS' ? 'PengawasDashboard' : user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
+                    const role = user?.role;
+                    if (role === 'SUPER_ADMIN') {
+                      navigation.replace('SuperAdminDashboard');
+                    } else if (role === 'ADMIN') {
+                      navigation.replace('AdminDashboard');
+                    } else if (role === 'PENGAWAS') {
+                      navigation.replace('PengawasDashboard');
+                    } else {
+                      navigation.replace('UserDashboard');
+                    }
                   }
                 }}
                 style={tw`w-[44px] h-[44px] bg-gray-50 rounded-full items-center justify-center mr-3.5 shadow-sm border border-gray-200/90 active:scale-95`}

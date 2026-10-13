@@ -9,6 +9,7 @@ import axios from 'axios';
 import { API_URL } from '../../config';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -406,80 +407,15 @@ export default function MessageCenterScreen({ navigation }) {
       </View>
       </SafeAreaView>
 
-      {/* BOTTOM NAVBAR */}
-      {!isLargeScreen && user && (
-        <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
-          <TouchableOpacity 
-            style={tw`items-center justify-center px-4 relative`} 
-            onPress={() => {
-              if (user.role === 'SUPER_ADMIN') {
-                navigation.replace('SuperAdminDashboard');
-              } else if (user.role === 'ADMIN') {
-                navigation.replace('AdminDashboard');
-              } else if (user.role === 'PENGAWAS') {
-                navigation.replace('PengawasDashboard');
-              } else {
-                navigation.replace('UserDashboard');
-              }
-            }}
-          >
-            <Feather name="grid" size={26} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          {(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && (
-            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
-              <Feather name="check-square" size={26} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-
-          {(user.role === 'AMT' || user.role === 'USER') && (
-            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
-              <Feather name="file-text" size={26} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={tw`items-center justify-center px-4 relative`}>
-            {activeMenu === 'Messages' && !isLogoutVisible && (
-              <>
-                <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                  </Animated.View>
-                </View>
-                <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                  <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                    <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={tw`flex-1`} />
-                  </Animated.View>
-                </View>
-              </>
-            )}
-            <View style={tw`relative`}>
-              <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-              {messages.some(m => !m.read) && (
-                <View style={tw`absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white`} />
-              )}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
-              {activeMenu === 'Logout' && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
-            </TouchableOpacity>
-        </View>
-      )}
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        user={user}
+        navigation={navigation}
+        activeMenu="Messages"
+        handleLogout={handleLogout}
+        unreadNotificationsCount={messages.filter(m => !m.read && !m.isRead).length}
+        isLogoutVisible={isLogoutVisible}
+      />
 
       {/* Logout Modal */}
       <Modal

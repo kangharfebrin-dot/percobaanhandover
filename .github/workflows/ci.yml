@@ -14,6 +14,16 @@ jobs:
       run:
         working-directory: ./backend
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password_ci
+          MYSQL_DATABASE: test_handover
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,8 +41,19 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run Backend Unit Tests
+      - name: Setup Test Database Schema
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: "mysql://root:test_root_password_ci@127.0.0.1:3306/test_handover"
+
+      - name: Run Backend Tests
         run: npm test
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          DATABASE_URL: "mysql://root:test_root_password_ci@127.0.0.1:3306/test_handover"
+          JWT_SECRET: "test_ci_jwt_secret_token_pertamina_min32chars"
+          REFRESH_SECRET: "test_ci_refresh_secret_token_pertamina_min32chars"
 
   frontend-test:
     name: Frontend Tests
@@ -71,7 +92,7 @@ jobs:
           node-version: 20
 
       - name: Audit Backend Dependencies
-        run: cd backend && npm audit --audit-level=moderate || true
+        run: cd backend && npm audit --audit-level=high
 
       - name: Audit Frontend Dependencies
-        run: cd frontend && npm audit --audit-level=moderate || true
+        run: cd frontend && npm audit --audit-level=high

@@ -11,7 +11,7 @@ const binaryParser = (res, callback) => {
 
 describe('Report Export API (Excel & PDF)', () => {
   const adminUser = { id: 'USR-0001', username: 'yoan', role: 'ADMIN', name: 'Yoann' };
-  const nonAdminUser = { id: 'USR-0010', username: 'haula', role: 'PENGAWAS', name: 'haula' };
+  const nonAdminUser = { id: 'USR-0012', username: 'sekar', role: 'PENGAWAS', name: 'Sekar' };
 
   const adminToken = TokenManager.generateAccessToken(adminUser);
   const nonAdminToken = TokenManager.generateAccessToken(nonAdminUser);

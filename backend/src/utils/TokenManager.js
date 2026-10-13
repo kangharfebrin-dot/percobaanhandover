@@ -1,31 +1,45 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_negara_pertamina_123';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_rahasia_negara_pertamina_123';
+const JWT_SECRET = process.env.JWT_SECRET;
+const REFRESH_SECRET = process.env.REFRESH_SECRET;
+
+if (!JWT_SECRET || !REFRESH_SECRET) {
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('FATAL: JWT_SECRET or REFRESH_SECRET is missing from environment!');
+  }
+}
 
 class TokenManager {
+  static getJwtSecret() {
+    return process.env.JWT_SECRET || 'test_jwt_secret_must_be_set_in_env_variable';
+  }
+
+  static getRefreshSecret() {
+    return process.env.REFRESH_SECRET || 'test_refresh_secret_must_be_set_in_env_variable';
+  }
+
   static generateAccessToken(user) {
     return jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '1d' }
+      { id: user.id, username: user.username, role: user.role, name: user.name },
+      TokenManager.getJwtSecret(),
+      { expiresIn: '1h' }
     );
   }
 
   static generateRefreshToken(user) {
     return jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      REFRESH_SECRET,
+      TokenManager.getRefreshSecret(),
       { expiresIn: '7d' }
     );
   }
 
   static verifyAccessToken(token) {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, TokenManager.getJwtSecret());
   }
 
   static verifyRefreshToken(token) {
-    return jwt.verify(token, REFRESH_SECRET);
+    return jwt.verify(token, TokenManager.getRefreshSecret());
   }
 }
 

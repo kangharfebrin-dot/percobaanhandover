@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 const glassStyle = Platform.OS === 'web' ? { backdropFilter: 'blur(24px)' } : {};
 
@@ -484,6 +485,15 @@ export default function ChecklistManagerScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        user={user}
+        navigation={navigation}
+        activeMenu="Checklist"
+        handleLogout={handleLogout}
+        unreadNotificationsCount={unreadNotificationsCount}
+        isLogoutVisible={isLogoutVisible}
+      />
 
       {/* Logout Modal */}
       <Modal

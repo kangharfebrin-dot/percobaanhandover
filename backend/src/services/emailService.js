@@ -13,6 +13,9 @@ const currentAdminEmail = process.env.ADMIN_EMAIL;
 
 exports.sendPasswordResetNotification = async (adminEmail, user, reason, requestId) => {
   try {
+    if (process.env.NODE_ENV === 'test' || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      return; // Skip email in test mode or without SMTP credentials
+    }
     const targetEmail = adminEmail || currentAdminEmail;
 
     const html = emailTemplates.passwordResetNotification({
@@ -50,6 +53,9 @@ exports.sendPasswordResetNotification = async (adminEmail, user, reason, request
 
 exports.sendPasswordResetCompletedEmail = async (userEmail, userName, newPassword) => {
   try {
+    if (process.env.NODE_ENV === 'test' || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      return; // Skip email in test mode or without SMTP credentials
+    }
     const html = emailTemplates.passwordResetCompleted({
       userName: userName,
       newPassword: newPassword

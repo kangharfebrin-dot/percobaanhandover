@@ -31,13 +31,14 @@ Aplikasi ini menggantikan formulir kertas (*paper-based inspection*) konvensiona
 
 ## 👥 Hak Akses & Peran Pengguna (Role Matrix)
 
-Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesuai peran yang login:
+Sistem membedakan tampilan antarmuka dan hak otoritas akses secara otomatis sesuai 4 peran resmi:
 
 | Role | Jabatan Operasional Pertamina | Tanggung Jawab Utama | Fitur Utama |
 | :--- | :--- | :--- | :--- |
-| **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki di lapangan | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, unggah foto bukti perbaikan |
-| **Pengawas** | **Pengawas Lapangan / Fleet Dispatcher** | Pemantauan kelayakan armada & operasional harian | Dashboard monitoring status armada, verifikasi bukti perbaikan (Approve/Reject), Message Center, ekspor laporan resmi |
-| **Admin** | **Supervisor Distribusi / Fleet & System Administrator** | Pengelolaan master data, armada, pengguna, & kontrol penuh sistem | Akses 100% penuh: kelola 334 AMT, 83 unit mobil tangki, akun Pengawas, sesama akun Admin, kustomisasi checklist HSSE, audit log, dan ekspor laporan |
+| **SUPER_ADMIN** | **Super Administrator Sistem** | Kontrol tata kelola menyeluruh sistem & pengguna tingkat tinggi | Manajemen akun Admin & Pengawas, audit trail sistem, pemantauan seluruh modul, konfigurasi keamanan |
+| **ADMIN** | **Supervisor Distribusi / Fleet Administrator** | Pengelolaan master armada, pekerja AMT, dan operasional | Kelola unit mobil tangki, akun AMT, master checklist HSSE, ringkasan operasional, audit log, dan ekspor laporan |
+| **PENGAWAS** | **Pengawas Lapangan / Fleet Dispatcher** | Pemantauan kelayakan armada & operasional harian | Monitoring status armada real-time, evaluasi bukti perbaikan (Approve/Reject), pusat pesan, ekspor laporan |
+| **AMT** | **Awak Mobil Tangki** *(AMT I & AMT II)* | Pengemudi & kru armada truk tangki di lapangan | Scan QR nopol truk, checklist inspeksi pergantian shift, foto bukti kerusakan, pelaporan bukti perbaikan |
 
 ---
 
@@ -270,14 +271,16 @@ Dokumentasi arsitektur dan spesifikasi API mendalam tersedia di folder `docs/`:
 
 ---
 
-## 🔑 Akun Uji Coba Default
+## 🔑 Kebijakan Akun & Otentikasi
 
-| Role | Username | Password Default | Keterangan |
+| Role | Identitas Akun | Kebijakan Sandi | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `yoan` | `672023` | Administrator Akses penuh seluruh sistem, armada, & master data |
-| **Admin** | `haulafatiha` | `240206` | Administrator Akses penuh seluruh sistem, armada, & master data |
-| **Pengawas** | `sekar` | `12345` | Pengawas operasional lapangan |
-| **AMT** | Sesuai NIP Pekerja *(contoh: `617.05.0001`)* | `617.05.0001` | Terdaftar 334 AMT aktif di database |
+| **SUPER_ADMIN** | Akun Utama Tata Kelola | Kredensial aman dikonfigurasi saat inisialisasi lingkungan | Kontrol tata kelola menyeluruh sistem & pengguna tingkat tinggi |
+| **ADMIN** | Supervisor Distribusi | Hash bcrypt aman (diatur mandiri / reset aman) | Pengelolaan master data armada, kru, checklist, & laporan |
+| **PENGAWAS** | Pengawas Lapangan | Hash bcrypt aman (diatur mandiri / reset aman) | Monitoring armada, evaluasi perbaikan, & message center |
+| **AMT** | NIP Pekerja *(contoh: `617.05.xxxx`)* | Terenkripsi bcrypt, wajib ubah sandi berkala | 334 Awak Mobil Tangki terdaftar aktif di sistem |
+
+> **Catatan Keamanan:** Seluruh kredensial dan kata sandi dienkripsi dengan `bcrypt` (10 salt rounds). Sistem menerapkan rotasi Access Token (1 jam) dan Refresh Token (7 hari) serta mewajibkan penggantian kata sandi pada login awal atau pasca reset administratif.
 
 ---
 

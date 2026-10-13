@@ -25,9 +25,10 @@ exports.submitPasswordResetRequest = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Username tidak terdaftar di sistem' 
+      // Cegah User Enumeration: respon sama tanpa membocorkan eksistensi username
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Permintaan reset password telah dikirim ke Admin. Silakan tunggu konfirmasi Admin.' 
       });
     }
 
@@ -125,7 +126,9 @@ exports.getPendingRequests = async (req, res) => {
         status: 'PENDING'
       },
       include: {
-        user: true
+        user: {
+          select: { id: true, name: true, username: true, role: true, jabatan: true }
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -244,10 +247,13 @@ exports.verifyAndResetPassword = async (req, res) => {
       const tempPassword = generateSecurePassword();
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-      // Update user password
+      // Update user password & revoke old session tokens
       await prisma.user.update({
         where: { id: targetUser.id },
-        data: { password: hashedPassword }
+        data: {
+          password: hashedPassword,
+          refreshToken: null
+        }
       });
 
       // Update request status if a request record exists

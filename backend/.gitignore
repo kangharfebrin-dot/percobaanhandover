@@ -6,3 +6,6 @@ uploads/
 *.db-journal
 logs/
 .env.backup
+.env
+.env.*
+!.env.example

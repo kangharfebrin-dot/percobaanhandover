@@ -8,20 +8,25 @@ const { userManageSchema } = require('../validators/schemas');
 // 1. GET Workers (Pekerja AMT)
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const actorRole = normalizeRole(req.user.role);
+    const isAmt = actorRole === 'AMT';
+
     const workers = await prisma.user.findMany({
       where: {
         role: { in: ['AMT', 'USER'] },
         deletedAt: null
       },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        role: true,
-        jabatan: true,
-        createdAt: true
-      },
-      orderBy: { createdAt: 'desc' }
+      select: isAmt
+        ? { id: true, name: true, jabatan: true }
+        : {
+            id: true,
+            name: true,
+            username: true,
+            role: true,
+            jabatan: true,
+            createdAt: true
+          },
+      orderBy: { name: 'asc' }
     });
     res.json(workers);
   } catch (error) {

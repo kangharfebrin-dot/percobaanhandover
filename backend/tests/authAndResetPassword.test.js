@@ -197,14 +197,14 @@ describe('Autentikasi & Reset Password - Verifikasi 3 Percobaan & Tanpa Lockout 
   describe('Skenario H, I, J, K, L: Alur Permohonan Reset Password & Notifikasi Admin', () => {
     let createdRequestId;
 
-    it('Skenario K: Permintaan reset dengan username tidak terdaftar mengembalikan 404', async () => {
+    it('Skenario K: Permintaan reset dengan username tidak terdaftar tidak membocorkan keberadaan username (mencegah user enumeration)', async () => {
       const resNotFound = await request(app)
         .post('/api/password-reset/request')
         .send({ username: 'user_pasti_tidak_ada_xyz', reason: 'Lupa' });
 
-      expect(resNotFound.status).toBe(404);
-      expect(resNotFound.body.success).toBe(false);
-      expect(resNotFound.body.message).toContain('tidak terdaftar');
+      expect(resNotFound.status).toBe(200);
+      expect(resNotFound.body.success).toBe(true);
+      expect(resNotFound.body.message).toContain('dikirim ke Admin');
     });
 
     it('Skenario I: Permintaan reset berhasil membuat 1 entri dan 1 notifikasi AUTH untuk Admin', async () => {

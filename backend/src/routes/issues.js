@@ -54,7 +54,13 @@ router.get('/ongoing', authenticateToken, async (req, res) => {
       where,
       include: {
         handover: {
-          include: { user: true, items: true, photos: true }
+          include: {
+            user: {
+              select: { id: true, name: true, username: true, role: true, jabatan: true }
+            },
+            items: true,
+            photos: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -88,7 +94,13 @@ router.get('/', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PENGA
       where,
       include: {
         handover: {
-          include: { user: true, items: true, photos: true }
+          include: {
+            user: {
+              select: { id: true, name: true, username: true, role: true, jabatan: true }
+            },
+            items: true,
+            photos: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -255,7 +267,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
       },
       include: {
         handover: {
-          include: { user: true, items: true, photos: true, amtComplianceFindings: true }
+          include: {
+            user: {
+              select: { id: true, name: true, username: true, role: true, jabatan: true }
+            },
+            items: true,
+            photos: true,
+            amtComplianceFindings: true
+          }
         }
       }
     });
@@ -274,7 +293,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
           orderBy: { createdAt: 'desc' },
           include: {
             handover: {
-              include: { user: true, items: true, photos: true, amtComplianceFindings: true }
+              include: {
+                user: {
+                  select: { id: true, name: true, username: true, role: true, jabatan: true }
+                },
+                items: true,
+                photos: true,
+                amtComplianceFindings: true
+              }
             }
           }
         });
@@ -295,9 +321,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// 4. PUT Resolve Issue (Admin / Pengawas only)
+// 4. PUT Resolve Issue (Manual Resolve Pengecualian dengan Alasan Wajib & Audit Trail)
 router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADMIN', 'PENGAWAS']), async (req, res) => {
   try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Alasan penyelesaian manual wajib disertakan' });
+    }
+
     const target = await prisma.issue.findFirst({
       where: {
         OR: [
@@ -305,17 +336,52 @@ router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADM
           { handoverId: req.params.id }
         ]
       },
-      include: { handover: true }
+      include: {
+        handover: {
+          include: { items: true }
+        }
+      }
     });
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
 
+    if (target.status === 'RESOLVED') {
+      return res.status(400).json({ error: 'Isu ini sudah diselesaikan sebelumnya' });
+    }
+
+    // Kerusakan Major dilarang dibypass secara manual tanpa alur verifikasi & evaluasi
+    const hasUnresolvedMajor = (target.handover?.items || []).some(i =>
+      (i.category || 'A') === 'A' && !i.isGood && !i.isRepaired &&
+      (i.name.includes('[MAJOR]') || (i.severity && String(i.severity).toLowerCase() === 'major'))
+    );
+
+    if (hasUnresolvedMajor) {
+      return res.status(403).json({
+        error: 'Kerusakan Major tidak dapat diselesaikan secara manual tanpa melalui alur verifikasi dan evaluasi perbaikan.'
+      });
+    }
+
+    const actorName = req.user?.name || req.user?.username || 'ADMIN';
+
     const updatedIssue = await prisma.$transaction(async (tx) => {
+      // Tandai semua item kerusakan terkait sebagai isRepaired: true
+      await tx.handoverItem.updateMany({
+        where: {
+          handoverId: target.handoverId,
+          category: 'A',
+          isGood: false
+        },
+        data: {
+          isRepaired: true,
+          adminRejectionNote: null
+        }
+      });
+
       const issue = await tx.issue.update({
         where: { id: target.id },
         data: {
           status: 'RESOLVED',
           resolvedAt: new Date(),
-          resolvedBy: req.user ? req.user.name : 'ADMIN'
+          resolvedBy: actorName
         }
       });
 
@@ -327,6 +393,8 @@ router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADM
             handover: { noPolisi: target.handover.noPolisi }
           }
         });
+
+        // Hanya jika tidak ada isu lain DAN status kendaraan sedang Maintenance, kembalikan ke READY_TO_START
         if (!otherOngoing) {
           const vehicle = await tx.vehicle.findUnique({
             where: { noPolisi: target.handover.noPolisi },
@@ -340,6 +408,22 @@ router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADM
           }
         }
       }
+
+      // Catat ke AuditLog
+      await tx.auditLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'ISSUE_RESOLVED_MANUAL',
+          actionType: 'RESOLVE_ISSUE',
+          actionId: target.id,
+          details: JSON.stringify({
+            noPolisi: target.handover?.noPolisi,
+            actorName,
+            actorRole: req.user.role,
+            reason: reason.trim()
+          })
+        }
+      }).catch(() => {});
 
       return issue;
     });
@@ -364,6 +448,11 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
     });
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
 
+    // Tolak jika issue sudah berstatus RESOLVED
+    if (target.status === 'RESOLVED') {
+      return res.status(400).json({ error: 'Isu ini sudah diselesaikan sebelumnya dan tidak dapat dilaporkan perbaikan kembali' });
+    }
+
     // Verifikasi kewenangan AMT (reporter awal atau partner AMT 1 / AMT 2)
     if (!isUserAuthorizedForHandover(req.user, target.handover)) {
       return res.status(403).json({ error: 'Akses ditolak: Anda bukan kru atau pelapor yang berwenang untuk serah terima ini' });
@@ -382,11 +471,13 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
       return res.status(400).json({ error: 'Daftar item perbaikan wajib disertakan' });
     }
 
-    // Validasi bahwa seluruh item benar-benar bagian dari handover ini dan bertipe Kategori A
-    const validHandoverItemIds = (target.handover?.items || []).map(i => i.id);
+    // Hanya terima item kerusakan kendaraan Kategori A yang memang tidak baik (!isGood) pada handover ini
+    const damagedCatAItems = (target.handover?.items || []).filter(i => (i.category || 'A') === 'A' && !i.isGood);
+    const damagedItemIds = damagedCatAItems.map(i => i.id);
+
     for (const item of items) {
-      if (!validHandoverItemIds.includes(item.id)) {
-        return res.status(400).json({ error: `Item ${item.id} bukan bagian dari serah terima ini` });
+      if (!damagedItemIds.includes(item.id)) {
+        return res.status(400).json({ error: `Item ${item.id} bukan item kerusakan kendaraan (Kategori A) yang valid untuk serah terima ini` });
       }
     }
 
@@ -398,9 +489,10 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
           photoUrl = (file.path || '').replace(/\\/g, '/');
         }
 
+        // isRepaired TETAP false sampai dievaluasi dan disetujui oleh Admin/Pengawas
         const updatePayload = {
           repairNote: item.repairNote || 'Perbaikan telah dilakukan oleh AMT',
-          isRepaired: true,
+          isRepaired: false,
           adminRejectionNote: null
         };
         if (photoUrl) {
@@ -476,30 +568,57 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
     });
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
 
-    // Validasi status issue: hanya issue PENDING_APPROVAL atau ONGOING dengan repairRequestedAt yang dapat dievaluasi
+    // Validasi status issue: hanya issue PENDING_APPROVAL yang dapat dievaluasi
     if (target.status === 'RESOLVED') {
       return res.status(400).json({ error: 'Isu ini sudah diselesaikan sebelumnya' });
+    }
+    if (target.status !== 'PENDING_APPROVAL') {
+      return res.status(400).json({ error: 'Hanya isu dengan perbaikan menunggu persetujuan (PENDING_APPROVAL) yang dapat dievaluasi' });
     }
 
     const issueId = target.id;
     const { evaluations } = req.body; // Array of { itemId, approved, reason }
 
-    // VALIDASI WAJIB: Evaluasi kosong atau parsial DILARANG dianggap sebagai persetujuan
+    // VALIDASI WAJIB: Evaluasi tidak boleh kosong
     if (!Array.isArray(evaluations) || evaluations.length === 0) {
       return res.status(400).json({ error: 'Daftar evaluasi item perbaikan wajib disertakan dan tidak boleh kosong' });
     }
 
-    // Validasi item: jika ditolak, alasan penolakan wajib disertakan
-    for (const evalItem of evaluations) {
-      if (!evalItem.itemId) {
-        return res.status(400).json({ error: 'Setiap evaluasi wajib menyertakan itemId' });
+    // Seluruh item kerusakan kendaraan Kategori A pada isu ini
+    const damagedCatAItems = (target.handover?.items || []).filter(i => (i.category || 'A') === 'A' && !i.isGood);
+    const damagedItemIds = damagedCatAItems.map(i => i.id);
+
+    const evalItemIds = evaluations.map(e => e.itemId);
+    const uniqueEvalItemIds = new Set(evalItemIds);
+
+    // Cek duplikasi item
+    if (uniqueEvalItemIds.size !== evalItemIds.length) {
+      return res.status(400).json({ error: 'Daftar evaluasi mengandung item duplikat' });
+    }
+
+    // Validasi item: harus termasuk item kerusakan isu ini
+    for (const id of evalItemIds) {
+      if (!damagedItemIds.includes(id)) {
+        return res.status(400).json({ error: `Item ${id} bukan item kerusakan dari isu ini` });
       }
-      if (!evalItem.approved && (!evalItem.reason || !evalItem.reason.trim())) {
+    }
+
+    // Cegah evaluasi parsial: seluruh item kerusakan wajib dievaluasi
+    for (const id of damagedItemIds) {
+      if (!uniqueEvalItemIds.has(id)) {
+        return res.status(400).json({ error: `Evaluasi parsial ditolak: Seluruh item kerusakan wajib dievaluasi sebelum isu dapat diproses` });
+      }
+    }
+
+    // Validasi alasan untuk setiap item yang ditolak
+    for (const evalItem of evaluations) {
+      if (evalItem.approved !== true && (!evalItem.reason || !evalItem.reason.trim())) {
         return res.status(400).json({ error: 'Alasan penolakan wajib diisi untuk setiap item yang ditolak' });
       }
     }
 
-    let allApproved = true;
+    const allApproved = evaluations.every(e => e.approved === true);
+    const actorName = req.user?.name || req.user?.username || 'PENGAWAS';
 
     await prisma.$transaction(async (tx) => {
       for (const evalItem of evaluations) {
@@ -512,7 +631,6 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
             }
           });
         } else {
-          allApproved = false;
           await tx.handoverItem.update({
             where: { id: evalItem.itemId },
             data: {
@@ -529,11 +647,12 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
           data: {
             status: 'RESOLVED',
             resolvedAt: new Date(),
-            resolvedBy: req.user ? req.user.name : 'PENGAWAS'
+            resolvedBy: actorName
           }
         });
 
-        // Kembalikan kendaraan ke READY_TO_START jika tidak ada issue lain yang aktif
+        // Kembalikan kendaraan ke READY_TO_START HANYA jika kendaraan sebelumnya berstatus Maintenance
+        // dan tidak ada isu lain yang masih aktif
         const otherOngoing = await tx.issue.findFirst({
           where: {
             id: { not: issueId },
@@ -543,10 +662,16 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
         });
 
         if (!otherOngoing) {
-          await tx.vehicle.update({
+          const vehicle = await tx.vehicle.findUnique({
             where: { noPolisi: target.handover.noPolisi },
-            data: { status: 'READY_TO_START' }
+            select: { status: true }
           });
+          if (vehicle && vehicle.status === 'Maintenance') {
+            await tx.vehicle.update({
+              where: { noPolisi: target.handover.noPolisi },
+              data: { status: 'READY_TO_START' }
+            });
+          }
         }
       } else {
         await tx.issue.update({
@@ -554,6 +679,27 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
           data: { status: 'ONGOING' }
         });
       }
+
+      // Catat ke AuditLog
+      await tx.auditLog.create({
+        data: {
+          userId: req.user.id,
+          action: allApproved ? 'ISSUE_REPAIR_APPROVED' : 'ISSUE_REPAIR_REJECTED',
+          actionType: 'EVALUATE_REPAIR',
+          actionId: issueId,
+          details: JSON.stringify({
+            noPolisi: target.handover?.noPolisi,
+            allApproved,
+            evaluatorName: actorName,
+            evaluatorRole: req.user.role,
+            evaluations: evaluations.map(e => ({
+              itemId: e.itemId,
+              approved: e.approved,
+              reason: e.reason || null
+            }))
+          })
+        }
+      }).catch(() => {});
     });
 
     const updatedIssue = await prisma.issue.findUnique({
