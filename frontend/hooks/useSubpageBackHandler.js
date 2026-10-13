@@ -13,12 +13,25 @@ import { getDashboardRoute } from '../utils/authHelper';
  * @param {Array<{ isOpen: boolean, close: () => void }>} modals - Daftar modal aktif yang perlu ditutup lebih dulu
  * @param {function} onBack - Custom back action (opsional)
  */
-export function useSubpageBackHandler({
-  navigation,
-  user,
-  modals = [],
-  onBack,
-}) {
+export function useSubpageBackHandler(options = {}) {
+  // Dukung pemanggilan fleksibel: berupa objek { navigation, user, modals, onBack }
+  // atau string fallback untuk mencegah error destructuring
+  let navigation;
+  let user;
+  let modals = [];
+  let onBack;
+
+  if (typeof options === 'string') {
+    // Dukung fallback jika dipanggil dengan string route
+    onBack = null;
+    modals = [];
+  } else if (options && typeof options === 'object') {
+    navigation = options.navigation;
+    user = options.user;
+    modals = Array.isArray(options.modals) ? options.modals : [];
+    onBack = options.onBack;
+  }
+
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== 'android') return;

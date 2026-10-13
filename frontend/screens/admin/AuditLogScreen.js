@@ -22,6 +22,7 @@ import axios from 'axios';
 import { API_URL } from '../../config';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import MobileBottomNav from '../../components/MobileBottomNav';
 import NotificationSheet from '../../components/NotificationSheet';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
@@ -33,7 +34,6 @@ const PERTAMINA_GREEN = ['#00A651', '#007A3E'];
 export default function AuditLogScreen({ navigation }) {
   // Baik ADMIN maupun SUPER_ADMIN berhak memantau Audit Log operasional sistem
   useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
-  useSubpageBackHandler('AdminDashboard');
 
   const [user, setUser] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -274,6 +274,23 @@ export default function AuditLogScreen({ navigation }) {
     await handleLogoutAndReset(navigation);
   };
 
+  useSubpageBackHandler({
+    navigation,
+    user,
+    modals: [
+      { isOpen: !!selectedLog, close: () => setSelectedLog(null) },
+      { isOpen: showNotificationsModal, close: () => setShowNotificationsModal(false) },
+      { isOpen: isLogoutVisible, close: () => setIsLogoutVisible(false) },
+    ],
+    onBack: () => {
+      if (user?.role === 'SUPER_ADMIN') {
+        navigation.navigate('SuperAdminDashboard');
+        return true;
+      }
+      return false;
+    }
+  });
+
   // Color badge mapping by Category
   const getCategoryBadgeStyle = (category) => {
     switch (category) {
@@ -374,7 +391,7 @@ export default function AuditLogScreen({ navigation }) {
 
           <ScrollView
             style={tw`flex-1`}
-            contentContainerStyle={tw`px-4 sm:px-6 py-4 pb-20`}
+            contentContainerStyle={tw`px-4 sm:px-6 py-4 ${isLargeScreen ? 'pb-20' : 'pb-36'}`}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0055A5']} />}
           >
             {/* Search & Filter Card */}
@@ -900,6 +917,16 @@ export default function AuditLogScreen({ navigation }) {
         notifications={notifications}
         navigation={navigation}
         onRefreshNotifications={fetchNotifications}
+      />
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        user={user}
+        navigation={navigation}
+        activeMenu="AuditLog"
+        unreadNotificationsCount={unreadNotificationsCount}
+        handleLogout={() => setIsLogoutVisible(true)}
+        isLogoutVisible={isLogoutVisible}
       />
     </SafeAreaView>
   );

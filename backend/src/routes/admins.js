@@ -99,6 +99,40 @@ router.get('/system-summary', authenticateToken, authorizeRole(['ADMIN', 'SUPER_
       actor: actorMap[log.userId] || { name: 'Sistem/Tidak Diketahui', username: '-', role: '-' }
     }));
 
+    // Daftar pengguna terbaru per role (maks 3 per role) untuk preview di Pusat Kendali Super Admin
+    const [recentAmtUsers, recentPengawasUsers, recentAdminUsers, recentSuperAdminUsers] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: { in: ['AMT', 'USER'] } },
+        take: 3,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, username: true, role: true, jabatan: true, createdAt: true, deletedAt: true }
+      }),
+      prisma.user.findMany({
+        where: { role: 'PENGAWAS' },
+        take: 3,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, username: true, role: true, jabatan: true, createdAt: true, deletedAt: true }
+      }),
+      prisma.user.findMany({
+        where: { role: 'ADMIN' },
+        take: 3,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, username: true, role: true, jabatan: true, createdAt: true, deletedAt: true }
+      }),
+      prisma.user.findMany({
+        where: { role: 'SUPER_ADMIN' },
+        take: 3,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, username: true, role: true, jabatan: true, createdAt: true, deletedAt: true }
+      })
+    ]);
+
+    const formatUserPreview = (u) => ({
+      ...u,
+      role: normalizeRole(u.role),
+      status: u.deletedAt ? 'INACTIVE' : 'ACTIVE'
+    });
+
     res.json({
       success: true,
       data: {
@@ -110,6 +144,12 @@ router.get('/system-summary', authenticateToken, authorizeRole(['ADMIN', 'SUPER_
           pengawas: pengawasCount,
           admin: adminCount,
           superAdmin: superAdminCount
+        },
+        recentUsers: {
+          amt: recentAmtUsers.map(formatUserPreview),
+          pengawas: recentPengawasUsers.map(formatUserPreview),
+          admin: recentAdminUsers.map(formatUserPreview),
+          superAdmin: recentSuperAdminUsers.map(formatUserPreview)
         },
         vehicles: {
           total: totalVehicles,

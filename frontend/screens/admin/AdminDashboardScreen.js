@@ -11,6 +11,7 @@ import axios from 'axios';
 import WebSidebar from '../../components/WebSidebar';
 import NotificationSheet from '../../components/NotificationSheet';
 import WebNavbar from '../../components/WebNavbar';
+import MobileBottomNav from '../../components/MobileBottomNav';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 
 const PERTAMINA_BLUE = ['#003366', '#0055A5'];
@@ -395,7 +396,7 @@ export default function AdminDashboardScreen({ navigation }) {
         {isLargeScreen && user && (
           <WebSidebar 
             user={user} 
-            activeMenu={activeMenu} 
+            activeMenu={isSuperAdmin ? 'OperationalMonitoring' : activeMenu} 
             navigation={navigation} 
             handleLogout={handleLogout} 
             unreadNotificationsCount={unreadNotificationsCount} 
@@ -407,17 +408,40 @@ export default function AdminDashboardScreen({ navigation }) {
 
           {/* STICKY NAVBAR (Floating Modern Style - Sama persis Mobile & Web) */}
           {user && (
-            <WebNavbar user={user} navigation={navigation} />
+            <WebNavbar
+              user={user}
+              navigation={navigation}
+              title={isSuperAdmin ? "Monitoring Operasional" : undefined}
+              subtitle={isSuperAdmin ? "Pemantauan Armada, Isu, & Handover" : undefined}
+              showBack={isSuperAdmin}
+              onBack={isSuperAdmin ? () => navigation.navigate('SuperAdminDashboard') : undefined}
+            />
           )}
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}>
 
             {/* Title Section */}
             <View style={tw`mb-6`}>
-              <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest mb-1`}>SISTEM TERINTEGRASI PERTAMINA</Text>
-              <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
-                Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text>
+              <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest mb-1`}>
+                {isSuperAdmin ? 'MONITORING OPERASIONAL PERTAMINA' : 'SISTEM TERINTEGRASI PERTAMINA'}
               </Text>
+              <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
+                {isSuperAdmin ? (
+                  <>Monitoring <Text style={tw`text-[#0055A5]`}>Operasional.</Text></>
+                ) : (
+                  <>Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text></>
+                )}
+              </Text>
+              {isSuperAdmin && (
+                <View style={tw`flex-row items-center mt-2`}>
+                  <View style={tw`bg-blue-50 border border-blue-200 px-3 py-1 rounded-full flex-row items-center`}>
+                    <Feather name="shield" size={12} color="#0055A5" style={tw`mr-1.5`} />
+                    <Text style={tw`text-[11px] font-bold text-[#0055A5]`}>
+                      Mode Pemantauan Operasional • Armada & Kendala
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* SUPER CARDS */}
@@ -471,47 +495,7 @@ export default function AdminDashboardScreen({ navigation }) {
               </>
             )}
 
-            {/* Daftar Pengawas Full Width Card (Khusus Super Admin) */}
-            {isSuperAdmin && (
-              <TouchableOpacity
-                style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
-                onPress={() => navigation.navigate('PengawasList')}
-              >
-                <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                  <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                    <Feather name="shield" size={24} color="#F59E0B" />
-                  </View>
-                  <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                    <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Pengawas</Text>
-                    <Text style={tw`text-[10px] sm:text-xs text-orange-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akun</Text>
-                  </View>
-                </View>
-                <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full items-center justify-center shrink-0`}>
-                  <Feather name="chevron-right" size={20} color="#F59E0B" />
-                </View>
-              </TouchableOpacity>
-            )}
 
-            {/* Daftar Admin Full Width Card (Khusus Super Admin) */}
-            {isSuperAdmin && (
-              <TouchableOpacity
-                style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
-                onPress={() => navigation.navigate('AdminList')}
-              >
-                <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                  <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                    <Feather name="user-check" size={24} color="#0055A5" />
-                  </View>
-                  <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                    <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Admin</Text>
-                    <Text style={tw`text-[10px] sm:text-xs text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akses Sistem</Text>
-                  </View>
-                </View>
-                <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
-                  <Feather name="chevron-right" size={20} color="#0055A5" />
-                </View>
-              </TouchableOpacity>
-            )}
 
             {/* Audit Log Sistem Full Width Card (Untuk Admin & Super Admin) */}
             <TouchableOpacity
@@ -667,115 +651,14 @@ export default function AdminDashboardScreen({ navigation }) {
         </View>
 
         {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
-        {!isLargeScreen && (
-          <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
-
-            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('AdminDashboard')}>
-              {activeMenu === 'Home' && !isLogoutVisible && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="grid" size={26} color={activeMenu === 'Home' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-            </TouchableOpacity>
-
-            {(isSuperAdmin || isAdmin) && (
-              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('ChecklistManager')}>
-                {activeMenu === 'Checklist' && !isLogoutVisible && (
-                  <>
-                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                  </>
-                )}
-                <Feather name="check-square" size={26} color={activeMenu === 'Checklist' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-              </TouchableOpacity>
-            )}
-
-            {isAMT && (
-              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('History')}>
-                {activeMenu === 'History' && !isLogoutVisible && (
-                  <>
-                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                  </>
-                )}
-                <Feather name="file-text" size={26} color={activeMenu === 'History' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-              </TouchableOpacity>
-            )}
-
-
-            {(isSuperAdmin || isPengawas || user?.role === 'ADMIN') && (
-              <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('MessageCenter')}>
-                {activeMenu === 'Messages' && !isLogoutVisible && (
-                  <>
-                    <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                    <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                      <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                        <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                      </Animated.View>
-                    </View>
-                  </>
-                )}
-                <View style={tw`relative`}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={26} color={activeMenu === 'Messages' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-                  {/* RED DOT BADGE */}
-                  {unreadNotificationsCount > 0 && (
-                      <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}>
-                        <Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}</Text>
-                      </View>
-                    )}
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={handleLogout}>
-              {activeMenu === 'Logout' && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="log-out" size={26} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
-            </TouchableOpacity>
-          </View>
-        )}
+        <MobileBottomNav
+          user={user}
+          navigation={navigation}
+          activeMenu={isSuperAdmin ? 'OperationalMonitoring' : 'Home'}
+          handleLogout={handleLogout}
+          unreadNotificationsCount={unreadNotificationsCount}
+          isLogoutVisible={isLogoutVisible}
+        />
 
       </SafeAreaView>
 

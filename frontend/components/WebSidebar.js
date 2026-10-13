@@ -399,11 +399,11 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 onPress: () => navigateTo('AuditLog')
               })}
 
-              {/* Dashboard Operasional (Khusus Super Admin memantau operasional Admin) */}
+              {/* Monitoring Operasional (Halaman sekunder Super Admin untuk memantau armada, handover, isu, dan verifikasi) */}
               {isSuperAdmin && renderMenuItem({
-                label: 'Dashboard Operasional',
-                iconComponent: <Feather name="activity" size={20} color={activeMenu === 'AdminDashboard' ? '#FFFFFF' : '#0055A5'} />,
-                active: activeMenu === 'AdminDashboard',
+                label: 'Monitoring Operasional',
+                iconComponent: <Feather name="activity" size={20} color={(activeMenu === 'AdminDashboard' || activeMenu === 'OperationalMonitoring') ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'AdminDashboard' || activeMenu === 'OperationalMonitoring',
                 onPress: () => navigateTo('AdminDashboard')
               })}
             </>

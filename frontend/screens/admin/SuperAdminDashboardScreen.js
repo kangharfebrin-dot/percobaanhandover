@@ -24,6 +24,7 @@ import axios from 'axios';
 import { API_URL } from '../../config';
 import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
+import MobileBottomNav from '../../components/MobileBottomNav';
 import NotificationSheet from '../../components/NotificationSheet';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { useDashboardBackHandler } from '../../hooks/useDashboardBackHandler';
@@ -41,12 +42,26 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   useRoleGuard(['SUPER_ADMIN']);
 
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'audit'
   const [activeMenu, setActiveMenu] = useState('Home');
   const [previousMenu, setPreviousMenu] = useState('Home');
   const [loadingSummary, setLoadingSummary] = useState(true);
+  const [summaryError, setSummaryError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [summaryData, setSummaryData] = useState(null);
+
+  // Mode Tampilan Statistik: 'operasional' (default, identik screenshot) | 'pengguna'
+  const [statMode, setStatMode] = useState('operasional');
+
+  // Operational States (Sama persis dengan AdminDashboardScreen)
+  const [vehiclesCount, setVehiclesCount] = useState(0);
+  const [activeIssuesCount, setActiveIssuesCount] = useState(0);
+  const [allHandovers, setAllHandovers] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [displayedAlertsCount, setDisplayedAlertsCount] = useState(4);
+
+  // Modal Kelola Pengguna Master (Akses langsung kontrol hak akses tanpa mengacaukan layout beranda)
+  const [manageUsersModalVisible, setManageUsersModalVisible] = useState(false);
 
   // Users Management State
   const [usersList, setUsersList] = useState([]);
@@ -68,7 +83,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   const [selectedUserForStatus, setSelectedUserForStatus] = useState(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
-  // Audit Logs State
+  // Audit Logs State & Detail Modal
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditSearch, setAuditSearch] = useState('');
@@ -131,7 +146,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   const orb1TranslateY = floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, -50] });
   const orb2TranslateY = floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, 60] });
   const orb3TranslateY = floatAnim3.interpolate({ inputRange: [0, 1], outputRange: [0, -70] });
-  const slideInterpolate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -32] });
 
   // Logout Handlers
   const handleLogout = () => {
@@ -163,6 +177,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   const fetchSummary = useCallback(async () => {
     try {
       setLoadingSummary(true);
+      setSummaryError(null);
       const token = await AsyncStorage.getItem('token');
       if (!token) return;
       const res = await axios.get(`${API_URL}/api/admins/system-summary`, {
@@ -170,13 +185,52 @@ export default function SuperAdminDashboardScreen({ navigation }) {
       });
       if (res.data?.success) {
         setSummaryData(res.data.data);
+      } else {
+        setSummaryError(res.data?.error || 'Gagal memuat ringkasan sistem.');
       }
     } catch (err) {
       console.log('Error fetching system summary:', err.response?.data?.error || err.message);
+      setSummaryError(err.response?.data?.error || 'Gagal terhubung ke server.');
     } finally {
       setLoadingSummary(false);
     }
   }, []);
+
+  // Fetch Operational Alerts & Vehicles
+  const fetchAlerts = useCallback(async () => {
+    setLoadingAlerts(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const vehicleRes = await axios.get(`${API_URL}/api/vehicles`, { headers });
+      const activeVehicles = vehicleRes.data || [];
+      setVehiclesCount(activeVehicles.length);
+      const activePolisi = activeVehicles.map(v => v.noPolisi);
+
+      const res = await axios.get(`${API_URL}/api/handovers`, { headers });
+      const dataHandovers = res.data.data || res.data || [];
+      setAllHandovers(dataHandovers);
+
+      const issueRes = await axios.get(`${API_URL}/api/issues/ongoing`, { headers });
+      const activeIssues = (issueRes.data || []).filter(issue => activePolisi.includes(issue.handover?.noPolisi));
+      setActiveIssuesCount(activeIssues.length);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todaysHandovers = dataHandovers.filter(h => new Date(h.timestamp) >= today);
+      setAlerts(todaysHandovers);
+    } catch (error) {
+      console.log('Gagal mengambil data alert operasional:', error.message);
+      if (error.response?.status === 401) {
+        await handleLogoutAndReset(navigation);
+      }
+    } finally {
+      setLoadingAlerts(false);
+    }
+  }, [navigation]);
 
   // Fetch Users
   const fetchUsers = useCallback(async (page = 1) => {
@@ -209,37 +263,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
       setUsersLoading(false);
     }
   }, [userSearch, userRoleFilter, userStatusFilter]);
-
-  // Fetch Audit Logs
-  const fetchAuditLogs = useCallback(async (page = 1) => {
-    try {
-      setAuditLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      if (!token) return;
-
-      const params = {
-        page,
-        limit: 15,
-        search: auditSearch,
-        actionType: auditActionFilter
-      };
-
-      const res = await axios.get(`${API_URL}/api/admins/audit-logs`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params
-      });
-
-      if (res.data?.success) {
-        setAuditLogs(res.data.logs || []);
-        setAuditPagination(res.data.pagination || { total: 0, totalPages: 1 });
-        setAuditPage(page);
-      }
-    } catch (err) {
-      console.log('Error fetching audit logs:', err.response?.data?.error || err.message);
-    } finally {
-      setAuditLoading(false);
-    }
-  }, [auditSearch, auditActionFilter]);
 
   // Fetch Notifications
   const fetchNotifications = useCallback(async () => {
@@ -282,29 +305,38 @@ export default function SuperAdminDashboardScreen({ navigation }) {
       }
       await Promise.all([
         fetchSummary(),
+        fetchAlerts(),
         fetchNotifications()
       ]);
     };
     init();
-  }, [fetchSummary, fetchNotifications, navigation]);
+  }, [fetchSummary, fetchAlerts, fetchNotifications, navigation]);
 
-  // Lazy tab fetching
+  // Screen focus listener
   useEffect(() => {
-    if (activeTab === 'users') {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchSummary();
+      fetchAlerts();
+      fetchNotifications();
+    });
+    return unsubscribe;
+  }, [navigation, fetchSummary, fetchAlerts, fetchNotifications]);
+
+  // Auto fetch users when modal opened or filter changed
+  useEffect(() => {
+    if (manageUsersModalVisible) {
       fetchUsers(1);
-    } else if (activeTab === 'audit') {
-      fetchAuditLogs(1);
     }
-  }, [activeTab, fetchUsers, fetchAuditLogs]);
+  }, [manageUsersModalVisible, userRoleFilter, userStatusFilter, fetchUsers]);
 
   // Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       fetchSummary(),
+      fetchAlerts(),
       fetchNotifications(),
-      activeTab === 'users' ? fetchUsers(userPage) : null,
-      activeTab === 'audit' ? fetchAuditLogs(auditPage) : null
+      manageUsersModalVisible ? fetchUsers(userPage) : null
     ]);
     setRefreshing(false);
   };
@@ -379,6 +411,93 @@ export default function SuperAdminDashboardScreen({ navigation }) {
     });
   };
 
+  // Render Alert Item (Identik persis dengan AdminDashboardScreen)
+  const renderAlertItem = ({ item }) => {
+    const isBad = item.status !== 'Siap Operasi (Normal)' && item.issue?.status !== 'RESOLVED';
+    const badItems = item.items ? item.items.filter(i => !i.isGood) : [];
+    const issueCount = badItems.length;
+    const firstIssue = badItems[0]?.name || 'Kendala operasional';
+    const remainingCount = issueCount - 1;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('HandoverDetail', { handover: item, handoverId: item.id })}
+        style={[
+          tw`p-4 rounded-3xl border border-white/70 justify-between ${Platform.OS === 'web' && isLargeScreen ? '' : 'mb-4'}`,
+          {
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            ...glassStyle,
+            shadowColor: isBad ? '#ED1C24' : '#00A651',
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
+            minHeight: 148,
+            ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {})
+          }
+        ]}
+      >
+        <View style={tw`flex-row items-center`}>
+          <View style={[
+            tw`w-12 h-12 rounded-2xl items-center justify-center mr-3.5 border`,
+            isBad ? tw`bg-red-100/90 border-red-200/80` : tw`bg-emerald-100/90 border-emerald-200/80`
+          ]}>
+            <Feather name={isBad ? "alert-triangle" : "check-circle"} size={24} color={isBad ? "#ED1C24" : "#059669"} />
+          </View>
+          <View style={tw`flex-1`}>
+            <View style={tw`flex-row justify-between items-center mb-0.5`}>
+              <Text style={tw`text-lg font-black text-gray-800 tracking-wide`}>{item.noPolisi}</Text>
+              <View style={[
+                tw`px-3 py-1 rounded-full`,
+                isBad ? tw`bg-red-500` : tw`bg-emerald-500`
+              ]}>
+                <Text style={tw`text-[10px] text-white font-extrabold uppercase tracking-widest`}>
+                  {isBad ? 'Ada Isu' : 'Aman'}
+                </Text>
+              </View>
+            </View>
+            <Text style={tw`text-xs text-gray-500 font-semibold uppercase tracking-wider`} numberOfLines={1}>
+              {item.shift} • {item.user?.name || 'Driver'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[
+          tw`mt-3 px-3.5 py-2.5 rounded-2xl flex-row items-center justify-between border`,
+          isBad ? tw`bg-red-50/80 border-red-200/60` : tw`bg-emerald-50/80 border-emerald-200/60`
+        ]}>
+          <View style={tw`flex-1 mr-2`}>
+            <Text style={[
+              tw`text-xs font-black tracking-tight`,
+              isBad ? tw`text-red-700` : tw`text-emerald-700`
+            ]}>
+              {isBad ? `⚠️ ${issueCount > 0 ? `${issueCount} Isu Ditemukan` : 'Ada Isu Kendaraan'}` : '✓ Siap Operasi (Normal)'}
+            </Text>
+            <Text style={[
+              tw`text-[11px] font-medium mt-0.5`,
+              isBad ? tw`text-red-600` : tw`text-emerald-600`
+            ]} numberOfLines={1}>
+              {isBad 
+                ? `• ${firstIssue}${remainingCount > 0 ? ` (+${remainingCount} lainnya)` : ''}`
+                : '• Seluruh item checklist lengkap & sesuai standar'
+              }
+            </Text>
+          </View>
+          <View style={[
+            tw`flex-row items-center bg-white/90 px-2.5 py-1.5 rounded-xl border shadow-sm`,
+            isBad ? tw`border-red-200/80` : tw`border-emerald-200/80`
+          ]}>
+            <Text style={[
+              tw`text-[10px] font-bold mr-0.5`,
+              isBad ? tw`text-red-600` : tw`text-emerald-600`
+            ]}>Detail</Text>
+            <Feather name="chevron-right" size={12} color={isBad ? "#ED1C24" : "#059669"} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   if (!user) {
     return (
       <View style={tw`flex-1 bg-[#F4F7FA] justify-center items-center`}>
@@ -427,1135 +546,801 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             <WebNavbar
               user={user}
               navigation={navigation}
-              rightAction={
-                !isLargeScreen ? (
-                  <TouchableOpacity
-                    onPress={() => setShowNotificationsModal(true)}
-                    style={[
-                      tw`w-9 h-9 rounded-full bg-blue-50/90 items-center justify-center relative mr-1 border border-blue-100 shadow-sm`,
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="notifications-outline" size={18} color="#0055A5" />
-                    {unreadNotificationsCount > 0 && (
-                      <View style={tw`absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#ED1C24] border-2 border-white`} />
-                    )}
-                  </TouchableOpacity>
-                ) : null
-              }
             />
           )}
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-32 w-full'}`}
+            contentContainerStyle={tw`${isLargeScreen ? 'p-6 max-w-7xl mx-auto w-full' : 'p-6 pt-6 pb-36 w-full'}`}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0055A5']} />}
           >
-            {/* Title Section dengan Badge Role Super Admin */}
-            <View style={tw`mb-6 flex-row items-center justify-between flex-wrap gap-2`}>
-              <View>
-                <View style={tw`flex-row items-center gap-2 mb-1`}>
-                  <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest`}>
-                    PUSAT KENDALI TERPADU
-                  </Text>
-                  <View style={tw`px-2.5 py-0.5 rounded-full bg-red-100/90 border border-red-200/80 flex-row items-center`}>
-                    <Ionicons name="shield-checkmark" size={11} color="#ED1C24" style={tw`mr-1`} />
-                    <Text style={tw`text-[10px] font-black text-[#ED1C24] tracking-widest uppercase`}>
-                      SUPER ADMIN
-                    </Text>
-                  </View>
-                </View>
-                <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
-                  Overview <Text style={tw`text-[#ED1C24]`}>Sistem.</Text>
-                </Text>
-              </View>
-
-              <View style={[tw`flex-row items-center px-3.5 py-2 rounded-2xl border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                <View style={tw`w-2.5 h-2.5 rounded-full bg-[#00A651] mr-2`} />
-                <Text style={tw`text-xs font-bold text-gray-700`}>Sistem Operasional Aktif</Text>
-              </View>
-            </View>
-
-            {/* Segmented Control / Tabs Header */}
+            {/* Title Section (Identik persis dengan screenshot & AdminDashboardScreen) */}
             <View style={tw`mb-6`}>
-              <View style={[tw`flex-row p-1.5 rounded-[22px] border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                <TouchableOpacity
-                  onPress={() => setActiveTab('overview')}
-                  style={[
-                    tw`flex-1 py-2.5 rounded-[16px] flex-row items-center justify-center`,
-                    activeTab === 'overview' ? tw`bg-[#0055A5] shadow-md shadow-blue-900/30` : {},
-                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="activity" size={15} color={activeTab === 'overview' ? '#FFFFFF' : '#4B5563'} style={tw`mr-1.5`} />
-                  <Text style={[tw`text-xs sm:text-sm font-black tracking-tight`, activeTab === 'overview' ? tw`text-white` : tw`text-gray-600`]}>
-                    Ringkasan Sistem
+              <View style={tw`flex-row items-center justify-between mb-1`}>
+                <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest`}>
+                  SISTEM TERINTEGRASI PERTAMINA
+                </Text>
+                <View style={tw`px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 flex-row items-center`}>
+                  <Ionicons name="shield-checkmark" size={11} color="#ED1C24" style={tw`mr-1`} />
+                  <Text style={tw`text-[10px] font-black text-[#ED1C24] tracking-widest uppercase`}>
+                    SUPER ADMIN
                   </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setActiveTab('users')}
-                  style={[
-                    tw`flex-1 py-2.5 rounded-[16px] flex-row items-center justify-center`,
-                    activeTab === 'users' ? tw`bg-[#0055A5] shadow-md shadow-blue-900/30` : {},
-                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="users" size={15} color={activeTab === 'users' ? '#FFFFFF' : '#4B5563'} style={tw`mr-1.5`} />
-                  <Text style={[tw`text-xs sm:text-sm font-black tracking-tight`, activeTab === 'users' ? tw`text-white` : tw`text-gray-600`]}>
-                    Kelola Pengguna
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setActiveTab('audit')}
-                  style={[
-                    tw`flex-1 py-2.5 rounded-[16px] flex-row items-center justify-center`,
-                    activeTab === 'audit' ? tw`bg-[#0055A5] shadow-md shadow-blue-900/30` : {},
-                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="shield" size={15} color={activeTab === 'audit' ? '#FFFFFF' : '#4B5563'} style={tw`mr-1.5`} />
-                  <Text style={[tw`text-xs sm:text-sm font-black tracking-tight`, activeTab === 'audit' ? tw`text-white` : tw`text-gray-600`]}>
-                    Audit Log
-                  </Text>
-                </TouchableOpacity>
+                </View>
               </View>
+              <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
+                Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text>
+              </Text>
             </View>
 
-            {/* ============================================================ */}
-            {/* TAB 1: RINGKASAN SISTEM (OVERVIEW)                           */}
-            {/* ============================================================ */}
-            {activeTab === 'overview' && (
-              <View>
-                {/* SUPER STAT CARDS (Pola Responsive Identik dengan AdminDashboard) */}
-                {isLargeScreen ? (
-                  /* DESKTOP: 4 Kartu Sejajar */
-                  <View style={tw`flex-row justify-between mb-4`}>
-                    {/* Kartu 1: Total Pengguna */}
-                    <TouchableOpacity
-                      style={[
-                        tw`flex-1 p-5 rounded-[28px] border border-white/60 mr-3 justify-between`,
-                        { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 },
-                        Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                      ]}
-                      onPress={() => setActiveTab('users')}
-                      activeOpacity={0.85}
-                    >
-                      <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mb-5`}>
-                        <Feather name="users" size={22} color="#0055A5" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>
-                          {summaryData?.users?.total ?? 0}
-                        </Text>
-                        <Text style={tw`text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1.5`}>
-                          Total Pengguna
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Kartu 2: Isu Kendaraan */}
-                    <TouchableOpacity
-                      style={[
-                        tw`flex-1 p-5 rounded-[28px] border border-white/60 mr-3 justify-between`,
-                        { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 },
-                        Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                      ]}
-                      onPress={() => navigation.navigate('IssueList')}
-                      activeOpacity={0.85}
-                    >
-                      <View style={tw`w-12 h-12 bg-red-100 rounded-full items-center justify-center mb-5`}>
-                        <Feather name="alert-circle" size={22} color="#ED1C24" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-4xl font-black text-[#ED1C24] tracking-tighter`}>
-                          {summaryData?.issues?.active ?? 0}
-                        </Text>
-                        <Text style={tw`text-[11px] text-red-400 font-black uppercase tracking-widest mt-1.5`}>
-                          Isu Berjalan
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Kartu 3: Total Kendaraan */}
-                    <TouchableOpacity
-                      style={[
-                        tw`flex-1 p-5 rounded-[28px] border border-white/60 mr-3 justify-between`,
-                        { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.05, shadowRadius: 20 },
-                        Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                      ]}
-                      onPress={() => navigation.navigate('VehicleList')}
-                      activeOpacity={0.85}
-                    >
-                      <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mb-5`}>
-                        <Feather name="truck" size={22} color="#0055A5" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>
-                          {summaryData?.vehicles?.total ?? 0}
-                        </Text>
-                        <Text style={tw`text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1.5`}>
-                          Total Kendaraan
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Kartu 4: Handover Hari Ini */}
-                    <TouchableOpacity
-                      style={[
-                        tw`flex-1 p-5 rounded-[28px] border border-white/60 justify-between`,
-                        { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
-                        Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                      ]}
-                      onPress={() => navigation.navigate('History')}
-                      activeOpacity={0.85}
-                    >
-                      <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mb-5`}>
-                        <Feather name="repeat" size={22} color="#00A651" />
-                      </View>
-                      <View>
-                        <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>
-                          {summaryData?.handovers?.today ?? 0}
-                        </Text>
-                        <Text style={tw`text-[11px] text-emerald-600 font-black uppercase tracking-widest mt-1.5`}>
-                          Handover Hari Ini
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  /* MOBILE: 2 Kolom x 2 Baris (Sama persis Admin Mobile) */
-                  <>
-                    <View style={tw`flex-row justify-between mb-3.5`}>
-                      <TouchableOpacity
-                        style={[
-                          tw`flex-1 p-4 sm:p-5 rounded-[28px] border border-white/60 mr-2 justify-between`,
-                          { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 }
-                        ]}
-                        onPress={() => setActiveTab('users')}
-                        activeOpacity={0.85}
-                      >
-                        <View style={tw`w-11 h-11 bg-blue-100 rounded-full items-center justify-center mb-4`}>
-                          <Feather name="users" size={20} color="#0055A5" />
-                        </View>
-                        <View>
-                          <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
-                            {summaryData?.users?.total ?? 0}
-                          </Text>
-                          <Text style={tw`text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1`} numberOfLines={1}>
-                            Total Pengguna
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          tw`flex-1 p-4 sm:p-5 rounded-[28px] border border-white/60 ml-2 justify-between`,
-                          { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 }
-                        ]}
-                        onPress={() => navigation.navigate('IssueList')}
-                        activeOpacity={0.85}
-                      >
-                        <View style={tw`w-11 h-11 bg-red-100 rounded-full items-center justify-center mb-4`}>
-                          <Feather name="alert-circle" size={20} color="#ED1C24" />
-                        </View>
-                        <View>
-                          <Text style={tw`text-3xl font-black text-[#ED1C24] tracking-tighter`}>
-                            {summaryData?.issues?.active ?? 0}
-                          </Text>
-                          <Text style={tw`text-[10px] text-red-400 font-black uppercase tracking-widest mt-1`} numberOfLines={1}>
-                            Isu Berjalan
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={tw`flex-row justify-between mb-4`}>
-                      <TouchableOpacity
-                        style={[
-                          tw`flex-1 p-4 sm:p-5 rounded-[28px] border border-white/60 mr-2 justify-between`,
-                          { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.05, shadowRadius: 20 }
-                        ]}
-                        onPress={() => navigation.navigate('VehicleList')}
-                        activeOpacity={0.85}
-                      >
-                        <View style={tw`w-11 h-11 bg-blue-100 rounded-full items-center justify-center mb-4`}>
-                          <Feather name="truck" size={20} color="#0055A5" />
-                        </View>
-                        <View>
-                          <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
-                            {summaryData?.vehicles?.total ?? 0}
-                          </Text>
-                          <Text style={tw`text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1`} numberOfLines={1}>
-                            Total Kendaraan
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          tw`flex-1 p-4 sm:p-5 rounded-[28px] border border-white/60 ml-2 justify-between`,
-                          { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 }
-                        ]}
-                        onPress={() => navigation.navigate('History')}
-                        activeOpacity={0.85}
-                      >
-                        <View style={tw`w-11 h-11 bg-green-100 rounded-full items-center justify-center mb-4`}>
-                          <Feather name="repeat" size={20} color="#00A651" />
-                        </View>
-                        <View>
-                          <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
-                            {summaryData?.handovers?.today ?? 0}
-                          </Text>
-                          <Text style={tw`text-[10px] text-emerald-600 font-black uppercase tracking-widest mt-1`} numberOfLines={1}>
-                            Handover Hari Ini
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-
-                {/* Breakdown Role Ringkas */}
-                <View style={[
-                  tw`flex-row flex-wrap items-center justify-between gap-2 p-3 sm:p-4 rounded-[22px] border border-white/80 mb-6`,
-                  { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }
-                ]}>
-                  <View style={tw`flex-row items-center`}>
-                    <View style={tw`w-2 h-2 rounded-full bg-emerald-500 mr-2`} />
-                    <Text style={tw`text-xs font-bold text-gray-600`}>
-                      AMT: <Text style={tw`font-black text-gray-900`}>{summaryData?.users?.amt ?? 0}</Text>
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center`}>
-                    <View style={tw`w-2 h-2 rounded-full bg-purple-500 mr-2`} />
-                    <Text style={tw`text-xs font-bold text-gray-600`}>
-                      Pengawas: <Text style={tw`font-black text-gray-900`}>{summaryData?.users?.pengawas ?? 0}</Text>
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center`}>
-                    <View style={tw`w-2 h-2 rounded-full bg-blue-500 mr-2`} />
-                    <Text style={tw`text-xs font-bold text-gray-600`}>
-                      Admin: <Text style={tw`font-black text-gray-900`}>{summaryData?.users?.admin ?? 0}</Text>
-                    </Text>
-                  </View>
-                  <View style={tw`flex-row items-center`}>
-                    <View style={tw`w-2 h-2 rounded-full bg-red-500 mr-2`} />
-                    <Text style={tw`text-xs font-bold text-gray-600`}>
-                      Super Admin: <Text style={tw`font-black text-gray-900`}>{summaryData?.users?.superAdmin ?? 0}</Text>
-                    </Text>
-                  </View>
-                </View>
-
-                {/* PUSAT KENDALI MODUL (Full-Width Cards Identik dengan AdminDashboard) */}
-                <View style={tw`mb-2`}>
-                  <Text style={tw`text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1`}>
-                    MANAJEMEN PENGGUNA & HAK AKSES
-                  </Text>
-
-                  {/* 1. Daftar Admin Full Width Card (Khusus Super Admin) */}
-                  <TouchableOpacity
-                    style={[
-                      tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`,
-                      { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 },
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    onPress={() => navigation.navigate('AdminList')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                      <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                        <Feather name="user-check" size={24} color="#0055A5" />
-                      </View>
-                      <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                        <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                          Daftar Admin
-                        </Text>
-                        <Text style={tw`text-[10px] sm:text-xs text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                          Manajemen Akses & Staf Admin
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
-                      <Feather name="chevron-right" size={20} color="#0055A5" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* 2. Daftar Pengawas Full Width Card (Khusus Super Admin) */}
-                  <TouchableOpacity
-                    style={[
-                      tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`,
-                      { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 },
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    onPress={() => navigation.navigate('PengawasList')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                      <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                        <Feather name="shield" size={24} color="#F59E0B" />
-                      </View>
-                      <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                        <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                          Daftar Pengawas
-                        </Text>
-                        <Text style={tw`text-[10px] sm:text-xs text-orange-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                          Manajemen Akun Pengawas Distribusi
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full items-center justify-center shrink-0`}>
-                      <Feather name="chevron-right" size={20} color="#F59E0B" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* 3. Daftar Pekerja / AMT Full Width Card */}
-                  <TouchableOpacity
-                    style={[
-                      tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`,
-                      { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    onPress={() => navigation.navigate('WorkerList')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                      <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                        <Feather name="users" size={22} color="#00A651" />
-                      </View>
-                      <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                        <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                          Daftar Pekerja (AMT)
-                        </Text>
-                        <Text style={tw`text-[10px] sm:text-xs text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                          Manajemen Akun Awak Mobil Tangki
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-green-50 rounded-full items-center justify-center shrink-0`}>
-                      <Feather name="chevron-right" size={20} color="#00A651" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* 4. Audit Log Sistem Full Width Card */}
-                  <TouchableOpacity
-                    style={[
-                      tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`,
-                      { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 },
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    onPress={() => navigation.navigate('AuditLog')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                      <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                        <Feather name="clipboard" size={24} color="#0055A5" />
-                      </View>
-                      <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                        <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                          Audit Log Sistem
-                        </Text>
-                        <Text style={tw`text-[10px] sm:text-xs text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                          Monitoring & Riwayat Aktivitas Keamanan
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
-                      <Feather name="chevron-right" size={20} color="#0055A5" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* 5. Manajer Checklist Full Width Card */}
-                  <TouchableOpacity
-                    style={[
-                      tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`,
-                      { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
-                      Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                    ]}
-                    onPress={() => navigation.navigate('ChecklistManager')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                      <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                        <Feather name="check-square" size={24} color="#00A651" />
-                      </View>
-                      <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                        <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                          Manajer Checklist
-                        </Text>
-                        <Text style={tw`text-[10px] sm:text-xs text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                          Konfigurasi Pertanyaan Inspeksi
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-green-50 rounded-full items-center justify-center shrink-0`}>
-                      <Feather name="chevron-right" size={20} color="#00A651" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Arsip Database / Seluruh Laporan Gradient Card (Identik dengan Admin) */}
+            {/* Stat Mode Switcher: Operasional vs Pengguna Sistem */}
+            <View style={tw`flex-row items-center justify-between mb-4`}>
+              <View style={[tw`flex-row p-1 rounded-2xl border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.7)', ...glassStyle }]}>
                 <TouchableOpacity
-                  style={tw`w-full mb-8`}
-                  onPress={() => navigation.navigate('History')}
-                  activeOpacity={0.9}
+                  onPress={() => setStatMode('operasional')}
+                  style={[
+                    tw`px-3.5 py-1.5 rounded-xl flex-row items-center`,
+                    statMode === 'operasional' ? tw`bg-[#0055A5] shadow-sm` : {},
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={PERTAMINA_BLUE}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={tw`p-8 rounded-[40px] shadow-2xl shadow-blue-500/40 relative overflow-hidden`}
-                  >
-                    <View style={tw`absolute -right-10 -top-10 opacity-20 pointer-events-none`}>
-                      <Ionicons name="documents" size={200} color="white" />
-                    </View>
-                    <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8 border border-white/30 shadow-sm`}>
-                      <Feather name="database" size={32} color="white" />
-                    </View>
-                    <Text style={tw`text-blue-200 font-bold text-sm uppercase tracking-widest mb-2`}>
-                      Arsip Database
-                    </Text>
-                    <Text style={tw`text-white font-black text-3xl tracking-tight`}>
-                      Lihat Seluruh Laporan
-                    </Text>
-                  </LinearGradient>
+                  <Feather name="activity" size={12} color={statMode === 'operasional' ? '#FFFFFF' : '#64748B'} style={tw`mr-1.5`} />
+                  <Text style={[tw`text-[11px] font-black`, statMode === 'operasional' ? tw`text-white` : tw`text-gray-600`]}>
+                    Operasional
+                  </Text>
                 </TouchableOpacity>
 
-                {/* Aktivitas Audit Terkini */}
-                <View style={tw`mb-8`}>
-                  <View style={tw`flex-row justify-between items-center mb-5`}>
-                    <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>
-                      Aktivitas Audit Terkini
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setActiveTab('audit')}
-                      style={tw`bg-blue-100 px-4 py-1.5 rounded-full`}
-                    >
-                      <Text style={tw`text-blue-600 text-xs font-black uppercase tracking-widest`}>
-                        Lihat Semua →
-                      </Text>
-                    </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setStatMode('pengguna');
+                    if (usersList.length === 0) fetchUsers(1);
+                  }}
+                  style={[
+                    tw`px-3.5 py-1.5 rounded-xl flex-row items-center`,
+                    statMode === 'pengguna' ? tw`bg-[#0055A5] shadow-sm` : {},
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="users" size={12} color={statMode === 'pengguna' ? '#FFFFFF' : '#64748B'} style={tw`mr-1.5`} />
+                  <Text style={[tw`text-[11px] font-black`, statMode === 'pengguna' ? tw`text-white` : tw`text-gray-600`]}>
+                    Pengguna Sistem
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {statMode === 'pengguna' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (usersList.length === 0) fetchUsers(1);
+                    setManageUsersModalVisible(true);
+                  }}
+                  style={[tw`px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 flex-row items-center`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="sliders" size={12} color="#0055A5" style={tw`mr-1`} />
+                  <Text style={tw`text-[11px] font-black text-[#0055A5]`}>Kelola Role</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* SUPER CARDS */}
+            {statMode === 'operasional' ? (
+              /* MODE OPERASIONAL: SAMA PERSIS DENGAN SCREENSHOT & AdminDashboardScreen */
+              <View style={tw`flex-row justify-between mb-4`}>
+                <TouchableOpacity
+                  style={[
+                    tw`flex-1 p-5 rounded-[28px] border border-white/60 mr-3 justify-between`,
+                    { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 20 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  onPress={() => navigation.navigate('VehicleList')}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mb-5`}>
+                    <Feather name="truck" size={22} color="#0055A5" />
                   </View>
+                  <View>
+                    <Text style={tw`text-4xl font-black text-gray-800 tracking-tighter`}>{vehiclesCount}</Text>
+                    <Text style={tw`text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1.5`}>Total Kendaraan</Text>
+                  </View>
+                </TouchableOpacity>
 
-                  {summaryData?.auditLogs?.recent && summaryData.auditLogs.recent.length > 0 ? (
-                    <View
-                      style={[
-                        tw`w-full`,
-                        Platform.OS === 'web' && isLargeScreen ? {
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                          gap: 16,
-                          width: '100%'
-                        } : (isLargeScreen ? tw`flex-row flex-wrap justify-between` : tw`flex-col`)
-                      ]}
-                    >
-                      {summaryData.auditLogs.recent.map((log) => (
-                        <TouchableOpacity
-                          key={log.id}
-                          activeOpacity={0.85}
-                          onPress={() => setSelectedLogDetail(log)}
-                          style={[
-                            tw`p-4 rounded-3xl border border-white/70 justify-between ${Platform.OS === 'web' && isLargeScreen ? '' : 'mb-4'}`,
-                            {
-                              backgroundColor: 'rgba(255,255,255,0.85)',
-                              ...glassStyle,
-                              shadowColor: '#0055A5',
-                              shadowOpacity: 0.08,
-                              shadowRadius: 16,
-                              shadowOffset: { width: 0, height: 6 },
-                              minHeight: 130,
-                              ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {})
-                            }
-                          ]}
-                        >
-                          <View style={tw`flex-row items-center mb-2`}>
-                            <View style={tw`w-10 h-10 rounded-2xl bg-blue-100/90 items-center justify-center mr-3 border border-blue-200/80`}>
-                              <Feather name="shield" size={20} color="#0055A5" />
-                            </View>
-                            <View style={tw`flex-1 min-w-0`}>
-                              <View style={tw`flex-row justify-between items-center mb-0.5`}>
-                                <Text style={tw`text-sm font-black text-gray-800 tracking-wide`} numberOfLines={1}>
-                                  {log.action}
-                                </Text>
-                                <Text style={tw`text-[10px] text-gray-400 font-bold ml-2 shrink-0`}>
-                                  {formatDate(log.createdAt)}
-                                </Text>
-                              </View>
-                              <Text style={tw`text-xs text-gray-500 font-semibold`} numberOfLines={1}>
-                                Oleh: <Text style={tw`font-bold text-gray-800`}>{log.actor?.name || log.actor?.username || 'Sistem'}</Text> ({log.actor?.role || '-'})
-                              </Text>
-                            </View>
-                          </View>
+                <TouchableOpacity
+                  style={[
+                    tw`flex-1 p-5 rounded-[28px] border border-white/60 ml-3 justify-between`,
+                    { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.1, shadowRadius: 20 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  onPress={() => navigation.navigate('IssueList')}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-12 h-12 bg-red-100 rounded-full items-center justify-center mb-5`}>
+                    <Feather name="alert-circle" size={22} color="#ED1C24" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-4xl font-black text-[#ED1C24] tracking-tighter`}>{activeIssuesCount}</Text>
+                    <Text style={tw`text-[11px] text-red-400 font-black uppercase tracking-widest mt-1.5`}>Isu Ditemukan</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* MODE PENGGUNA SISTEM: 4 KARTU ROLE USER */
+              <View
+                style={[
+                  tw`w-full mb-4`,
+                  Platform.OS === 'web' && isLargeScreen
+                    ? { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }
+                    : tw`flex-row flex-wrap justify-between`
+                ]}
+              >
+                {/* 1. Pekerja AMT */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('WorkerList')}
+                  style={[
+                    tw`p-4 sm:p-5 rounded-[28px] border border-white/60 justify-between mb-3`,
+                    Platform.OS === 'web' && isLargeScreen ? { width: '100%' } : tw`w-[48%]`,
+                    { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.08, shadowRadius: 16 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-11 h-11 bg-emerald-100 rounded-full items-center justify-center mb-3`}>
+                    <Feather name="users" size={20} color="#00A651" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
+                      {summaryData?.users?.amt ?? 0}
+                    </Text>
+                    <Text style={tw`text-[10px] sm:text-[11px] text-emerald-600 font-black uppercase tracking-wider mt-1`}>
+                      Pekerja AMT
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
-                          <View style={tw`mt-2 px-3 py-2 rounded-xl bg-gray-50/80 border border-gray-200/60 flex-row items-center justify-between`}>
-                            <Text style={tw`text-[11px] text-gray-600 font-medium flex-1 mr-2`} numberOfLines={1}>
-                              {log.details || 'Tidak ada detail tambahan'}
-                            </Text>
-                            <View style={tw`flex-row items-center`}>
-                              <Text style={tw`text-[10px] font-bold text-blue-600 mr-1`}>Detail</Text>
-                              <Feather name="chevron-right" size={12} color="#0055A5" />
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={[tw`items-center justify-center py-12 px-6 rounded-[35px] border border-white/60`, { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }]}>
-                      <View style={tw`w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4`}>
-                        <Feather name="inbox" size={40} color="#9CA3AF" />
+                {/* 2. Pengawas */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('PengawasList')}
+                  style={[
+                    tw`p-4 sm:p-5 rounded-[28px] border border-white/60 justify-between mb-3`,
+                    Platform.OS === 'web' && isLargeScreen ? { width: '100%' } : tw`w-[48%]`,
+                    { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#003366', shadowOpacity: 0.08, shadowRadius: 16 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-11 h-11 bg-amber-100 rounded-full items-center justify-center mb-3`}>
+                    <Feather name="shield" size={20} color="#003366" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
+                      {summaryData?.users?.pengawas ?? 0}
+                    </Text>
+                    <Text style={tw`text-[10px] sm:text-[11px] text-[#003366] font-black uppercase tracking-wider mt-1`}>
+                      Pengawas
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* 3. Admin */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('AdminList')}
+                  style={[
+                    tw`p-4 sm:p-5 rounded-[28px] border border-white/60 justify-between mb-3`,
+                    Platform.OS === 'web' && isLargeScreen ? { width: '100%' } : tw`w-[48%]`,
+                    { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.08, shadowRadius: 16 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-11 h-11 bg-blue-100 rounded-full items-center justify-center mb-3`}>
+                    <Feather name="user-check" size={20} color="#0055A5" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
+                      {summaryData?.users?.admin ?? 0}
+                    </Text>
+                    <Text style={tw`text-[10px] sm:text-[11px] text-[#0055A5] font-black uppercase tracking-wider mt-1`}>
+                      Admin
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* 4. Super Admin */}
+                <TouchableOpacity
+                  onPress={() => {
+                    if (usersList.length === 0) fetchUsers(1);
+                    setManageUsersModalVisible(true);
+                  }}
+                  style={[
+                    tw`p-4 sm:p-5 rounded-[28px] border border-white/60 justify-between mb-3`,
+                    Platform.OS === 'web' && isLargeScreen ? { width: '100%' } : tw`w-[48%]`,
+                    { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.08, shadowRadius: 16 },
+                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View style={tw`w-11 h-11 bg-red-100 rounded-full items-center justify-center mb-3`}>
+                    <Ionicons name="shield-checkmark" size={20} color="#ED1C24" />
+                  </View>
+                  <View>
+                    <Text style={tw`text-3xl font-black text-[#ED1C24] tracking-tighter`}>
+                      {summaryData?.users?.superAdmin ?? 0}
+                    </Text>
+                    <Text style={tw`text-[10px] sm:text-[11px] text-red-500 font-black uppercase tracking-wider mt-1`}>
+                      Super Admin
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ACTION CARDS STACK */}
+            {/* 1. Daftar Pekerja */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => navigation.navigate('WorkerList')}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="users" size={22} color="#00A651" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Daftar Pekerja
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Manajemen Akun
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-green-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#00A651" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 2. Daftar Pengawas (Khusus Super Admin) */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#003366', shadowOpacity: 0.1, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => navigation.navigate('PengawasList')}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-amber-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="shield" size={22} color="#003366" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Daftar Pengawas
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-[#003366] font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Manajemen Pengawas
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#003366" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 3. Daftar Admin (Khusus Super Admin) */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => navigation.navigate('AdminList')}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="user-check" size={22} color="#0055A5" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Daftar Admin
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-[#0055A5] font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Manajemen Admin
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#0055A5" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 4. Audit Log Sistem */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => navigation.navigate('AuditLog')}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="clipboard" size={24} color="#0055A5" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Audit Log Sistem
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Riwayat & Monitoring Keamanan
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#0055A5" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 5. Manajer Checklist */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => navigation.navigate('ChecklistManager')}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="check-square" size={24} color="#00A651" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Manajer Checklist
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-green-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Konfigurasi Pertanyaan Inspeksi
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-green-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#00A651" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 6. Kelola Role Pengguna (Fitur Eksekutif Super Admin) */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-10 flex-row items-center justify-between`,
+                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.08, shadowRadius: 20 },
+                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+              ]}
+              onPress={() => {
+                if (usersList.length === 0) fetchUsers(1);
+                setManageUsersModalVisible(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 bg-red-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
+                  <Feather name="sliders" size={22} color="#ED1C24" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
+                    Kelola Role Pengguna
+                  </Text>
+                  <Text style={tw`text-[10px] sm:text-[11px] text-red-500 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
+                    Kontrol Hak Akses Tingkat Tinggi
+                  </Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 bg-red-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#ED1C24" />
+              </View>
+            </TouchableOpacity>
+
+            {/* ACTION CARDS (SCAN QR - Identik dengan AdminDashboardScreen) */}
+            <View style={tw`flex-row justify-between mb-10`}>
+              <TouchableOpacity
+                style={[tw`flex-1 mr-3`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
+                onPress={() => navigation.navigate('Scanner', { type: 'mulai' })}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={PERTAMINA_GREEN}
+                  style={tw`p-5 rounded-[40px] shadow-xl shadow-green-900/20 relative overflow-hidden h-56 justify-between`}
+                >
+                  <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                    <Ionicons name="qr-code" size={180} color="white" />
+                  </View>
+                  <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                    <Feather name="log-in" size={24} color="white" />
+                  </View>
+                  <View style={tw`mt-6`}>
+                    <Text style={tw`text-green-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                    <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Mulai{"\n"}Pekerjaan</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[tw`flex-1 ml-3`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
+                onPress={() => navigation.navigate('Scanner', { type: 'akhiri' })}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#dc2626', '#7f1d1d']}
+                  style={tw`p-5 rounded-[40px] shadow-xl shadow-red-900/20 relative overflow-hidden h-56 justify-between`}
+                >
+                  <View style={tw`absolute -right-12 -bottom-12 opacity-10`}>
+                    <Ionicons name="qr-code" size={180} color="white" />
+                  </View>
+                  <View style={tw`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30 shadow-sm`}>
+                    <Feather name="log-out" size={24} color="white" />
+                  </View>
+                  <View style={tw`mt-6`}>
+                    <Text style={tw`text-red-200 font-bold text-[10px] uppercase tracking-widest mb-1`}>SCAN QR</Text>
+                    <Text style={tw`text-white font-bold text-2xl tracking-tight leading-7`}>Akhiri{"\n"}Pekerjaan</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {/* ARSIP DATABASE BANNER */}
+            <TouchableOpacity
+              style={[tw`w-full mb-10`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
+              onPress={() => navigation.navigate('History')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={PERTAMINA_BLUE}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={tw`p-8 rounded-[40px] shadow-2xl shadow-blue-500/40 relative overflow-hidden`}
+              >
+                <View style={tw`absolute -right-10 -top-10 opacity-20`}>
+                  <Ionicons name="documents" size={200} color="white" />
+                </View>
+                <View style={tw`w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-8`}>
+                  <Feather name="database" size={32} color="white" />
+                </View>
+                <Text style={tw`text-blue-200 font-bold text-sm uppercase tracking-widest mb-2`}>Arsip Database</Text>
+                <Text style={tw`text-white font-black text-3xl tracking-tight`}>Lihat Seluruh Laporan</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* LIVE RECORD HANDOVER FEED */}
+            <View>
+              <View style={tw`flex-row justify-between items-center mb-6`}>
+                <Text style={tw`text-2xl font-black text-gray-800 tracking-tight`}>Live Record Handover</Text>
+                <View style={tw`bg-blue-100 px-4 py-1.5 rounded-full`}>
+                  <Text style={tw`text-blue-600 text-xs font-black uppercase tracking-widest`}>Hari Ini</Text>
+                </View>
+              </View>
+
+              {loadingAlerts ? (
+                <ActivityIndicator size="large" color="#ED1C24" style={tw`my-10`} />
+              ) : alerts.length > 0 ? (
+                <View>
+                  <View
+                    style={[
+                      tw`w-full`,
+                      Platform.OS === 'web' && isLargeScreen
+                        ? {
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            gap: 16,
+                            width: '100%'
+                          }
+                        : (isLargeScreen ? tw`flex-row flex-wrap justify-between` : tw`flex-col`)
+                    ]}
+                  >
+                    {alerts.slice(0, displayedAlertsCount).map((item) => (
+                      <View
+                        key={item.id}
+                        style={[
+                          Platform.OS === 'web' && isLargeScreen
+                            ? { width: '100%' }
+                            : (isLargeScreen ? tw`w-[48.5%]` : tw`w-full`)
+                        ]}
+                      >
+                        {renderAlertItem({ item })}
                       </View>
-                      <Text style={tw`text-gray-800 font-black text-xl tracking-tight`}>Belum Ada Aktivitas Audit</Text>
-                      <Text style={tw`text-gray-500 text-center text-xs mt-2 font-semibold px-4`}>Catatan audit aktivitas keamanan sistem akan muncul di sini.</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* ============================================================ */}
-            {/* TAB 2: MANAJEMEN PENGGUNA & ROLE                             */}
-            {/* ============================================================ */}
-            {activeTab === 'users' && (
-              <View style={tw`flex-col gap-4`}>
-                {/* Search & Filter Header */}
-                <View style={[tw`p-4 sm:p-5 rounded-[28px] border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                  <View style={tw`flex-row flex-wrap items-center gap-2 mb-3`}>
-                    <View style={tw`flex-1 min-w-[200px] flex-row items-center bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5`}>
-                      <Feather name="search" size={16} color="#9CA3AF" style={tw`mr-2`} />
-                      <TextInput
-                        placeholder="Cari nama, username, jabatan..."
-                        value={userSearch}
-                        onChangeText={(txt) => setUserSearch(txt)}
-                        style={tw`flex-1 text-xs sm:text-sm text-gray-800`}
-                        returnKeyType="search"
-                        onSubmitEditing={() => fetchUsers(1)}
-                      />
-                      {userSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => { setUserSearch(''); fetchUsers(1); }}>
-                          <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
+                    ))}
+                  </View>
+                  {alerts.length > displayedAlertsCount && (
                     <TouchableOpacity
-                      onPress={() => fetchUsers(1)}
-                      style={[tw`bg-[#0055A5] px-5 py-3 rounded-2xl shadow-sm`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
+                      style={[
+                        tw`mt-4 bg-white/60 border border-gray-200 py-3 rounded-2xl items-center justify-center`,
+                        Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                      ]}
+                      onPress={() => setDisplayedAlertsCount((prev) => prev + 4)}
                     >
-                      <Text style={tw`text-white font-bold text-xs`}>Cari Pengguna</Text>
+                      <Text style={tw`text-blue-600 font-bold text-sm tracking-wide`}>Tampilkan Lebih Banyak</Text>
                     </TouchableOpacity>
-                  </View>
-
-                  {/* Filter Pills */}
-                  <View style={tw`flex-row flex-wrap items-center gap-2 pt-2 border-t border-gray-100`}>
-                    <Text style={tw`text-xs font-bold text-gray-400 mr-1`}>Role:</Text>
-                    {['ALL', 'SUPER_ADMIN', 'ADMIN', 'PENGAWAS', 'AMT'].map((r) => (
-                      <TouchableOpacity
-                        key={r}
-                        onPress={() => { setUserRoleFilter(r); }}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border text-xs`,
-                          userRoleFilter === r
-                            ? tw`bg-blue-50 border-blue-400`
-                            : tw`bg-gray-50 border-gray-200`
-                        ]}
-                      >
-                        <Text style={[tw`text-[11px] font-bold`, userRoleFilter === r ? tw`text-[#0055A5]` : tw`text-gray-600`]}>
-                          {r}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-
-                    <View style={tw`w-[1px] h-4 bg-gray-200 mx-1`} />
-
-                    <Text style={tw`text-xs font-bold text-gray-400 mr-1`}>Status:</Text>
-                    {[
-                      { key: 'all', label: 'Semua' },
-                      { key: 'active', label: 'Aktif' },
-                      { key: 'inactive', label: 'Nonaktif' }
-                    ].map((s) => (
-                      <TouchableOpacity
-                        key={s.key}
-                        onPress={() => { setUserStatusFilter(s.key); }}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border text-xs`,
-                          userStatusFilter === s.key
-                            ? tw`bg-blue-50 border-blue-400`
-                            : tw`bg-gray-50 border-gray-200`
-                        ]}
-                      >
-                        <Text style={[tw`text-[11px] font-bold`, userStatusFilter === s.key ? tw`text-[#0055A5]` : tw`text-gray-600`]}>
-                          {s.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Users List Cards */}
-                <View style={[tw`p-4 sm:p-5 rounded-[28px] border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                  <View style={tw`flex-row items-center justify-between mb-4`}>
-                    <Text style={tw`text-sm font-black text-gray-800`}>
-                      Daftar Akun Pengguna ({userPagination.total} ditemukan)
-                    </Text>
-                    <Text style={tw`text-xs font-bold text-gray-400`}>
-                      Halaman {userPage} dari {userPagination.totalPages || 1}
-                    </Text>
-                  </View>
-
-                  {usersLoading ? (
-                    <View style={tw`py-12 items-center justify-center`}>
-                      <ActivityIndicator size="small" color="#0055A5" />
-                      <Text style={tw`text-gray-400 text-xs mt-2`}>Memuat data pengguna...</Text>
-                    </View>
-                  ) : usersList.length === 0 ? (
-                    <View style={tw`py-10 items-center justify-center`}>
-                      <Feather name="user-x" size={32} color="#9CA3AF" />
-                      <Text style={tw`text-gray-600 font-bold text-sm mt-2`}>Tidak ada pengguna yang cocok</Text>
-                      <Text style={tw`text-gray-400 text-xs mt-0.5`}>Coba sesuaikan kata kunci atau filter status.</Text>
-                    </View>
-                  ) : (
-                    <View style={tw`divide-y divide-gray-100`}>
-                      {usersList.map((item) => {
-                        const isSelf = user?.id === item.id;
-                        const isItemActive = item.status === 'ACTIVE';
-
-                        return (
-                          <View key={item.id} style={tw`py-3.5 flex-row flex-wrap items-center justify-between gap-3`}>
-                            <View style={tw`flex-1 min-w-[200px]`}>
-                              <View style={tw`flex-row items-center gap-2 mb-1`}>
-                                <Text style={tw`font-bold text-sm text-gray-900`}>{item.name}</Text>
-                                <View
-                                  style={[
-                                    tw`px-2 py-0.5 rounded-full`,
-                                    item.role === 'SUPER_ADMIN' ? tw`bg-red-50 border border-red-200` :
-                                    item.role === 'ADMIN' ? tw`bg-blue-50 border border-blue-200` :
-                                    item.role === 'PENGAWAS' ? tw`bg-purple-50 border border-purple-200` :
-                                    tw`bg-emerald-50 border border-emerald-200`
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      tw`text-[10px] font-black`,
-                                      item.role === 'SUPER_ADMIN' ? tw`text-red-700` :
-                                      item.role === 'ADMIN' ? tw`text-blue-700` :
-                                      item.role === 'PENGAWAS' ? tw`text-purple-700` :
-                                      tw`text-emerald-700`
-                                    ]}
-                                  >
-                                    {item.role}
-                                  </Text>
-                                </View>
-                                {isSelf && (
-                                  <View style={tw`px-1.5 py-0.5 rounded bg-gray-200`}>
-                                    <Text style={tw`text-[9px] font-bold text-gray-700`}>SAYA</Text>
-                                  </View>
-                                )}
-                              </View>
-
-                              <Text style={tw`text-xs text-gray-500`}>
-                                Username: <Text style={tw`font-bold text-gray-700`}>{item.username}</Text> • Jabatan: {item.jabatan || '-'}
-                              </Text>
-
-                              <View style={tw`flex-row items-center gap-2 mt-1`}>
-                                <View style={tw`flex-row items-center`}>
-                                  <View style={[tw`w-2 h-2 rounded-full mr-1.5`, isItemActive ? tw`bg-[#00A651]` : tw`bg-gray-400`]} />
-                                  <Text style={[tw`text-[11px] font-bold`, isItemActive ? tw`text-emerald-700` : tw`text-gray-500`]}>
-                                    {isItemActive ? 'Aktif' : 'Dinonaktifkan'}
-                                  </Text>
-                                </View>
-                                <Text style={tw`text-[10px] text-gray-400`}>
-                                  Terdaftar: {formatDate(item.createdAt)}
-                                </Text>
-                              </View>
-                            </View>
-
-                            {/* Action Buttons */}
-                            <View style={tw`flex-row items-center gap-2`}>
-                              <TouchableOpacity
-                                onPress={() => {
-                                  setSelectedUserForRole(item);
-                                  setNewSelectedRole(item.role);
-                                  setRoleModalVisible(true);
-                                }}
-                                style={[
-                                  tw`px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 flex-row items-center`,
-                                  Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                                ]}
-                                activeOpacity={0.7}
-                              >
-                                <Feather name="shield" size={13} color="#0055A5" style={tw`mr-1`} />
-                                <Text style={tw`text-xs font-bold text-[#0055A5]`}>Ubah Role</Text>
-                              </TouchableOpacity>
-
-                              {!isSelf ? (
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    setSelectedUserForStatus(item);
-                                    setStatusModalVisible(true);
-                                  }}
-                                  style={[
-                                    tw`px-3 py-1.5 rounded-xl border flex-row items-center`,
-                                    isItemActive
-                                      ? tw`bg-red-50 border-red-200`
-                                      : tw`bg-emerald-50 border-emerald-200`,
-                                    Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-                                  ]}
-                                  activeOpacity={0.7}
-                                >
-                                  <Feather
-                                    name={isItemActive ? 'user-x' : 'user-check'}
-                                    size={13}
-                                    color={isItemActive ? '#B30000' : '#007A3E'}
-                                    style={tw`mr-1`}
-                                  />
-                                  <Text style={[tw`text-xs font-bold`, isItemActive ? tw`text-[#B30000]` : tw`text-[#007A3E]`]}>
-                                    {isItemActive ? 'Nonaktifkan' : 'Aktifkan'}
-                                  </Text>
-                                </TouchableOpacity>
-                              ) : (
-                                <View style={tw`px-3 py-1.5 rounded-xl bg-gray-100`}>
-                                  <Text style={tw`text-xs font-semibold text-gray-400`}>Akun Saya</Text>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  {/* Pagination */}
-                  {userPagination.totalPages > 1 && (
-                    <View style={tw`flex-row items-center justify-between pt-4 mt-2 border-t border-gray-100`}>
-                      <TouchableOpacity
-                        disabled={userPage <= 1}
-                        onPress={() => fetchUsers(userPage - 1)}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border`,
-                          userPage <= 1 ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
-                        ]}
-                      >
-                        <Text style={tw`text-xs font-bold text-gray-700`}>← Sebelumnya</Text>
-                      </TouchableOpacity>
-
-                      <Text style={tw`text-xs font-medium text-gray-500`}>
-                        {userPage} / {userPagination.totalPages}
-                      </Text>
-
-                      <TouchableOpacity
-                        disabled={userPage >= userPagination.totalPages}
-                        onPress={() => fetchUsers(userPage + 1)}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border`,
-                          userPage >= userPagination.totalPages ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
-                        ]}
-                      >
-                        <Text style={tw`text-xs font-bold text-gray-700`}>Berikutnya →</Text>
-                      </TouchableOpacity>
-                    </View>
                   )}
                 </View>
-              </View>
-            )}
-
-            {/* ============================================================ */}
-            {/* TAB 3: AUDIT LOG AKTIVITAS (SECURITY LOGS)                    */}
-            {/* ============================================================ */}
-            {activeTab === 'audit' && (
-              <View style={tw`flex-col gap-4`}>
-                {/* Search & Filter Header */}
-                <View style={[tw`p-4 sm:p-5 rounded-[28px] border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                  <View style={tw`flex-row flex-wrap items-center gap-2 mb-3`}>
-                    <View style={tw`flex-1 min-w-[200px] flex-row items-center bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5`}>
-                      <Feather name="search" size={16} color="#9CA3AF" style={tw`mr-2`} />
-                      <TextInput
-                        placeholder="Cari aksi, detail, nopol, aktor..."
-                        value={auditSearch}
-                        onChangeText={(txt) => setAuditSearch(txt)}
-                        style={tw`flex-1 text-xs sm:text-sm text-gray-800`}
-                        returnKeyType="search"
-                        onSubmitEditing={() => fetchAuditLogs(1)}
-                      />
-                      {auditSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => { setAuditSearch(''); fetchAuditLogs(1); }}>
-                          <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() => fetchAuditLogs(1)}
-                      style={[tw`bg-[#0055A5] px-5 py-3 rounded-2xl shadow-sm`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
-                    >
-                      <Text style={tw`text-white font-bold text-xs`}>Cari Audit</Text>
-                    </TouchableOpacity>
+              ) : (
+                <View
+                  style={[
+                    tw`items-center justify-center py-16 px-6 rounded-[35px] border border-white/60`,
+                    { backgroundColor: 'rgba(255,255,255,0.6)', ...glassStyle }
+                  ]}
+                >
+                  <View style={tw`w-24 h-24 bg-gray-100 rounded-full items-center justify-center mb-6`}>
+                    <Feather name="inbox" size={48} color="#9CA3AF" />
                   </View>
-
-                  {/* Kategori Filters */}
-                  <View style={tw`flex-row flex-wrap items-center gap-2 pt-2 border-t border-gray-100`}>
-                    <Text style={tw`text-xs font-bold text-gray-400 mr-1`}>Kategori:</Text>
-                    {[
-                      { key: '', label: 'Semua' },
-                      { key: 'USER_MANAGEMENT', label: 'User Management' },
-                      { key: 'HANDOVER', label: 'Handover' },
-                      { key: 'CHECKLIST', label: 'Checklist' },
-                      { key: 'VEHICLE', label: 'Kendaraan' },
-                      { key: 'PASSWORD_RESET', label: 'Password Reset' },
-                      { key: 'FORCE_RELEASE', label: 'Force Release' },
-                      { key: 'SECURITY', label: 'Keamanan' }
-                    ].map((f) => (
-                      <TouchableOpacity
-                        key={f.key}
-                        onPress={() => { setAuditActionFilter(f.key); }}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border text-xs`,
-                          auditActionFilter === f.key
-                            ? tw`bg-blue-50 border-blue-400`
-                            : tw`bg-gray-50 border-gray-200`
-                        ]}
-                      >
-                        <Text style={[tw`text-[11px] font-bold`, auditActionFilter === f.key ? tw`text-[#0055A5]` : tw`text-gray-600`]}>
-                          {f.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <Text style={tw`text-gray-800 font-black text-2xl tracking-tight`}>Belum Ada Laporan</Text>
+                  <Text style={tw`text-gray-500 text-center text-sm mt-3 font-semibold px-4`}>
+                    Belum ada pekerja yang mengirimkan form handover hari ini.
+                  </Text>
                 </View>
-
-                {/* Audit Logs Table */}
-                <View style={[tw`p-4 sm:p-5 rounded-[28px] border border-white/80 shadow-sm`, { backgroundColor: 'rgba(255,255,255,0.85)', ...glassStyle }]}>
-                  <View style={tw`flex-row items-center justify-between mb-4`}>
-                    <Text style={tw`text-sm font-black text-gray-800`}>
-                      Riwayat Audit Sistem ({auditPagination.total} entri)
-                    </Text>
-                    <Text style={tw`text-xs font-bold text-gray-400`}>
-                      Halaman {auditPage} dari {auditPagination.totalPages || 1}
-                    </Text>
-                  </View>
-
-                  {auditLoading ? (
-                    <View style={tw`py-12 items-center justify-center`}>
-                      <ActivityIndicator size="small" color="#0055A5" />
-                      <Text style={tw`text-gray-400 text-xs mt-2`}>Memuat catatan audit log...</Text>
-                    </View>
-                  ) : auditLogs.length === 0 ? (
-                    <View style={tw`py-10 items-center justify-center`}>
-                      <Feather name="shield" size={32} color="#9CA3AF" />
-                      <Text style={tw`text-gray-600 font-bold text-sm mt-2`}>Tidak ada catatan audit</Text>
-                      <Text style={tw`text-gray-400 text-xs mt-0.5`}>Coba sesuaikan kata kunci atau kategori filter.</Text>
-                    </View>
-                  ) : (
-                    <View style={tw`divide-y divide-gray-100`}>
-                      {auditLogs.map((log) => (
-                        <TouchableOpacity
-                          key={log.id}
-                          onPress={() => setSelectedLogDetail(log)}
-                          style={[tw`py-3.5 flex-row items-start justify-between`, Platform.OS === 'web' ? { cursor: 'pointer' } : {}]}
-                          activeOpacity={0.7}
-                        >
-                          <View style={tw`flex-1 mr-3`}>
-                            <View style={tw`flex-row items-center gap-2 flex-wrap mb-1`}>
-                              <View style={tw`px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200`}>
-                                <Text style={tw`text-[11px] font-black text-blue-800`}>{log.action}</Text>
-                              </View>
-                              {log.actionType && (
-                                <View style={tw`px-2 py-0.5 rounded-lg bg-gray-100`}>
-                                  <Text style={tw`text-[10px] font-semibold text-gray-600`}>{log.actionType}</Text>
-                                </View>
-                              )}
-                              {log.noPolisi && (
-                                <View style={tw`px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200`}>
-                                  <Text style={tw`text-[10px] font-bold text-amber-800`}>{log.noPolisi}</Text>
-                                </View>
-                              )}
-                            </View>
-
-                            <Text style={tw`text-xs text-gray-600 font-medium`}>
-                              Aktor: <Text style={tw`font-bold text-gray-900`}>{log.actor?.name || log.actor?.username || 'Sistem'}</Text>{' '}
-                              <Text style={tw`text-gray-400`}>({log.actor?.role || '-'})</Text>
-                            </Text>
-
-                            {log.details && (
-                              <Text style={tw`text-xs text-gray-500 mt-1 font-mono`} numberOfLines={2}>
-                                {log.details}
-                              </Text>
-                            )}
-                          </View>
-
-                          <View style={tw`items-end`}>
-                            <Text style={tw`text-[11px] text-gray-400 font-medium`}>
-                              {formatDate(log.createdAt)}
-                            </Text>
-                            <Feather name="chevron-right" size={14} color="#9CA3AF" style={tw`mt-2`} />
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* Pagination */}
-                  {auditPagination.totalPages > 1 && (
-                    <View style={tw`flex-row items-center justify-between pt-4 mt-2 border-t border-gray-100`}>
-                      <TouchableOpacity
-                        disabled={auditPage <= 1}
-                        onPress={() => fetchAuditLogs(auditPage - 1)}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border`,
-                          auditPage <= 1 ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
-                        ]}
-                      >
-                        <Text style={tw`text-xs font-bold text-gray-700`}>← Sebelumnya</Text>
-                      </TouchableOpacity>
-
-                      <Text style={tw`text-xs font-medium text-gray-500`}>
-                        {auditPage} / {auditPagination.totalPages}
-                      </Text>
-
-                      <TouchableOpacity
-                        disabled={auditPage >= auditPagination.totalPages}
-                        onPress={() => fetchAuditLogs(auditPage + 1)}
-                        style={[
-                          tw`px-3 py-1.5 rounded-xl border`,
-                          auditPage >= auditPagination.totalPages ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
-                        ]}
-                      >
-                        <Text style={tw`text-xs font-bold text-gray-700`}>Berikutnya →</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
+              )}
+            </View>
           </ScrollView>
         </View>
 
-        {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY - Sama persis Admin Mobile) */}
-        {!isLargeScreen && (
-          <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
-            {/* 1. Beranda / Dashboard */}
-            <TouchableOpacity
-              style={tw`items-center justify-center px-3 relative`}
-              onPress={() => {
-                setActiveTab('overview');
-                setActiveMenu('Home');
-              }}
-            >
-              {activeMenu === 'Home' && !isLogoutVisible && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="grid" size={24} color={activeMenu === 'Home' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-            </TouchableOpacity>
+        {/* ULTRA PREMIUM BOTTOM NAVIGATION (MOBILE ONLY) */}
+        <MobileBottomNav
+          user={user}
+          navigation={navigation}
+          activeMenu="Home"
+          unreadNotificationsCount={unreadNotificationsCount}
+          handleLogout={handleLogout}
+          isLogoutVisible={isLogoutVisible}
+        />
+      </SafeAreaView>
 
-            {/* 2. Manajer Checklist */}
-            <TouchableOpacity
-              style={tw`items-center justify-center px-3 relative`}
-              onPress={() => navigation.navigate('ChecklistManager')}
-            >
-              {activeMenu === 'Checklist' && !isLogoutVisible && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="check-square" size={24} color={activeMenu === 'Checklist' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-            </TouchableOpacity>
-
-            {/* 3. Audit Log Sistem */}
-            <TouchableOpacity
-              style={tw`items-center justify-center px-3 relative`}
-              onPress={() => navigation.navigate('AuditLog')}
-            >
-              {activeMenu === 'AuditLog' && !isLogoutVisible && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="clipboard" size={24} color={activeMenu === 'AuditLog' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-            </TouchableOpacity>
-
-            {/* 4. Notifikasi / Messages */}
-            <TouchableOpacity
-              style={tw`items-center justify-center px-3 relative`}
-              onPress={() => navigation.navigate('MessageCenter')}
-            >
-              {activeMenu === 'Messages' && !isLogoutVisible && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <View style={tw`relative`}>
-                <Ionicons name="chatbubble-ellipses-outline" size={25} color={activeMenu === 'Messages' && !isLogoutVisible ? '#1F2937' : '#9CA3AF'} />
-                {unreadNotificationsCount > 0 && (
-                  <View style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] min-h-[18px] items-center justify-center border border-white px-[2px]`}>
-                    <Text style={tw`text-white text-[10px] font-bold`}>{unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}</Text>
-                  </View>
-                )}
+      {/* ============================================================ */}
+      {/* MODAL MASTER: KELOLA PENGGUNA SISTEM                         */}
+      {/* ============================================================ */}
+      <Modal
+        visible={manageUsersModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setManageUsersModalVisible(false)}
+      >
+        <SafeAreaView style={tw`flex-1 bg-[#F4F7FA]`}>
+          {/* Header */}
+          <View style={tw`px-5 py-4 bg-white border-b border-gray-200 flex-row items-center justify-between shadow-xs`}>
+            <View style={tw`flex-row items-center`}>
+              <TouchableOpacity
+                onPress={() => setManageUsersModalVisible(false)}
+                style={tw`w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3`}
+              >
+                <Feather name="arrow-left" size={20} color="#1F2937" />
+              </TouchableOpacity>
+              <View>
+                <Text style={tw`text-lg font-black text-gray-900`}>Kelola Pengguna Sistem</Text>
+                <Text style={tw`text-xs text-gray-500 font-medium`}>Manajemen role dan status akun terdaftar</Text>
               </View>
-            </TouchableOpacity>
-
-            {/* 5. Keluar / Logout */}
-            <TouchableOpacity style={tw`items-center justify-center px-3 relative`} onPress={handleLogout}>
-              {activeMenu === 'Logout' && (
-                <>
-                  <View style={tw`absolute -top-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                  <View style={tw`absolute -bottom-5 w-8 h-1 overflow-hidden rounded-full`}>
-                    <Animated.View style={[tw`h-full w-[64px]`, { transform: [{ translateX: slideInterpolate || 0 }] }]}>
-                      <LinearGradient colors={['#0055A5', '#ED1C24', '#00A651', '#0055A5', '#ED1C24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={tw`flex-1`} />
-                    </Animated.View>
-                  </View>
-                </>
-              )}
-              <Feather name="log-out" size={24} color={activeMenu === 'Logout' ? '#ED1C24' : '#9CA3AF'} />
+            </View>
+            <TouchableOpacity
+              onPress={() => fetchUsers(userPage)}
+              style={tw`w-10 h-10 rounded-full bg-blue-50 border border-blue-200 items-center justify-center`}
+            >
+              <Feather name="refresh-cw" size={18} color="#0055A5" />
             </TouchableOpacity>
           </View>
-        )}
-      </SafeAreaView>
+
+          <ScrollView style={tw`flex-1 p-5`} showsVerticalScrollIndicator={false}>
+            {/* Search Input */}
+            <View style={tw`flex-row items-center bg-white px-4 py-3 rounded-2xl border border-gray-200 mb-3 shadow-xs`}>
+              <Feather name="search" size={18} color="#9CA3AF" style={tw`mr-2`} />
+              <TextInput
+                placeholder="Cari nama, username, atau NIP..."
+                value={userSearch}
+                onChangeText={(text) => setUserSearch(text)}
+                onSubmitEditing={() => fetchUsers(1)}
+                style={tw`flex-1 text-sm text-gray-800`}
+                placeholderTextColor="#9CA3AF"
+              />
+              {userSearch ? (
+                <TouchableOpacity onPress={() => setUserSearch('')}>
+                  <Feather name="x" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* Role Filter Pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`mb-3`}>
+              <View style={tw`flex-row gap-2`}>
+                {[
+                  { id: 'ALL', label: 'Semua Role' },
+                  { id: 'AMT', label: 'AMT' },
+                  { id: 'PENGAWAS', label: 'Pengawas' },
+                  { id: 'ADMIN', label: 'Admin' },
+                  { id: 'SUPER_ADMIN', label: 'Super Admin' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => setUserRoleFilter(item.id)}
+                    style={[
+                      tw`px-3 py-1.5 rounded-full border`,
+                      userRoleFilter === item.id
+                        ? tw`bg-[#0055A5] border-[#0055A5]`
+                        : tw`bg-white border-gray-200`
+                    ]}
+                  >
+                    <Text style={[tw`text-xs font-bold`, userRoleFilter === item.id ? tw`text-white` : tw`text-gray-700`]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Status Filter Pills */}
+            <View style={tw`flex-row gap-2 mb-4`}>
+              {[
+                { id: 'all', label: 'Semua Status' },
+                { id: 'active', label: 'Aktif' },
+                { id: 'inactive', label: 'Nonaktif' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => setUserStatusFilter(item.id)}
+                  style={[
+                    tw`px-3 py-1 rounded-full border`,
+                    userStatusFilter === item.id
+                      ? tw`bg-gray-800 border-gray-800`
+                      : tw`bg-white border-gray-200`
+                  ]}
+                >
+                  <Text style={[tw`text-[11px] font-bold`, userStatusFilter === item.id ? tw`text-white` : tw`text-gray-700`]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* User Items List */}
+            {usersLoading ? (
+              <ActivityIndicator size="large" color="#0055A5" style={tw`my-12`} />
+            ) : usersList.length > 0 ? (
+              <View style={tw`gap-3 mb-6`}>
+                {usersList.map((item) => {
+                  const isUserActive = item.isActive !== false && item.status !== 'INACTIVE';
+                  const isSelf = item.id === user?.id;
+                  return (
+                    <View
+                      key={item.id}
+                      style={[
+                        tw`p-4 rounded-2xl bg-white border border-gray-200 shadow-xs`,
+                        { shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8 }
+                      ]}
+                    >
+                      <View style={tw`flex-row items-center justify-between mb-2`}>
+                        <View style={tw`flex-row items-center flex-1 mr-2`}>
+                          <View style={tw`w-10 h-10 rounded-full bg-blue-50 border border-blue-200 items-center justify-center mr-3`}>
+                            <Text style={tw`text-xs font-black text-[#0055A5]`}>
+                              {(item.name || 'U').substring(0, 2).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={tw`flex-1`}>
+                            <View style={tw`flex-row items-center gap-1.5`}>
+                              <Text style={tw`text-sm font-black text-gray-900`} numberOfLines={1}>
+                                {item.name}
+                              </Text>
+                              {isSelf && (
+                                <View style={tw`px-1.5 py-0.5 rounded bg-blue-100`}>
+                                  <Text style={tw`text-[9px] font-black text-[#0055A5]`}>SAYA</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={tw`text-xs text-gray-500 font-medium`}>@{item.username}</Text>
+                          </View>
+                        </View>
+                        <View style={[
+                          tw`px-2.5 py-1 rounded-full`,
+                          isUserActive ? tw`bg-emerald-50 border border-emerald-200` : tw`bg-red-50 border border-red-200`
+                        ]}>
+                          <Text style={[tw`text-[10px] font-black`, isUserActive ? tw`text-emerald-700` : tw`text-red-700`]}>
+                            {isUserActive ? 'Aktif' : 'Nonaktif'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Role badge & Action Buttons */}
+                      <View style={tw`flex-row items-center justify-between pt-2 border-t border-gray-100 mt-2`}>
+                        <View style={tw`flex-row items-center`}>
+                          <Text style={tw`text-[11px] text-gray-400 font-semibold mr-1.5`}>Role:</Text>
+                          <View style={tw`px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100`}>
+                            <Text style={tw`text-[11px] font-black text-[#0055A5]`}>{item.role}</Text>
+                          </View>
+                        </View>
+
+                        {/* Actions */}
+                        <View style={tw`flex-row items-center gap-2`}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedUserForRole(item);
+                              setNewSelectedRole(item.role);
+                              setRoleModalVisible(true);
+                            }}
+                            style={tw`px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 flex-row items-center`}
+                          >
+                            <Feather name="shield" size={12} color="#0055A5" style={tw`mr-1`} />
+                            <Text style={tw`text-[11px] font-bold text-[#0055A5]`}>Ubah Role</Text>
+                          </TouchableOpacity>
+
+                          {!isSelf && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedUserForStatus(item);
+                                setStatusModalVisible(true);
+                              }}
+                              style={[
+                                tw`px-3 py-1.5 rounded-xl border flex-row items-center`,
+                                isUserActive ? tw`bg-red-50 border-red-200` : tw`bg-emerald-50 border-emerald-200`
+                              ]}
+                            >
+                              <Feather
+                                name={isUserActive ? 'user-x' : 'user-check'}
+                                size={12}
+                                color={isUserActive ? '#ED1C24' : '#00A651'}
+                                style={tw`mr-1`}
+                              />
+                              <Text style={[tw`text-[11px] font-bold`, isUserActive ? tw`text-red-600` : tw`text-emerald-600`]}>
+                                {isUserActive ? 'Nonaktifkan' : 'Aktifkan'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={tw`py-16 items-center justify-center bg-white rounded-3xl border border-gray-200`}>
+                <Feather name="user-x" size={40} color="#9CA3AF" style={tw`mb-2`} />
+                <Text style={tw`text-sm font-bold text-gray-700`}>Tidak ada pengguna ditemukan</Text>
+                <Text style={tw`text-xs text-gray-400 mt-1`}>Coba ubah kata kunci pencarian atau filter Anda</Text>
+              </View>
+            )}
+
+            {/* Pagination */}
+            {userPagination.totalPages > 1 && (
+              <View style={tw`flex-row items-center justify-between py-4 mb-8`}>
+                <TouchableOpacity
+                  disabled={userPage <= 1}
+                  onPress={() => fetchUsers(userPage - 1)}
+                  style={[
+                    tw`px-4 py-2 rounded-xl border flex-row items-center`,
+                    userPage <= 1 ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
+                  ]}
+                >
+                  <Feather name="chevron-left" size={16} color="#374151" />
+                  <Text style={tw`text-xs font-bold text-gray-700 ml-1`}>Sebelumnya</Text>
+                </TouchableOpacity>
+                <Text style={tw`text-xs font-bold text-gray-500`}>
+                  {userPage} / {userPagination.totalPages}
+                </Text>
+                <TouchableOpacity
+                  disabled={userPage >= userPagination.totalPages}
+                  onPress={() => fetchUsers(userPage + 1)}
+                  style={[
+                    tw`px-4 py-2 rounded-xl border flex-row items-center`,
+                    userPage >= userPagination.totalPages ? tw`bg-gray-100 border-gray-200 opacity-50` : tw`bg-white border-gray-300`
+                  ]}
+                >
+                  <Text style={tw`text-xs font-bold text-gray-700 mr-1`}>Berikutnya</Text>
+                  <Feather name="chevron-right" size={16} color="#374151" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* ============================================================ */}
       {/* MODAL 1: UBAH ROLE PENGGUNA                                  */}
