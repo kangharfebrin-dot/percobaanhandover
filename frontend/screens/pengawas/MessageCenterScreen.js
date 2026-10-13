@@ -306,7 +306,9 @@ export default function MessageCenterScreen({ navigation }) {
             showBack={true}
             onBack={() => {
               if (!user) { navigation.goBack(); return; }
-              if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+              if (user.role === 'SUPER_ADMIN') {
+                navigation.replace('SuperAdminDashboard');
+              } else if (user.role === 'ADMIN') {
                 navigation.replace('AdminDashboard');
               } else if (user.role === 'PENGAWAS') {
                 navigation.replace('PengawasDashboard');
@@ -410,7 +412,9 @@ export default function MessageCenterScreen({ navigation }) {
           <TouchableOpacity 
             style={tw`items-center justify-center px-4 relative`} 
             onPress={() => {
-              if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+              if (user.role === 'SUPER_ADMIN') {
+                navigation.replace('SuperAdminDashboard');
+              } else if (user.role === 'ADMIN') {
                 navigation.replace('AdminDashboard');
               } else if (user.role === 'PENGAWAS') {
                 navigation.replace('PengawasDashboard');

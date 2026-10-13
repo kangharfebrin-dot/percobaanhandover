@@ -262,7 +262,7 @@ export default function IssueListScreen({ navigation }) {
               if (navigation && navigation.canGoBack && navigation.canGoBack()) {
                 navigation.goBack();
               } else if (navigation && typeof navigation.replace === 'function') {
-                navigation.replace(user?.role === 'PENGAWAS' ? 'PengawasDashboard' : user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'AdminDashboard' : 'UserDashboard');
+                navigation.replace(user?.role === 'PENGAWAS' ? 'PengawasDashboard' : user?.role === 'SUPER_ADMIN' ? 'SuperAdminDashboard' : user?.role === 'ADMIN' ? 'AdminDashboard' : 'UserDashboard');
               }
             }}
             showBack={true}

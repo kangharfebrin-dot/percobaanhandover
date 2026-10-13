@@ -50,7 +50,9 @@ export default function CameraScreen({ route, navigation }) {
 
   
   const goToDashboard = () => {
-    if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+    if (userRole === 'SUPER_ADMIN') {
+      navigation.navigate('SuperAdminDashboard');
+    } else if (userRole === 'ADMIN') {
       navigation.navigate('AdminDashboard');
     } else if (userRole === 'PENGAWAS') {
       navigation.navigate('PengawasDashboard');

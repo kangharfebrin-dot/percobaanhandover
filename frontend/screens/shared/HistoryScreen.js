@@ -406,7 +406,8 @@ export default function HistoryScreen({ route, navigation }) {
 
   const getDashboardRoute = () => {
     if (!user) return 'Login';
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return 'AdminDashboard';
+    if (user.role === 'SUPER_ADMIN') return 'SuperAdminDashboard';
+    if (user.role === 'ADMIN') return 'AdminDashboard';
     if (user.role === 'PENGAWAS') return 'PengawasDashboard';
     return 'UserDashboard';
   };

@@ -289,6 +289,8 @@ export default function ChecklistManagerScreen({ navigation }) {
             onBack={() => {
               if (navigation.canGoBack()) {
                 navigation.goBack();
+              } else if (user?.role === 'SUPER_ADMIN') {
+                navigation.navigate('SuperAdminDashboard');
               } else {
                 navigation.navigate('AdminDashboard');
               }
@@ -330,7 +332,13 @@ export default function ChecklistManagerScreen({ navigation }) {
       {/* ADMIN BOTTOM NAVBAR MOCK (Identik dengan Dashboard) */}
       {!isLargeScreen && user && (
         <View style={tw`absolute bottom-8 self-center w-11/12 bg-white rounded-full flex-row justify-around items-center py-5 shadow-2xl shadow-gray-400/50 z-50`}>
-          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => navigation.replace('AdminDashboard')}>
+          <TouchableOpacity style={tw`items-center justify-center px-4 relative`} onPress={() => {
+            if (user?.role === 'SUPER_ADMIN') {
+              navigation.replace('SuperAdminDashboard');
+            } else {
+              navigation.replace('AdminDashboard');
+            }
+          }}>
             <Feather name="grid" size={26} color="#9CA3AF" />
           </TouchableOpacity>
 

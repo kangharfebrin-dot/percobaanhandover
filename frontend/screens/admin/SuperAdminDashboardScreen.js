@@ -556,21 +556,14 @@ export default function SuperAdminDashboardScreen({ navigation }) {
           >
             {/* Title Section (Identik persis dengan screenshot & AdminDashboardScreen) */}
             <View style={tw`mb-6`}>
-              <View style={tw`flex-row items-center justify-between mb-1`}>
-                <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest`}>
-                  SISTEM TERINTEGRASI PERTAMINA
-                </Text>
-                <View style={tw`px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 flex-row items-center`}>
-                  <Ionicons name="shield-checkmark" size={11} color="#ED1C24" style={tw`mr-1`} />
-                  <Text style={tw`text-[10px] font-black text-[#ED1C24] tracking-widest uppercase`}>
-                    SUPER ADMIN
-                  </Text>
-                </View>
-              </View>
+              <Text style={tw`text-[11px] font-black text-[#0055A5] uppercase tracking-widest mb-1`}>
+                SISTEM TERINTEGRASI PERTAMINA
+              </Text>
               <Text style={tw`text-3xl font-black text-gray-800 tracking-tighter`}>
                 Overview <Text style={tw`text-[#ED1C24]`}>Hari Ini.</Text>
               </Text>
             </View>
+
 
             {/* Stat Mode Switcher: Operasional vs Pengguna Sistem */}
             <View style={tw`flex-row items-center justify-between mb-4`}>
@@ -891,7 +884,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             {/* 5. Manajer Checklist */}
             <TouchableOpacity
               style={[
-                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-4 flex-row items-center justify-between`,
+                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-10 flex-row items-center justify-between`,
                 { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#00A651', shadowOpacity: 0.1, shadowRadius: 20 },
                 Platform.OS === 'web' ? { cursor: 'pointer' } : {}
               ]}
@@ -916,36 +909,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               </View>
             </TouchableOpacity>
 
-            {/* 6. Kelola Role Pengguna (Fitur Eksekutif Super Admin) */}
-            <TouchableOpacity
-              style={[
-                tw`w-full p-4 sm:p-5 rounded-[28px] border border-white/60 mb-10 flex-row items-center justify-between`,
-                { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#ED1C24', shadowOpacity: 0.08, shadowRadius: 20 },
-                Platform.OS === 'web' ? { cursor: 'pointer' } : {}
-              ]}
-              onPress={() => {
-                if (usersList.length === 0) fetchUsers(1);
-                setManageUsersModalVisible(true);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                <View style={tw`w-12 h-12 bg-red-100 rounded-full items-center justify-center mr-3.5 shrink-0`}>
-                  <Feather name="sliders" size={22} color="#ED1C24" />
-                </View>
-                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                  <Text style={tw`text-lg sm:text-xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>
-                    Kelola Role Pengguna
-                  </Text>
-                  <Text style={tw`text-[10px] sm:text-[11px] text-red-500 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>
-                    Kontrol Hak Akses Tingkat Tinggi
-                  </Text>
-                </View>
-              </View>
-              <View style={tw`w-9 h-9 bg-red-50 rounded-full items-center justify-center shrink-0`}>
-                <Feather name="chevron-right" size={20} color="#ED1C24" />
-              </View>
-            </TouchableOpacity>
+
 
             {/* ACTION CARDS (SCAN QR - Identik dengan AdminDashboardScreen) */}
             <View style={tw`flex-row justify-between mb-10`}>
