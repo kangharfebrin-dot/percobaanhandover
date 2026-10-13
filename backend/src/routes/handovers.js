@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const fs = require('fs');
 const prisma = require('../config/prisma');
 const CacheService = require('../utils/CacheService');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const optimizeImages = require('../middleware/imageOptimizer');
+const upload = require('../middleware/upload');
 const { submitHandoverSchema } = require('../validators/schemas');
 const { sendNotification } = require('../services/notificationService');
 
-const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper to generate official handover document code: HO-YYYYMMDD-XXXX with collision prevention
 const generateHandoverNo = async (tx = prisma) => {
@@ -279,7 +278,8 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
             create: parsedItems.map(item => ({
               category: item.category || 'A',
               name: item.name,
-              isGood: Boolean(item.isGood)
+              isGood: Boolean(item.isGood),
+              severity: (item.category || 'A') === 'B' ? '-' : (item.severity && item.severity !== '-' ? item.severity : (item.name.toLowerCase().includes('major') ? 'Major' : 'Minor'))
             }))
           },
           photos: {

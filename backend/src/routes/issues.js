@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const prisma = require('../config/prisma');
 const { authenticateToken, authorizeRole, normalizeRole } = require('../middleware/auth');
 const optimizeImages = require('../middleware/imageOptimizer');
+const upload = require('../middleware/upload');
 
-const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper: cek apakah user berhak mengakses isu ini (sebagai reporter atau kru AMT1/AMT2)
 const isUserAuthorizedForHandover = (user, handover) => {
@@ -106,18 +105,20 @@ router.get('/amt-compliance', authenticateToken, async (req, res) => {
     const { role, id: userId } = req.user;
     const effectiveRole = normalizeRole(role);
     const { status, search } = req.query;
-    const where = {};
+    const andConditions = [];
 
     if (status && status !== 'ALL') {
-      where.status = status;
+      andConditions.push({ status });
     }
 
     if (search && search.trim()) {
-      where.OR = [
-        { itemName: { contains: search.trim() } },
-        { amtName: { contains: search.trim() } },
-        { handover: { noPolisi: { contains: search.trim() } } }
-      ];
+      andConditions.push({
+        OR: [
+          { itemName: { contains: search.trim() } },
+          { amtName: { contains: search.trim() } },
+          { handover: { noPolisi: { contains: search.trim() } } }
+        ]
+      });
     }
 
     if (effectiveRole === 'AMT') {
@@ -127,8 +128,10 @@ router.get('/amt-compliance', authenticateToken, async (req, res) => {
       });
       const amtConditions = [{ amtUserId: userId }];
       if (user?.name) amtConditions.push({ amtName: user.name });
-      where.OR = amtConditions;
+      andConditions.push({ OR: amtConditions });
     }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const findings = await prisma.amtComplianceFinding.findMany({
       where,
@@ -141,6 +144,52 @@ router.get('/amt-compliance', authenticateToken, async (req, res) => {
     });
 
     res.json({ success: true, findings });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2b-1. GET Single AMT Compliance Finding Detail
+router.get('/amt-compliance/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, id: userId } = req.user;
+    const effectiveRole = normalizeRole(role);
+
+    const finding = await prisma.amtComplianceFinding.findUnique({
+      where: { id },
+      include: {
+        handover: {
+          select: {
+            id: true,
+            handoverNo: true,
+            noPolisi: true,
+            shift: true,
+            createdAt: true,
+            amt1: true,
+            amt2: true,
+            userId: true
+          }
+        }
+      }
+    });
+
+    if (!finding) {
+      return res.status(404).json({ error: 'Temuan kepatuhan AMT tidak ditemukan' });
+    }
+
+    if (effectiveRole === 'AMT') {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, username: true }
+      });
+      const isOwner = finding.amtUserId === userId || (user?.name && finding.amtName === user.name);
+      if (!isOwner) {
+        return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki hak melihat temuan kepatuhan AMT ini' });
+      }
+    }
+
+    res.json({ success: true, finding });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

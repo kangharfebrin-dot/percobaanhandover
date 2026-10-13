@@ -72,13 +72,15 @@ async function sendAmtComplianceNotification(handoverId, noPolisi, amtItems = []
 
     await prisma.notification.createMany({ data: notifs });
 
-    // Push notification to Admin & Pengawas
+    // Push notification to Admin & Pengawas & targeted AMT
+    const orConditions = [{ role: { in: ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'] } }];
+    if (amtUserId) {
+      orConditions.push({ id: amtUserId });
+    }
+
     const targetUsers = await prisma.user.findMany({
       where: {
-        OR: [
-          { role: { in: ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'] } },
-          amtUserId ? { id: amtUserId } : {}
-        ],
+        OR: orConditions,
         fcmToken: { not: null },
         deletedAt: null
       }

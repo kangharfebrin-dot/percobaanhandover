@@ -246,46 +246,41 @@ exports.verifyAndResetPassword = async (req, res) => {
 
       // Update user password
       await prisma.user.update({
-        where: { id: request.userId },
+        where: { id: targetUser.id },
         data: { password: hashedPassword }
       });
 
-      // Update request status
-      await prisma.passwordResetRequest.update({
-        where: { id: requestId },
-        data: {
-          status: 'COMPLETED',
-          resetByAdminId: adminId,
-          adminNotes: notes,
-          resetAt: new Date()
-        }
-      });
+      // Update request status if a request record exists
+      if (request) {
+        await prisma.passwordResetRequest.update({
+          where: { id: request.id },
+          data: {
+            status: 'COMPLETED',
+            resetByAdminId: adminId,
+            adminNotes: notes,
+            resetAt: new Date()
+          }
+        });
 
-      // Get user for notification
-      const user = await prisma.user.findUnique({
-        where: { id: request.userId }
-      });
-
-      // Reset login failure attempts for this user now that password was reset
-      if (user) {
-        await LoginAttemptService.resetFailedAttempts(user.username);
+        // Mark corresponding notification as read
+        await prisma.notification.updateMany({
+          where: {
+            type: 'AUTH',
+            actionType: 'PASSWORD_RESET',
+            actionId: request.id
+          },
+          data: { isRead: true }
+        });
       }
 
-      // Mark corresponding notification as read
-      await prisma.notification.updateMany({
-        where: {
-          type: 'AUTH',
-          actionType: 'PASSWORD_RESET',
-          actionId: requestId
-        },
-        data: { isRead: true }
-      });
+      // Reset login failure attempts for this user now that password was reset
+      await LoginAttemptService.resetFailedAttempts(targetUser.username);
 
       // Send email to user (optional background)
       try {
         await sendPasswordResetCompletedEmail(
-          user.username,
-          user.name,
+          targetUser.username,
+          targetUser.name,
           tempPassword
         );
       } catch (mailErr) {
@@ -298,11 +293,11 @@ exports.verifyAndResetPassword = async (req, res) => {
           userId: adminId,
           action: 'USER_PASSWORD_RESET_APPROVED',
           actionType: 'USER_MANAGEMENT',
-          actionId: request.userId,
+          actionId: targetUser.id,
           details: JSON.stringify({
             actorRole,
-            targetUsername: request.user.username,
-            targetRole: request.user.role,
+            targetUsername: targetUser.username,
+            targetRole: targetUser.role,
             isApproved: true
           })
         }
@@ -312,33 +307,35 @@ exports.verifyAndResetPassword = async (req, res) => {
         success: true,
         message: 'Password berhasil direset',
         data: {
-          userId: user.id,
-          userEmail: user.username,
-          userName: user.name,
+          userId: targetUser.id,
+          userEmail: targetUser.username,
+          userName: targetUser.name,
           newPassword: tempPassword
         }
       });
     } else {
       // Reject
-      await prisma.passwordResetRequest.update({
-        where: { id: requestId },
-        data: {
-          status: 'REJECTED',
-          resetByAdminId: adminId,
-          adminNotes: notes,
-          resetAt: new Date()
-        }
-      });
+      if (request) {
+        await prisma.passwordResetRequest.update({
+          where: { id: request.id },
+          data: {
+            status: 'REJECTED',
+            resetByAdminId: adminId,
+            adminNotes: notes,
+            resetAt: new Date()
+          }
+        });
 
-      // Mark corresponding notification as read
-      await prisma.notification.updateMany({
-        where: {
-          type: 'AUTH',
-          actionType: 'PASSWORD_RESET',
-          actionId: requestId
-        },
-        data: { isRead: true }
-      });
+        // Mark corresponding notification as read
+        await prisma.notification.updateMany({
+          where: {
+            type: 'AUTH',
+            actionType: 'PASSWORD_RESET',
+            actionId: request.id
+          },
+          data: { isRead: true }
+        });
+      }
 
       // Catat ke AuditLog
       await prisma.auditLog.create({
@@ -346,11 +343,11 @@ exports.verifyAndResetPassword = async (req, res) => {
           userId: adminId,
           action: 'USER_PASSWORD_RESET_REJECTED',
           actionType: 'USER_MANAGEMENT',
-          actionId: request.userId,
+          actionId: targetUser.id,
           details: JSON.stringify({
             actorRole,
-            targetUsername: request.user.username,
-            targetRole: request.user.role,
+            targetUsername: targetUser.username,
+            targetRole: targetUser.role,
             isApproved: false
           })
         }
@@ -358,7 +355,7 @@ exports.verifyAndResetPassword = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: 'Permintaan ditolak'
+        message: 'Permintaan reset password berhasil ditolak'
       });
     }
   } catch (error) {

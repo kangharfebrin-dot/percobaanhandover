@@ -55,10 +55,11 @@ model HandoverItem {
   isGood     Boolean
   handoverId String
 
-  repairNote     String?
-  repairPhotoUrl String?
-  isRepaired     Boolean @default(false)
+  repairNote         String?
+  repairPhotoUrl     String?
+  isRepaired         Boolean @default(false)
   adminRejectionNote String?
+  severity           String? @default("Minor")
 
   handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
 
@@ -104,7 +105,7 @@ model AmtComplianceFinding {
 }
 
 model Photo {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   type         String
   url          String
   thumbnailUrl String?
@@ -119,23 +120,23 @@ model Photo {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique(map: "User_username_key")
-  password  String
-  role      String
-  name      String
-  jabatan   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  refreshToken String? @db.Text
+  id           String    @id @default(cuid())
+  username     String    @unique(map: "User_username_key")
+  password     String
+  role         String
+  name         String
+  jabatan      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  refreshToken String?   @db.Text
   fcmToken     String?
   deletedAt    DateTime?
 
-  handovers Handover[]
-  notifications Notification[] @relation("UserNotifications")
-  passwordResetRequests      PasswordResetRequest[] @relation("UserPasswordResetRequests")
-  passwordResetsPerformed    PasswordResetRequest[] @relation("AdminPasswordResetRequests")
-  emailNotificationLogs      EmailNotificationLog[]
+  handovers               Handover[]
+  notifications           Notification[]         @relation("UserNotifications")
+  passwordResetRequests   PasswordResetRequest[] @relation("UserPasswordResetRequests")
+  passwordResetsPerformed PasswordResetRequest[] @relation("AdminPasswordResetRequests")
+  emailNotificationLogs   EmailNotificationLog[]
 
   @@map("user")
 }
@@ -155,19 +156,19 @@ model Vehicle {
 }
 
 model Notification {
-  id          String    @id @default(cuid())
-  title       String
-  message     String
-  isRead      Boolean   @default(false)
-  type        String    @default("INFO")
-  targetRole  String?   @default("ADMIN")
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  isRead       Boolean  @default(false)
+  type         String   @default("INFO")
+  targetRole   String?  @default("ADMIN")
   targetUserId String?
-  createdAt   DateTime  @default(now())
-  actionType  String?
-  actionId    String?
-  noPolisi    String?
+  createdAt    DateTime @default(now())
+  actionType   String?
+  actionId     String?
+  noPolisi     String?
 
-  targetUser  User?     @relation("UserNotifications", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUser User? @relation("UserNotifications", fields: [targetUserId], references: [id], onDelete: Cascade)
 
   @@index([targetUserId])
   @@index([targetRole])
@@ -175,14 +176,14 @@ model Notification {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String
-  action    String
-  details   String?  @db.Text
-  createdAt DateTime @default(now())
-  actionType  String?
-  actionId    String?
-  noPolisi    String?
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  details    String?  @db.Text
+  createdAt  DateTime @default(now())
+  actionType String?
+  actionId   String?
+  noPolisi   String?
 
   @@map("audit_log")
 }
@@ -200,8 +201,8 @@ model PasswordResetRequest {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user            User      @relation("UserPasswordResetRequests", fields: [userId], references: [id], onDelete: Cascade)
-  admin           User?     @relation("AdminPasswordResetRequests", fields: [resetByAdminId], references: [id], onDelete: SetNull)
+  user  User  @relation("UserPasswordResetRequests", fields: [userId], references: [id], onDelete: Cascade)
+  admin User? @relation("AdminPasswordResetRequests", fields: [resetByAdminId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([userId])
@@ -222,8 +223,8 @@ model EmailNotificationLog {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  admin        User?     @relation(fields: [adminId], references: [id], onDelete: SetNull)
-  handover     Handover? @relation(fields: [handoverId], references: [id], onDelete: SetNull)
+  admin    User?     @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  handover Handover? @relation(fields: [handoverId], references: [id], onDelete: SetNull)
 
   @@index([emailStatus])
   @@index([adminId])
@@ -250,4 +251,3 @@ model LoginAttempt {
 
   @@map("login_attempt")
 }
-
