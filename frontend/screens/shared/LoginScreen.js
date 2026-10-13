@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
 import AppModal from '../../components/AppModal';
+import { getDashboardRoute } from '../../utils/authHelper';
 
 const PERTAMINA_BLUE = ['#0055A5', '#003366'];
 const PERTAMINA_RED = ['#ED1C24', '#B30000'];
@@ -104,11 +105,7 @@ export default function LoginScreen({ navigation }) {
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        const targetDashboard = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN')
-          ? 'AdminDashboard'
-          : loggedInUser.role === 'PENGAWAS'
-          ? 'PengawasDashboard'
-          : 'UserDashboard';
+        const targetDashboard = getDashboardRoute(loggedInUser);
 
         navigation.reset({
           index: 0,

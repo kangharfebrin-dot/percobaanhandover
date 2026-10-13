@@ -5,8 +5,8 @@ const prisma = require('../config/prisma');
 const { authenticateToken, authorizeRole, normalizeRole } = require('../middleware/auth');
 const { userManageSchema } = require('../validators/schemas');
 
-// 1. GET Pengawas List (Admin, Super Admin, dan Pengawas dapat melihat untuk koordinasi operasional)
-router.get('/', authenticateToken, async (req, res) => {
+// 1. GET Pengawas List (Khusus Super Admin - Admin dilarang membuka manajemen akun Pengawas)
+router.get('/', authenticateToken, authorizeRole('SUPER_ADMIN'), async (req, res) => {
   try {
     const pengawas = await prisma.user.findMany({
       where: {

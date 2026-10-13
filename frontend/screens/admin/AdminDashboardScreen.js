@@ -170,7 +170,7 @@ export default function AdminDashboardScreen({ navigation }) {
       setAlerts(todaysHandovers);
     } catch (error) {
       console.log("Gagal mengambil data alert:", error.message);
-      if (error.response?.status === 401 || error.response?.status === 403) {
+      if (error.response?.status === 401) {
         await handleLogoutAndReset(navigation);
       }
     } finally {
@@ -190,7 +190,7 @@ export default function AdminDashboardScreen({ navigation }) {
       }
     } catch (error) {
       console.log("Gagal mengambil notifikasi:", error.message);
-      if (error.response?.status === 401 || error.response?.status === 403) {
+      if (error.response?.status === 401) {
         await handleLogoutAndReset(navigation);
       }
     }
@@ -471,27 +471,29 @@ export default function AdminDashboardScreen({ navigation }) {
               </>
             )}
 
-            {/* Daftar Pengawas Full Width Card */}
-            <TouchableOpacity
-              style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
-              onPress={() => navigation.navigate('PengawasList')}
-            >
-              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
-                <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
-                  <Feather name="shield" size={24} color="#F59E0B" />
+            {/* Daftar Pengawas Full Width Card (Khusus Super Admin) */}
+            {isSuperAdmin && (
+              <TouchableOpacity
+                style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#F59E0B', shadowOpacity: 0.1, shadowRadius: 20 }]}
+                onPress={() => navigation.navigate('PengawasList')}
+              >
+                <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                  <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
+                    <Feather name="shield" size={24} color="#F59E0B" />
+                  </View>
+                  <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                    <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Pengawas</Text>
+                    <Text style={tw`text-[10px] sm:text-xs text-orange-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akun</Text>
+                  </View>
                 </View>
-                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
-                  <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Daftar Pengawas</Text>
-                  <Text style={tw`text-[10px] sm:text-xs text-orange-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Manajemen Akun</Text>
+                <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full items-center justify-center shrink-0`}>
+                  <Feather name="chevron-right" size={20} color="#F59E0B" />
                 </View>
-              </View>
-              <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full items-center justify-center shrink-0`}>
-                <Feather name="chevron-right" size={20} color="#F59E0B" />
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
 
-            {/* Daftar Admin Full Width Card */}
-            {(isSuperAdmin || isAdmin) && (
+            {/* Daftar Admin Full Width Card (Khusus Super Admin) */}
+            {isSuperAdmin && (
               <TouchableOpacity
                 style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
                 onPress={() => navigation.navigate('AdminList')}
@@ -510,6 +512,25 @@ export default function AdminDashboardScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
             )}
+
+            {/* Audit Log Sistem Full Width Card (Untuk Admin & Super Admin) */}
+            <TouchableOpacity
+              style={[tw`w-full p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-white/60 mb-4 flex-row items-center justify-between`, { backgroundColor: 'rgba(255,255,255,0.8)', ...glassStyle, shadowColor: '#0055A5', shadowOpacity: 0.1, shadowRadius: 20 }]}
+              onPress={() => navigation.navigate('AuditLog')}
+            >
+              <View style={tw`flex-row items-center flex-1 min-w-0 mr-3`}>
+                <View style={tw`w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full items-center justify-center mr-3.5 sm:mr-4 shrink-0`}>
+                  <Feather name="clipboard" size={24} color="#0055A5" />
+                </View>
+                <View style={tw`flex-1 min-w-0 justify-center py-0.5`}>
+                  <Text style={tw`text-lg sm:text-2xl font-black text-gray-800 tracking-tight leading-tight`} numberOfLines={1}>Audit Log Sistem</Text>
+                  <Text style={tw`text-[10px] sm:text-xs text-blue-600 font-black uppercase tracking-wider mt-1 leading-normal`} numberOfLines={1}>Riwayat & Monitoring Keamanan</Text>
+                </View>
+              </View>
+              <View style={tw`w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-full items-center justify-center shrink-0`}>
+                <Feather name="chevron-right" size={20} color="#0055A5" />
+              </View>
+            </TouchableOpacity>
 
             {/* Manajer Checklist Full Width Card */}
             {(isSuperAdmin || isAdmin) && (

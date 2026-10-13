@@ -23,7 +23,7 @@ import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 
 export default function PengawasListScreen({ navigation }) {
-  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
+  useRoleGuard(['SUPER_ADMIN']);
   const [pengawass, setPengawass] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);

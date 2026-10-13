@@ -41,12 +41,14 @@ const toastConfig = {
 import LoginScreen from './screens/shared/LoginScreen';
 import HistoryScreen from './screens/shared/HistoryScreen';
 import HandoverDetailScreen from './screens/shared/HandoverDetailScreen';
+import SuperAdminDashboardScreen from './screens/admin/SuperAdminDashboardScreen';
 import AdminDashboardScreen from './screens/admin/AdminDashboardScreen';
 import WorkerListScreen from './screens/admin/WorkerListScreen';
 import PengawasListScreen from './screens/admin/PengawasListScreen';
 import VehicleListScreen from './screens/admin/VehicleListScreen';
 import ChecklistManagerScreen from './screens/admin/ChecklistManagerScreen';
 import AdminListScreen from './screens/admin/AdminListScreen';
+import AuditLogScreen from './screens/admin/AuditLogScreen';
 import PengawasDashboardScreen from './screens/pengawas/PengawasDashboardScreen';
 import IssueListScreen from './screens/pengawas/IssueListScreen';
 import IssueDetailScreen from './screens/pengawas/IssueDetailScreen';
@@ -57,6 +59,7 @@ import HandoverFormScreen from './screens/user/HandoverFormScreen';
 import FixVerificationScreen from './screens/user/FixVerificationScreen';
 
 import { API_URL, loadSavedApiUrl } from './config';
+import { getDashboardRoute } from './utils/authHelper';
 
 const Stack = createNativeStackNavigator();
 
@@ -158,16 +161,25 @@ export default function App() {
             }
           }
 
-          const user = JSON.parse(userStr);
+          let user = JSON.parse(userStr);
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-          if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-            return 'AdminDashboard';
-          } else if (user.role === 'PENGAWAS') {
-            return 'PengawasDashboard';
-          } else {
-            return 'UserDashboard';
+          // Sinkronisasi profil dan validasi sesi langsung ke database backend
+          try {
+            const meRes = await axios.get(`${API_URL}/api/auth/me`);
+            if (meRes.data?.user) {
+              user = meRes.data.user;
+              await AsyncStorage.setItem('user', JSON.stringify(user));
+            }
+          } catch (meErr) {
+            if (meErr.response?.status === 401 || meErr.response?.status === 403) {
+              console.log('Sesi ditolak oleh backend:', meErr.response?.data?.error);
+              await AsyncStorage.multiRemove(['user', 'token', 'refreshToken']);
+              return 'Login';
+            }
           }
+
+          return getDashboardRoute(user);
         } else {
           return 'Login';
         }
@@ -245,6 +257,7 @@ export default function App() {
             }}
           >
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboardScreen} />
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="PengawasDashboard" component={PengawasDashboardScreen} />
             <Stack.Screen name="UserDashboard" component={UserDashboardScreen} />
@@ -261,6 +274,7 @@ export default function App() {
             <Stack.Screen name="WorkerList" component={WorkerListScreen} />
             <Stack.Screen name="PengawasList" component={PengawasListScreen} />
             <Stack.Screen name="AdminList" component={AdminListScreen} />
+            <Stack.Screen name="AuditLog" component={AuditLogScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       )}

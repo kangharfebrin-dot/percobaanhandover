@@ -118,7 +118,46 @@ router.post('/logout', authenticateToken, async (req, res, next) => {
   }
 });
 
-// 1c. Register FCM Token
+// 1c. Auth Me (Validasi sesi & ambil profil terbaru langsung dari database)
+router.get('/me', authenticateToken, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        id: req.user.id,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true,
+        jabatan: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'Sesi tidak valid: Akun tidak ditemukan atau telah dinonaktifkan'
+      });
+    }
+
+    const effectiveRole = normalizeRole(user.role);
+
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        role: effectiveRole
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 1d. Register FCM Token
 router.post('/fcm-token', authenticateToken, async (req, res, next) => {
   try {
     const { fcmToken } = req.body;

@@ -18,7 +18,7 @@ import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 
 export default function AdminListScreen({ navigation }) {
-  useRoleGuard(['SUPER_ADMIN', 'ADMIN']);
+  useRoleGuard(['SUPER_ADMIN']);
   const [admins, setAdmins] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);

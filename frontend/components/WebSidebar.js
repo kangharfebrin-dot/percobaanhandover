@@ -317,13 +317,14 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
           {/* Section: Menu Utama */}
           {renderSectionHeader('MENU UTAMA')}
 
-          {/* Beranda */}
+          {/* Beranda / Pusat Kendali */}
           {renderMenuItem({
-            label: 'Beranda',
-            iconComponent: <Feather name="grid" size={20} color={activeMenu === 'Home' ? '#FFFFFF' : '#0055A5'} />,
-            active: activeMenu === 'Home',
+            label: isSuperAdmin ? 'Pusat Kendali' : 'Beranda',
+            iconComponent: <Feather name="grid" size={20} color={(activeMenu === 'Home' || activeMenu === 'SuperAdminDashboard') ? '#FFFFFF' : '#0055A5'} />,
+            active: activeMenu === 'Home' || activeMenu === 'SuperAdminDashboard',
             onPress: () => {
-              if (isSuperAdmin || isAdmin) navigateTo('AdminDashboard');
+              if (isSuperAdmin) navigateTo('SuperAdminDashboard');
+              else if (isAdmin) navigateTo('AdminDashboard');
               else if (isPengawas) navigateTo('PengawasDashboard');
               else navigateTo('UserDashboard');
             }
@@ -374,20 +375,36 @@ export default function WebSidebar({ user, activeMenu, navigation, handleLogout,
                 onPress: () => navigateTo('WorkerList')
               })}
 
-              {/* Daftar Pengawas (Khusus Admin / Super Admin) */}
-              {isManagement && renderMenuItem({
+              {/* Daftar Pengawas (Khusus Super Admin) */}
+              {isSuperAdmin && renderMenuItem({
                 label: 'Daftar Pengawas',
                 iconComponent: <Feather name="shield" size={20} color={activeMenu === 'PengawasList' ? '#FFFFFF' : '#0055A5'} />,
                 active: activeMenu === 'PengawasList',
                 onPress: () => navigateTo('PengawasList')
               })}
 
-              {/* Daftar Admin (Khusus Admin / Super Admin) */}
-              {isManagement && renderMenuItem({
+              {/* Daftar Admin (Khusus Super Admin) */}
+              {isSuperAdmin && renderMenuItem({
                 label: 'Daftar Admin',
                 iconComponent: <Feather name="user-check" size={20} color={activeMenu === 'AdminList' ? '#FFFFFF' : '#0055A5'} />,
                 active: activeMenu === 'AdminList',
                 onPress: () => navigateTo('AdminList')
+              })}
+
+              {/* Audit Log Sistem (Khusus Admin & Super Admin) */}
+              {isManagement && renderMenuItem({
+                label: 'Audit Log Sistem',
+                iconComponent: <Feather name="clipboard" size={20} color={activeMenu === 'AuditLog' ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'AuditLog',
+                onPress: () => navigateTo('AuditLog')
+              })}
+
+              {/* Dashboard Operasional (Khusus Super Admin memantau operasional Admin) */}
+              {isSuperAdmin && renderMenuItem({
+                label: 'Dashboard Operasional',
+                iconComponent: <Feather name="activity" size={20} color={activeMenu === 'AdminDashboard' ? '#FFFFFF' : '#0055A5'} />,
+                active: activeMenu === 'AdminDashboard',
+                onPress: () => navigateTo('AdminDashboard')
               })}
             </>
           )}
