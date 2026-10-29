@@ -468,33 +468,46 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   // UPDATE ITEMS LOGIC
   const setItemStatus = (index, statusValue) => {
-    const newItems = [...items];
-    newItems[index].status = statusValue;
+    setItems(prevItems => {
+      const next = [...prevItems];
+      if (!next[index]) return prevItems;
+      next[index] = {
+        ...next[index],
+        status: statusValue,
+        catatan: statusValue === 'BAIK' ? '' : next[index].catatan
+      };
+      return next;
+    });
+
     if (statusValue === 'BAIK') {
-      newItems[index].catatan = '';
       // Hapus foto kerusakan item ini jika user memilih atau membatalkan ke BAIK
       setPhotos(prev => {
-        if (!prev[`item_${index}`]) return prev;
+        const key = 'item_' + index;
+        if (!prev[key]) return prev;
         const nextPhotos = { ...prev };
-        delete nextPhotos[`item_${index}`];
+        delete nextPhotos[key];
         return nextPhotos;
       });
     }
-    setItems(newItems);
   };
 
   const updateItemSeverity = (index, severity) => {
-    const newItems = [...items];
-    newItems[index].severity = severity;
-    setItems(newItems);
+    setItems(prevItems => {
+      const next = [...prevItems];
+      if (!next[index]) return prevItems;
+      next[index] = { ...next[index], severity };
+      return next;
+    });
   };
 
   const updateItemCatatan = (index, text) => {
-    const newItems = [...items];
-    newItems[index].catatan = text;
-    setItems(newItems);
+    setItems(prevItems => {
+      const next = [...prevItems];
+      if (!next[index]) return prevItems;
+      next[index] = { ...next[index], catatan: text };
+      return next;
+    });
   };
-
   // CAMERA LOGIC
   const openCameraFor = async (type) => {
     if (!permission) return;
