@@ -79,10 +79,8 @@ export function formatIndonesianAddress({ road, village, villageType, district, 
     } else if (villageType === 'suburb' || villageType === 'neighbourhood') {
       // Suburb in urban city: keep name as is without forcing "Desa"
       parts.push(v);
-    } else if (villageType === 'village') {
-      parts.push(`Desa ${v}`);
     } else {
-      parts.push(v);
+      parts.push(`Desa ${v}`);
     }
   }
 
@@ -103,10 +101,8 @@ export function formatIndonesianAddress({ road, village, villageType, district, 
       parts.push(c);
     } else if (cityType === 'city') {
       parts.push(`Kota ${c}`);
-    } else if (cityType === 'county') {
-      parts.push(`Kabupaten ${c}`);
     } else {
-      parts.push(c);
+      parts.push(`Kabupaten ${c}`);
     }
   }
 

@@ -588,7 +588,9 @@ export default function ScannerScreen({ route, navigation }) {
           <TouchableOpacity onPress={proceedToForm} style={tw`w-full`}>
             <View style={[tw`w-full bg-[#003366] p-4 rounded-xl flex-row items-center justify-between`, { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 12 }]}>
               <View style={tw`flex-1 flex-row justify-center items-center pl-3`}>
-                <Text style={tw`text-white font-bold text-[13px] mr-2`}>Lanjut ke Pengisian Perjalanan</Text>
+                <Text style={tw`text-white font-bold text-[13px] mr-2 text-center`}>
+                  {type === 'akhiri' ? 'Lanjut ke Pengisian Akhir Perjalanan' : 'Lanjut ke Pengisian Awal Perjalanan'}
+                </Text>
                 <Text style={tw`text-white font-bold text-[14px]`}>➔</Text>
               </View>
               <Image source={require('../../assets/clean_emblem.png')} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
@@ -605,7 +607,7 @@ export default function ScannerScreen({ route, navigation }) {
       type="success"
       title={'Kendaraan\nTeridentifikasi'}
       message={`${type === 'mulai' ? 'Tidak ada data inspeksi sebelumnya.' : 'Akses diterima untuk Akhiri Pekerjaan.'} Lanjutkan untuk mengisi form.`}
-      primaryText="Lanjut ke Pengisian Perjalanan"
+      primaryText={type === 'akhiri' ? 'Lanjut ke Pengisian Akhir Perjalanan' : 'Lanjut ke Pengisian Awal Perjalanan'}
       onPrimary={proceedToForm}
       onClose={() => setScanResult(null)}
     />
