@@ -586,12 +586,16 @@ export default function ScannerScreen({ route, navigation }) {
 
           {/* Button Lanjut */}
           <TouchableOpacity onPress={proceedToForm} style={tw`w-full`}>
-            <View style={[tw`w-full bg-[#003366] p-4 rounded-xl flex-row items-center justify-between`, { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 12 }]}>
-              <View style={tw`flex-1 flex-row justify-center items-center pl-3`}>
-                <Text style={tw`text-white font-bold text-[13px] mr-2 text-center`}>
-                  {type === 'akhiri' ? 'Lanjut ke Pengisian Akhir Perjalanan' : 'Lanjut ke Pengisian Awal Perjalanan'}
+            <View style={[tw`w-full bg-[#003366] px-4 py-3.5 rounded-xl flex-row items-center justify-between`, { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 12 }]}>
+              <View style={tw`flex-1 items-center justify-center pl-2 pr-2`}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={tw`text-white font-bold text-[12.5px] text-center`}
+                >
+                  {type === 'akhiri' ? 'Lanjut ke Pengisian Akhir Perjalanan ➔' : 'Lanjut ke Pengisian Awal Perjalanan ➔'}
                 </Text>
-                <Text style={tw`text-white font-bold text-[14px]`}>➔</Text>
               </View>
               <Image source={require('../../assets/clean_emblem.png')} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
             </View>
