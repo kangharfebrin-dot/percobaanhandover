@@ -382,7 +382,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         return freshLoc.coords;
       }
     } catch (err) {
-      console.error('GPS error:', err);
+      console.warn('GPS error (handled):', err?.message || err);
       // Fallback jika getCurrentPosition gagal (misal susah sinyal GPS)
       try {
          const fallbackLoc = await Location.getLastKnownPositionAsync();
@@ -393,7 +393,7 @@ export default function HandoverFormScreen({ route, navigation }) {
            return fallbackLoc.coords;
          }
       } catch (fallbackErr) {
-         console.error('Fallback GPS error:', fallbackErr);
+         console.warn('Fallback GPS error (handled):', fallbackErr?.message || fallbackErr);
       }
 
       setLocation(null);
@@ -430,7 +430,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         // Ambil posisi awal sekali saja saat form dibuka
         await refreshLocation(true);
       } catch (error) {
-        console.error('Gagal inisialisasi GPS:', error);
+        console.warn('Gagal inisialisasi GPS (handled):', error?.message || error);
         if (isMounted) {
           setGpsError('GPS tidak dapat digunakan.');
         }
