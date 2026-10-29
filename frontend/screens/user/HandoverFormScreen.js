@@ -182,6 +182,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [showConfirmSubmitModal, setShowConfirmSubmitModal] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const isSubmittingRef = useRef(false);
+  const isExitingRef = useRef(false);
   const cameraRef = useRef(null);
 
 
@@ -226,7 +227,7 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (isSubmittingRef.current || showSuccessModal || !hasUnsavedChanges()) {
+      if (isExitingRef.current || isSubmittingRef.current || showSuccessModal || !hasUnsavedChanges()) {
         return;
       }
       e.preventDefault();
@@ -592,13 +593,20 @@ export default function HandoverFormScreen({ route, navigation }) {
 
   // Menerima role sebagai parameter agar tidak bergantung pada state yang mungkin masih stale
   const goToDashboard = (role) => {
+    isExitingRef.current = true;
     const r = role || userRole;
-    if (r === 'SUPER_ADMIN' || r === 'ADMIN') {
-      navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-    } else if (r === 'PENGAWAS') {
-      navigation.reset({ index: 0, routes: [{ name: 'PengawasDashboard' }] });
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: 'UserDashboard' }] });
+    const targetRoute = (r === 'SUPER_ADMIN' || r === 'ADMIN')
+      ? 'AdminDashboard'
+      : (r === 'PENGAWAS' ? 'PengawasDashboard' : 'UserDashboard');
+    try {
+      navigation.reset({ index: 0, routes: [{ name: targetRoute }] });
+    } catch (e) {
+      console.warn('navigation.reset failed, falling back to navigate:', e);
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate(targetRoute);
+      }
     }
   };
 
@@ -1484,6 +1492,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         onSecondary={() => setShowExitConfirmModal(false)}
         primaryText="Ya, Keluar"
         onPrimary={() => {
+          isExitingRef.current = true;
           setShowExitConfirmModal(false);
           goToDashboard();
         }}
