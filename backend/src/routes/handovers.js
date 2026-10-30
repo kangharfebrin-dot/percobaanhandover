@@ -438,17 +438,22 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       return createdHandover;
     });
 
-    // Kirim notifikasi secara asinkron setelah transaksi database berhasil
-    if (vehicleIssueItems.length > 0) {
-      await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
-    }
-
-    if (amtIssueItems.length > 0) {
-      await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
-    }
-
     // Invalidate semua cache handovers
     await CacheService.delPattern('handovers:*');
+
+    // Kirim notifikasi secara asinkron (non-blocking) di background agar tidak menahan response ke client
+    (async () => {
+      try {
+        if (vehicleIssueItems.length > 0) {
+          await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
+        }
+        if (amtIssueItems.length > 0) {
+          await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
+        }
+      } catch (notifErr) {
+        console.error('Non-critical: Gagal mengirim notifikasi background:', notifErr.message);
+      }
+    })();
 
     // Jika alamat belum ada di cache saat handover dibuat, jalankan geocode non-blocking di background
     if (!locationAddress && hasCoords && handover && handover.id) {

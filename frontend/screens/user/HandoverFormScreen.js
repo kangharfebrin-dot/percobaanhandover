@@ -806,12 +806,31 @@ export default function HandoverFormScreen({ route, navigation }) {
       if (scanToken) {
         authHeaders['x-scan-token'] = scanToken;
       }
-      const response = await axios.post(`${API_URL}/api/handovers`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          ...authHeaders
-        },
-      });
+
+      // Helper untuk submit dengan timeout tinggi (90s) agar aman untuk upload banyak foto
+      const executeSubmit = async () => {
+        return await axios.post(`${API_URL}/api/handovers`, formData, {
+          headers: {
+            ...authHeaders
+          },
+          timeout: 90000, // 90 detik khusus upload multipart foto berukuran besar
+        });
+      };
+
+      let response;
+      try {
+        response = await executeSubmit();
+      } catch (firstErr) {
+        // Jika gagal karena timeout atau Network Error (bukan validasi 4xx/5xx), coba kirim ulang otomatis 1 kali
+        const isNetworkOrTimeout = !firstErr.response || firstErr.code === 'ECONNABORTED' || (firstErr.message && firstErr.message.includes('Network Error'));
+        if (isNetworkOrTimeout) {
+          console.warn('[HandoverForm] Pengiriman pertama terkena masalah jaringan/timeout, mencoba ulang secara otomatis...');
+          await new Promise(r => setTimeout(r, 1200));
+          response = await executeSubmit();
+        } else {
+          throw firstErr;
+        }
+      }
 
       const issueItems = finalItems.filter(i => !i.isGood);
       const hasMajorIssue = issueItems.some(i => i.category === 'A' && i.name.includes('[MAJOR]'));

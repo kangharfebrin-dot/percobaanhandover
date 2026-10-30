@@ -198,3 +198,4 @@ describe('Notification Role Scoping & Privacy Tests', () => {
     expect(res.body.notification.isRead).toBe(true);
   });
 });
+

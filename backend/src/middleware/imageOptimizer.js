@@ -11,41 +11,46 @@ const optimizeImages = async (req, res, next) => {
   if (!req.files || req.files.length === 0) return next();
 
   try {
-    for (let i = 0; i < req.files.length; i++) {
-      const file = req.files[i];
-      const filenameBase = file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1000);
-      
-      const fullName = `${filenameBase}-full.webp`;
-      const previewName = `${filenameBase}-preview.webp`;
-      const thumbName = `${filenameBase}-thumb.webp`;
+    // Optimasi seluruh file gambar secara paralel menggunakan multi-threading libuv Sharp
+    await Promise.all(
+      req.files.map(async (file) => {
+        const filenameBase = file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1000);
+        
+        const fullName = `${filenameBase}-full.webp`;
+        const previewName = `${filenameBase}-preview.webp`;
+        const thumbName = `${filenameBase}-thumb.webp`;
 
-      // Full size (1200x1200 max, auto-rotated according to EXIF)
-      await sharp(file.buffer)
-        .rotate()
-        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(path.join(uploadsDir, fullName));
+        // Proses 3 varian gambar (Full, Preview, Thumbnail) secara paralel
+        await Promise.all([
+          // Full size (1200x1200 max, auto-rotated according to EXIF)
+          sharp(file.buffer)
+            .rotate()
+            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(path.join(uploadsDir, fullName)),
 
-      // Preview size (600x600 max, auto-rotated according to EXIF)
-      await sharp(file.buffer)
-        .rotate()
-        .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(path.join(uploadsDir, previewName));
+          // Preview size (600x600 max, auto-rotated according to EXIF)
+          sharp(file.buffer)
+            .rotate()
+            .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(path.join(uploadsDir, previewName)),
 
-      // Thumbnail size (200x200 cropped, auto-rotated according to EXIF)
-      await sharp(file.buffer)
-        .rotate()
-        .resize(200, 200, { fit: 'cover' })
-        .webp({ quality: 80 })
-        .toFile(path.join(uploadsDir, thumbName));
+          // Thumbnail size (200x200 cropped, auto-rotated according to EXIF)
+          sharp(file.buffer)
+            .rotate()
+            .resize(200, 200, { fit: 'cover' })
+            .webp({ quality: 80 })
+            .toFile(path.join(uploadsDir, thumbName))
+        ]);
 
-      // Attach new URLs and info to the file object
-      file.path = `uploads/${fullName}`;
-      file.thumbnailUrl = `uploads/${thumbName}`;
-      file.previewUrl = `uploads/${previewName}`;
-      file.originalSize = file.size;
-    }
+        // Attach new URLs and info to the file object
+        file.path = `uploads/${fullName}`;
+        file.thumbnailUrl = `uploads/${thumbName}`;
+        file.previewUrl = `uploads/${previewName}`;
+        file.originalSize = file.size;
+      })
+    );
     next();
   } catch (error) {
     console.error('Image optimization failed:', error);
