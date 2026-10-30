@@ -138,7 +138,28 @@ router.put('/:id/resolve', authenticateToken, authorizeRole(['ADMIN', 'SUPER_ADM
     });
 
     if (target.handover?.noPolisi) {
-      await reconcileVehicleOperationalStatus(target.handover.noPolisi);
+      const vNopol = target.handover.noPolisi;
+      // Sinkronkan status handover, item, dan issue kendaraan
+      await prisma.handoverItem.updateMany({
+        where: { handoverId: target.handoverId, isGood: false },
+        data: { isRepaired: true }
+      });
+      await prisma.handover.update({
+        where: { id: target.handoverId },
+        data: { status: 'Siap Operasi (Normal)' }
+      });
+      await prisma.issue.updateMany({
+        where: {
+          handover: { noPolisi: vNopol },
+          status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
+        },
+        data: {
+          status: 'RESOLVED',
+          resolvedAt: new Date(),
+          resolvedBy: req.user ? req.user.name : 'ADMIN'
+        }
+      });
+      await reconcileVehicleOperationalStatus(vNopol);
     }
 
     res.json({ success: true, issue: updatedIssue });
@@ -307,9 +328,59 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
         }
       });
 
+      const vehicleNoPolisi = issue.handover.noPolisi;
+
+      // Update status kendaraan siap jalan
       await prisma.vehicle.update({
-        where: { noPolisi: issue.handover.noPolisi },
-        data: { status: 'READY_TO_START' }
+        where: { noPolisi: vehicleNoPolisi },
+        data: { 
+          status: 'READY_TO_START',
+          maintenanceReason: null
+        }
+      });
+
+      // Update status handover ini menjadi 'Siap Operasi (Normal)'
+      await prisma.handover.update({
+        where: { id: issue.handoverId },
+        data: { status: 'Siap Operasi (Normal)' }
+      });
+
+      // Selesaikan SELURUH issue lama pada kendaraan yang sama yang masih ONGOING / PENDING_APPROVAL
+      // Karena verifikasi perbaikan kendaraan telah resmi disetujui oleh Admin/Pengawas
+      await prisma.issue.updateMany({
+        where: {
+          handover: { noPolisi: vehicleNoPolisi },
+          status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
+        },
+        data: {
+          status: 'RESOLVED',
+          resolvedAt: new Date(),
+          resolvedBy: req.user ? req.user.name : 'ADMIN'
+        }
+      });
+
+      // Tandai seluruh item kendaraan lama yang rusak pada kendaraan ini menjadi isRepaired: true
+      await prisma.handoverItem.updateMany({
+        where: {
+          handover: { noPolisi: vehicleNoPolisi },
+          isGood: false,
+          isRepaired: false,
+          category: { in: ['A', 'Kendaraan'] }
+        },
+        data: {
+          isRepaired: true
+        }
+      });
+
+      // Update seluruh status handover lama pada kendaraan ini yang masih 'Ada Masalah' menjadi 'Siap Operasi (Normal)'
+      await prisma.handover.updateMany({
+        where: {
+          noPolisi: vehicleNoPolisi,
+          status: 'Ada Masalah'
+        },
+        data: {
+          status: 'Siap Operasi (Normal)'
+        }
       });
 
       // Target AMT specifically (driver dan co-driver pada handover)

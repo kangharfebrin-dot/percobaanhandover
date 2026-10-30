@@ -230,7 +230,20 @@ export default function ScannerScreen({ route, navigation }) {
       }
 
       // === STEP 1: Cek apakah kendaraan sedang dalam perbaikan (ada issue ONGOING / PENDING_APPROVAL) ===
-      const activeIssue = ongoingIssues.find(issue => issue.handover && issue.handover.noPolisi === vehicleNoPolisi);
+      // Jika status kendaraan READY_TO_START dan perbaikan pada handover terakhir sudah disetujui (RESOLVED),
+      // kendaraan sudah bersih dan siap jalan, tidak menampilkan popup kerusakan lagi.
+      const isVehicleReady = res.data.vehicle?.status === 'READY_TO_START';
+      const lastHandoverIssueResolved = res.data.lastHandover?.issue?.status === 'RESOLVED';
+      const allLastItemsRepaired = res.data.lastHandover?.items?.every(item => item.isGood || item.isRepaired) ?? true;
+
+      const activeIssue = (isVehicleReady && (lastHandoverIssueResolved || allLastItemsRepaired))
+        ? null
+        : ongoingIssues.find(issue =>
+            issue.handover &&
+            issue.handover.noPolisi === vehicleNoPolisi &&
+            (!res.data.lastHandover || issue.handoverId === res.data.lastHandover.id)
+          );
+
       const isUnderRepair = !!activeIssue;
       const isPendingApproval = activeIssue?.status === 'PENDING_APPROVAL';
       const isVehicleItem = (item) => item.category === 'A' || !item.category || item.category !== 'B';
