@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { getCameraFlashProps, getFlashModeInfo, FLASH_MODES } from '../utils/cameraFlashHelper.js';
+import { getCameraFlashProps, getFlashModeInfo, getNextFlashMode, FLASH_MODES } from '../utils/cameraFlashHelper.js';
 
 describe('cameraFlashHelper - Unit Tests', () => {
   it('1. Mode OFF: flash="off" dan enableTorch=false', () => {
@@ -47,5 +47,33 @@ describe('cameraFlashHelper - Unit Tests', () => {
     const info = getFlashModeInfo(undefined);
     assert.strictEqual(info.label, 'OFF');
     assert.strictEqual(info.icon, 'flash-off');
+  });
+
+  it('6. Siklus Flash Scanner (Hanya 2 Mode: MATI <-> NYALA)', () => {
+    // Mode mati -> dipencet jadi nyala
+    const next1 = getNextFlashMode(FLASH_MODES.OFF, true);
+    assert.strictEqual(next1, FLASH_MODES.ON);
+
+    // Mode nyala -> dipencet jadi mati
+    const next2 = getNextFlashMode(FLASH_MODES.ON, true);
+    assert.strictEqual(next2, FLASH_MODES.OFF);
+
+    // Label untuk scanner harus MATI dan NYALA
+    const infoOff = getFlashModeInfo(FLASH_MODES.OFF, true);
+    assert.strictEqual(infoOff.label, 'MATI');
+
+    const infoOn = getFlashModeInfo(FLASH_MODES.ON, true);
+    assert.strictEqual(infoOn.label, 'NYALA');
+  });
+
+  it('7. Siklus Flash Kamera Foto Kendaraan (3 Mode: OFF -> AUTO -> ON -> OFF)', () => {
+    const m1 = getNextFlashMode(FLASH_MODES.OFF, false);
+    assert.strictEqual(m1, FLASH_MODES.AUTO);
+
+    const m2 = getNextFlashMode(FLASH_MODES.AUTO, false);
+    assert.strictEqual(m2, FLASH_MODES.ON);
+
+    const m3 = getNextFlashMode(FLASH_MODES.ON, false);
+    assert.strictEqual(m3, FLASH_MODES.OFF);
   });
 });

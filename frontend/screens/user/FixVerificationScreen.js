@@ -567,15 +567,6 @@ export default function FixVerificationScreen({ route, navigation }) {
                 <Ionicons name="close" size={28} color="white" />
               </TouchableOpacity>
 
-              {/* Kontrol Flash/Senter pojok kanan atas tampilan kamera verifikasi */}
-              {isCameraReady && (
-                <CameraFlashControl
-                  mode={flashMode}
-                  onModeChange={setFlashMode}
-                  style={tw`absolute top-12 right-4 z-20`}
-                />
-              )}
-
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>
                   <Ionicons name="scan-outline" size={48} color="rgba(255,255,255,0.3)" />
@@ -585,11 +576,22 @@ export default function FixVerificationScreen({ route, navigation }) {
                 </View>
               </View>
 
-              <View style={tw`absolute bottom-12 w-full flex-row justify-center`}>
+              <View style={tw`absolute bottom-12 w-full flex-row justify-center items-center px-8`}>
                 <TouchableOpacity 
                   style={tw`w-20 h-20 bg-white rounded-full border-4 border-gray-300 shadow-lg`} 
                   onPress={takePicture}
                 />
+
+                {/* Tombol Flash di bawah kanan: dipencet langsung ganti mode (OFF -> AUTO -> ON) */}
+                {isCameraReady && (
+                  <View style={tw`absolute right-8`}>
+                    <CameraFlashControl
+                      mode={flashMode}
+                      onModeChange={setFlashMode}
+                      variant="circular"
+                    />
+                  </View>
+                )}
               </View>
             </>
           )}

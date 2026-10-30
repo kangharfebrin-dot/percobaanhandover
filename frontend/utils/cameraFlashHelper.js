@@ -19,7 +19,7 @@ export const FLASH_MODES = {
 export function getCameraFlashProps(mode, isScanner = false) {
   switch (mode) {
     case 'on':
-      // Mode ON: LED flash menyala terus (senter/torch)
+      // Mode ON / NYALA: LED flash menyala terus (senter/torch)
       return { flash: 'on', enableTorch: true };
     case 'auto':
       // Mode AUTO: Flash hanya menyala saat ambil foto jika kondisi gelap
@@ -27,8 +27,32 @@ export function getCameraFlashProps(mode, isScanner = false) {
       return { flash: 'auto', enableTorch: false };
     case 'off':
     default:
-      // Mode OFF: Flash mati total
+      // Mode OFF / MATI: Flash mati total
       return { flash: 'off', enableTorch: false };
+  }
+}
+
+/**
+ * Mendapatkan mode flash berikutnya saat tombol ditekan (cycle tanpa dropdown)
+ * - Scanner: Hanya 2 mode (OFF <-> ON / MATI <-> NYALA)
+ * - Kamera Foto: 3 mode (OFF -> AUTO -> ON -> OFF)
+ *
+ * @param {'off'|'auto'|'on'} currentMode
+ * @param {boolean} isScanner
+ * @returns {'off'|'auto'|'on'}
+ */
+export function getNextFlashMode(currentMode, isScanner = false) {
+  if (isScanner) {
+    return currentMode === FLASH_MODES.ON ? FLASH_MODES.OFF : FLASH_MODES.ON;
+  }
+  switch (currentMode) {
+    case FLASH_MODES.OFF:
+      return FLASH_MODES.AUTO;
+    case FLASH_MODES.AUTO:
+      return FLASH_MODES.ON;
+    case FLASH_MODES.ON:
+    default:
+      return FLASH_MODES.OFF;
   }
 }
 
@@ -36,18 +60,19 @@ export function getCameraFlashProps(mode, isScanner = false) {
  * Metadata presentasi untuk tiap mode flash
  *
  * @param {'off'|'auto'|'on'} mode
+ * @param {boolean} isScanner
  */
-export function getFlashModeInfo(mode) {
+export function getFlashModeInfo(mode, isScanner = false) {
   switch (mode) {
     case 'on':
       return {
         mode: 'on',
-        label: 'ON',
+        label: isScanner ? 'NYALA' : 'ON',
         title: 'Senter Nyala',
         desc: 'Lampu LED menyala terus',
         icon: 'flash',
         color: '#FACC15', // Kuning terang / amber
-        bgColor: 'rgba(250, 204, 21, 0.2)',
+        bgColor: 'rgba(250, 204, 21, 0.25)',
         borderColor: '#FACC15',
       };
     case 'auto':
@@ -65,7 +90,7 @@ export function getFlashModeInfo(mode) {
     default:
       return {
         mode: 'off',
-        label: 'OFF',
+        label: isScanner ? 'MATI' : 'OFF',
         title: 'Flash Mati',
         desc: 'Kamera normal tanpa lampu flash',
         icon: 'flash-off',

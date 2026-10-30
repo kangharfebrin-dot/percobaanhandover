@@ -1457,15 +1457,6 @@ export default function HandoverFormScreen({ route, navigation }) {
                 </View>
               </View>
 
-              {/* Kontrol Flash/Senter pojok kanan atas tampilan kamera */}
-              {isCameraReady && (
-                <CameraFlashControl
-                  mode={flashMode}
-                  onModeChange={setFlashMode}
-                  style={tw`absolute top-14 right-6 z-50`}
-                />
-              )}
-
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>
                   <View style={tw`absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-[#2ECC71] rounded-tl-3xl`} />
@@ -1494,6 +1485,17 @@ export default function HandoverFormScreen({ route, navigation }) {
                 >
                   {loading ? <ActivityIndicator color="white" size="large" /> : <View style={tw`w-20 h-20 bg-white rounded-full`} />}
                 </TouchableOpacity>
+
+                {/* Tombol Flash di bawah kanan: dipencet langsung ganti mode (OFF -> AUTO -> ON) */}
+                {isCameraReady && (
+                  <View style={tw`absolute right-8`}>
+                    <CameraFlashControl
+                      mode={flashMode}
+                      onModeChange={setFlashMode}
+                      variant="circular"
+                    />
+                  </View>
+                )}
               </View>
             </View>
           </View>
