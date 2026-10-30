@@ -14,6 +14,8 @@ import AppModal, { AppModalDetail } from '../../components/AppModal';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 import { validateQrPosition } from '../../utils/qrPositionValidator';
+import CameraFlashControl from '../../components/CameraFlashControl';
+import { FLASH_MODES } from '../../utils/cameraFlashHelper';
 
 const normalizeName = (name) => {
   if (!name) return '';
@@ -43,6 +45,14 @@ export default function ScannerScreen({ route, navigation }) {
   const [nextScanResult, setNextScanResult] = useState(null);
   const [hangingElapsedHours, setHangingElapsedHours] = useState(0);
   const isFocused = useIsFocused();
+  const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
+
+  // Pastikan flash/senter mati saat pindah layar atau muncul popup/modal hasil scan
+  useEffect(() => {
+    if (!isFocused || scanResult !== null) {
+      setFlashMode(FLASH_MODES.OFF);
+    }
+  }, [isFocused, scanResult]);
 
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const isLargeScreen = screenWidth >= 768;
@@ -664,6 +674,8 @@ export default function ScannerScreen({ route, navigation }) {
             facing="back"
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
             onBarcodeScanned={loading ? undefined : handleBarcodeScanned}
+            enableTorch={flashMode === FLASH_MODES.ON}
+            flash={flashMode === FLASH_MODES.AUTO ? 'auto' : (flashMode === FLASH_MODES.ON ? 'on' : 'off')}
           />
         )}
 
@@ -703,6 +715,16 @@ export default function ScannerScreen({ route, navigation }) {
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
+
+        {/* Kontrol Flash/Senter di pojok kanan atas kamera scan */}
+        {isFocused && !scanResult && (
+          <CameraFlashControl
+            mode={flashMode}
+            onModeChange={setFlashMode}
+            isScanner={true}
+            style={tw`absolute top-12 right-6`}
+          />
+        )}
 
         {scanResult === 'recap' && renderRecapModal()}
         {scanResult === 'success' && renderSuccessModal()}

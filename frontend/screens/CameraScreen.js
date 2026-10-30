@@ -8,6 +8,8 @@ import tw from 'twrnc';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reverseGeocodeCoords } from '../utils/geocodingHelper';
+import CameraFlashControl from '../components/CameraFlashControl';
+import { FLASH_MODES } from '../utils/cameraFlashHelper';
 
 const REQUIRED_PHOTOS = ['Depan', 'Belakang', 'Kanan', 'Kiri'];
 
@@ -19,6 +21,7 @@ export default function CameraScreen({ route, navigation }) {
   const [photos, setPhotos] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
   const cameraRef = useRef(null);
 
   useEffect(() => {
@@ -148,7 +151,7 @@ export default function CameraScreen({ route, navigation }) {
 
   return (
     <View style={tw`flex-1 bg-black`}>
-      <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef} />
+      <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef} flash={flashMode === FLASH_MODES.AUTO ? 'auto' : (flashMode === FLASH_MODES.ON ? 'on' : 'off')} enableTorch={flashMode === FLASH_MODES.ON} />
       <View style={tw`absolute top-12 left-0 right-0 items-center px-4`} pointerEvents="none">
         <Text style={tw`bg-black/70 text-white p-3 rounded-full font-bold text-lg text-center`}>
           Ambil Foto: Tampak {stepName} ({currentStep + 1}/4)
@@ -159,6 +162,13 @@ export default function CameraScreen({ route, navigation }) {
           </Text>
         )}
       </View>
+
+      {/* Kontrol Flash/Senter pojok kanan atas tampilan kamera */}
+      <CameraFlashControl
+        mode={flashMode}
+        onModeChange={setFlashMode}
+        style={tw`absolute top-12 right-6 z-20`}
+      />
       <View style={tw`absolute bottom-12 w-full flex-row justify-center`}>
         <TouchableOpacity 
           style={tw`w-20 h-20 bg-white rounded-full border-4 border-gray-300 shadow-lg`} 

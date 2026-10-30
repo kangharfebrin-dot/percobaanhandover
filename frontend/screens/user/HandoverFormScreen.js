@@ -17,6 +17,8 @@ import { getItemOptionLabels } from '../../utils/checklistHelper';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 import { reverseGeocodeCoords } from '../../utils/geocodingHelper';
 import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import CameraFlashControl from '../../components/CameraFlashControl';
+import { FLASH_MODES } from '../../utils/cameraFlashHelper';
 
 
 const DEFAULT_ITEMS = [
@@ -168,6 +170,14 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [gpsUpdatedAt, setGpsUpdatedAt] = useState(null);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
+  const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
+
+  // Matikan senter/flash saat kamera ditutup atau masuk preview foto
+  useEffect(() => {
+    if (!isCameraOpen || previewPhoto) {
+      setFlashMode(FLASH_MODES.OFF);
+    }
+  }, [isCameraOpen, previewPhoto]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activePhotoType, setActivePhotoType] = useState(null);
@@ -1427,7 +1437,7 @@ export default function HandoverFormScreen({ route, navigation }) {
         ) : (
           <View style={tw`flex-1 bg-black`}>
             {isCameraReady ? (
-              <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} />
+              <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} flash={flashMode === FLASH_MODES.AUTO ? 'auto' : (flashMode === FLASH_MODES.ON ? 'on' : 'off')} enableTorch={flashMode === FLASH_MODES.ON} />
             ) : (
               <View style={tw`flex-1 items-center justify-center`}>
                 <ActivityIndicator color="white" size="large" />
@@ -1446,6 +1456,15 @@ export default function HandoverFormScreen({ route, navigation }) {
                   </Text>
                 </View>
               </View>
+
+              {/* Kontrol Flash/Senter pojok kanan atas tampilan kamera */}
+              {isCameraReady && (
+                <CameraFlashControl
+                  mode={flashMode}
+                  onModeChange={setFlashMode}
+                  style={tw`absolute top-14 right-6 z-50`}
+                />
+              )}
 
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>

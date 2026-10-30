@@ -14,6 +14,8 @@ import WebSidebar from '../../components/WebSidebar';
 import WebNavbar from '../../components/WebNavbar';
 import { handleLogoutAndReset } from '../../utils/authHelper';
 import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
+import CameraFlashControl from '../../components/CameraFlashControl';
+import { FLASH_MODES } from '../../utils/cameraFlashHelper';
 
 const getPhotoUrl = (path, token) => {
   if (!path) return `${API_URL}/uploads/default.png${token ? '?token=' + token : ''}`;
@@ -59,6 +61,13 @@ export default function FixVerificationScreen({ route, navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [location, setLocation] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
+
+  useEffect(() => {
+    if (!isCameraOpen) {
+      setFlashMode(FLASH_MODES.OFF);
+    }
+  }, [isCameraOpen]);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activeItemId, setActiveItemId] = useState(null);
   const [selectedPreviewPhoto, setSelectedPreviewPhoto] = useState(null);
@@ -532,7 +541,7 @@ export default function FixVerificationScreen({ route, navigation }) {
           {isCameraOpen && (
             <>
               {isCameraReady ? (
-                <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} />
+                <CameraView style={tw`absolute inset-0`} facing="back" ref={cameraRef} flash={flashMode === FLASH_MODES.AUTO ? 'auto' : (flashMode === FLASH_MODES.ON ? 'on' : 'off')} enableTorch={flashMode === FLASH_MODES.ON} />
               ) : (
                 <View style={tw`flex-1 items-center justify-center`}>
                   <ActivityIndicator color="white" size="large" />
@@ -557,6 +566,15 @@ export default function FixVerificationScreen({ route, navigation }) {
               >
                 <Ionicons name="close" size={28} color="white" />
               </TouchableOpacity>
+
+              {/* Kontrol Flash/Senter pojok kanan atas tampilan kamera verifikasi */}
+              {isCameraReady && (
+                <CameraFlashControl
+                  mode={flashMode}
+                  onModeChange={setFlashMode}
+                  style={tw`absolute top-12 right-4 z-20`}
+                />
+              )}
 
               <View style={tw`flex-1 justify-center items-center`} pointerEvents="none">
                 <View style={tw`w-72 h-96 border-2 border-dashed border-white/40 rounded-3xl relative shadow-2xl bg-white/5 items-center justify-center`}>
