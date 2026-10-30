@@ -36,7 +36,11 @@ const getLatestVehicleHandover = async (noPolisi, client = defaultPrisma) => {
     ],
     include: {
       items: true,
-      issue: true
+      issue: true,
+      photos: true,
+      user: {
+        select: { id: true, name: true, role: true }
+      }
     }
   });
 };

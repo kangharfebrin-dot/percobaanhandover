@@ -65,7 +65,7 @@ const isAmt1Jabatan = (jbt) => {
 };
 
 export default function HandoverFormScreen({ route, navigation }) {
-  const { noPolisi: initialNoPolisi, type, lastHandover, scanToken } = route?.params || {};
+  const { noPolisi: initialNoPolisi, type, lastHandover, scanToken, unresolvedDamageItems = [] } = route?.params || {};
   const [scanAuthError, setScanAuthError] = useState(!scanToken || !initialNoPolisi);
   const [noPolisi, setNoPolisi] = useState(initialNoPolisi || '');
 
@@ -262,6 +262,91 @@ export default function HandoverFormScreen({ route, navigation }) {
     loadWorkers();
 
     const loadChecklist = async () => {
+      const mapSourceItems = (sourceList) => {
+        const initialInheritedPhotos = {};
+        const mapped = sourceList.map((item, idx) => {
+          let status = null;
+          let catatan = '';
+          let isLocked = false;
+          let isInherited = false;
+          let reporterName = null;
+          let reporterTime = null;
+          let inheritedPhoto = null;
+
+          // 1. Cek dari unresolvedDamageItems
+          const unresolved = (unresolvedDamageItems || []).find(u =>
+            (u.name || '').toLowerCase().trim() === (item.name || '').toLowerCase().trim()
+          );
+
+          // 2. Cek dari lastHandover
+          let pastItem = null;
+          if (lastHandover && lastHandover.items) {
+            pastItem = lastHandover.items.find(i =>
+              (i.name || '').toLowerCase().trim() === (item.name || '').toLowerCase().trim() &&
+              (i.category === item.category || item.category === 'A')
+            );
+          }
+
+          if (unresolved) {
+            status = 'RUSAK';
+            isLocked = true;
+            isInherited = true;
+            catatan = unresolved.notes || 'Kerusakan bawaan dari inspeksi sebelumnya.';
+            reporterName = unresolved.reportedBy;
+            reporterTime = unresolved.reportedAt;
+            inheritedPhoto = unresolved.photo;
+          } else if (pastItem && !pastItem.isGood && !pastItem.isRepaired && (item.category === 'A' || !item.category || item.category !== 'B')) {
+            status = 'RUSAK';
+            isLocked = true;
+            isInherited = true;
+            catatan = pastItem.repairNote || pastItem.notes || 'Kerusakan bawaan dari inspeksi sebelumnya.';
+            reporterName = lastHandover.amt1 || lastHandover.driverName || (lastHandover.user ? lastHandover.user.name : 'Kru Sebelumnya');
+            reporterTime = lastHandover.timestamp || lastHandover.createdAt;
+
+            const cleanItem = item.name.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+            inheritedPhoto = (lastHandover.photos || []).find(p => {
+              const pType = (p.type || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+              const pUrl = (p.url || '').toLowerCase();
+              return pType.includes(cleanItem) || pUrl.includes(cleanItem.replace(/\s+/g, '_'));
+            }) || null;
+          }
+
+          if (isInherited && inheritedPhoto) {
+            const photoUrl = inheritedPhoto.previewUrl || inheritedPhoto.url;
+            if (photoUrl) {
+              const rawUri = photoUrl.startsWith('http') ? photoUrl : `${API_URL}/${photoUrl.replace(/\\/g, '/').replace(/^\/+/, '')}`;
+              initialInheritedPhotos[`item_${idx}`] = {
+                uri: rawUri,
+                isInherited: true,
+                inheritedPhotoData: inheritedPhoto,
+                photographerName: reporterName,
+                timestampStr: reporterTime ? new Date(reporterTime).toLocaleString('id-ID') : 'Inspeksi Sebelumnya',
+                locStr: 'Foto Terlampir'
+              };
+            }
+          }
+
+          return {
+            category: item.category,
+            name: item.name,
+            status: status,
+            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : (unresolved?.severity || 'Minor')),
+            catatan: catatan,
+            isLocked,
+            isInherited,
+            reporterName,
+            reporterTime,
+            inheritedPhoto
+          };
+        });
+
+        if (Object.keys(initialInheritedPhotos).length > 0) {
+          setPhotos(prev => ({ ...prev, ...initialInheritedPhotos }));
+        }
+
+        return mapped;
+      };
+
       try {
         const token = await AsyncStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -270,44 +355,10 @@ export default function HandoverFormScreen({ route, navigation }) {
         if (!sourceItems || sourceItems.length === 0) {
           sourceItems = DEFAULT_ITEMS;
         }
-        setItems(sourceItems.map(item => {
-          let status = null;
-          let catatan = '';
-          if (lastHandover && lastHandover.items) {
-            const pastItem = lastHandover.items.find(i => i.name === item.name && i.category === item.category);
-            if (pastItem && !pastItem.isGood && !pastItem.isRepaired) {
-              status = 'RUSAK';
-              catatan = pastItem.repairNote || 'Masih rusak sejak inspeksi sebelumnya.';
-            }
-          }
-          return {
-            category: item.category,
-            name: item.name,
-            status: status,
-            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : 'Minor'),
-            catatan: catatan
-          };
-        }));
+        setItems(mapSourceItems(sourceItems));
       } catch (e) {
         console.error("Gagal mengambil checklist dari API, menggunakan default:", e);
-        setItems(DEFAULT_ITEMS.map(item => {
-          let status = null;
-          let catatan = '';
-          if (lastHandover && lastHandover.items) {
-            const pastItem = lastHandover.items.find(i => i.name === item.name && i.category === item.category);
-            if (pastItem && !pastItem.isGood && !pastItem.isRepaired) {
-              status = 'RUSAK';
-              catatan = pastItem.repairNote || 'Masih rusak sejak inspeksi sebelumnya.';
-            }
-          }
-          return {
-            category: item.category,
-            name: item.name,
-            status: status,
-            severity: item.category === 'B' ? null : (item.severity && item.severity !== '-' ? item.severity : 'Minor'),
-            catatan: catatan
-          };
-        }));
+        setItems(mapSourceItems(DEFAULT_ITEMS));
       }
     };
     loadChecklist();
@@ -571,7 +622,8 @@ export default function HandoverFormScreen({ route, navigation }) {
             locStr = `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`;
           }
 
-          setPreviewPhoto({ ...photo, timestampStr, locStr, addressStr, geoData, latitude: location?.latitude, longitude: location?.longitude });
+          const photographerName = amt1 || user?.name || 'AMT';
+          setPreviewPhoto({ ...photo, photographerName, timestampStr, locStr, addressStr, geoData, latitude: location?.latitude, longitude: location?.longitude });
 
           if (location) {
             reverseGeocodeCoords(location.latitude, location.longitude).then(geo => {
@@ -768,9 +820,22 @@ export default function HandoverFormScreen({ route, navigation }) {
         }
       }
 
+      const inheritedPhotosToSend = [];
       for (const key of Object.keys(photos)) {
         const p = photos[key];
         if (p) {
+          // Jika foto adalah foto warisan yang sudah ada di server, tidak perlu unggah ulang multipart
+          if (p.isInherited && p.inheritedPhotoData) {
+            inheritedPhotosToSend.push({
+              type: p.inheritedPhotoData.type || 'Kerusakan Bawaan',
+              url: p.inheritedPhotoData.url,
+              previewUrl: p.inheritedPhotoData.previewUrl,
+              thumbnailUrl: p.inheritedPhotoData.thumbnailUrl,
+              originalSize: p.inheritedPhotoData.originalSize
+            });
+            continue;
+          }
+
           // Determine the friendly name for the backend
           let photoName = `photo_${key}.jpg`;
           if (key.startsWith('item_')) {
@@ -799,6 +864,10 @@ export default function HandoverFormScreen({ route, navigation }) {
             formData.append('photos', { uri: p.uri, name: photoName, type });
           }
         }
+      }
+
+      if (inheritedPhotosToSend.length > 0) {
+        formData.append('inheritedPhotos', JSON.stringify(inheritedPhotosToSend));
       }
 
       const token = await AsyncStorage.getItem('token');
@@ -879,20 +948,43 @@ export default function HandoverFormScreen({ route, navigation }) {
     return (
       <View key={originalIdx} style={tw`border-b border-gray-100 p-5 ${isRusak ? 'bg-red-50/50' : isBaik ? 'bg-green-50/30' : 'bg-white'}`}>
         <View style={tw`flex-col`}>
+          {/* Badge Item Terkunci Kerusakan Bawaan */}
+          {item.isLocked && (
+            <View style={tw`flex-row items-center bg-red-100/90 px-2.5 py-1 rounded-lg mb-2 self-start border border-red-200`}>
+              <Ionicons name="lock-closed" size={12} color="#B91C1C" style={tw`mr-1.5`} />
+              <Text style={tw`text-[11px] font-bold text-red-800`}>
+                Terkunci (Dilaporkan oleh: {item.reporterName || 'Kru Sebelumnya'})
+              </Text>
+            </View>
+          )}
+
           <Text style={tw`text-gray-800 font-bold text-base mb-4 ${isRusak ? 'text-red-700' : ''}`}>{item.name}</Text>
           <View style={tw`flex-row justify-between gap-3`}>
             {/* Tombol BAIK */}
             <TouchableOpacity
-              style={tw`flex-1 rounded-xl overflow-hidden shadow-sm`}
-              onPress={() => setItemStatus(originalIdx, 'BAIK')}
+              style={tw`flex-1 rounded-xl overflow-hidden shadow-sm ${item.isLocked ? 'opacity-40' : ''}`}
+              onPress={() => {
+                if (item.isLocked) {
+                  Alert.alert(
+                    "Status Terkunci 🔒",
+                    `Item "${item.name}" dilaporkan rusak oleh ${item.reporterName || 'kru sebelumnya'} dan BELUM diverifikasi perbaikannya oleh Bengkel/Admin.\n\nSesuai SOP Pertamina, status kerusakan tidak dapat diubah menjadi Baik secara sepihak. Silakan lakukan verifikasi perbaikan bersama Admin/Pengawas jika fisik komponen sudah selesai diperbaiki.`,
+                    [{ text: "Mengerti", style: "default" }]
+                  );
+                  return;
+                }
+                setItemStatus(originalIdx, 'BAIK');
+              }}
             >
               <LinearGradient
                 colors={isBaik ? PERTAMINA_GREEN : ['#F3F4F6', '#E5E7EB']}
                 style={tw`py-3 px-2 items-center justify-center border ${isBaik ? 'border-transparent' : 'border-gray-200'} rounded-xl`}
               >
-                <Text style={tw`font-extrabold text-sm ${isBaik ? 'text-white' : 'text-gray-500'}`} numberOfLines={1}>
-                  {optionLabels.good}
-                </Text>
+                <View style={tw`flex-row items-center justify-center`}>
+                  {item.isLocked && <Ionicons name="lock-closed" size={14} color="#6B7280" style={tw`mr-1.5`} />}
+                  <Text style={tw`font-extrabold text-sm ${isBaik ? 'text-white' : 'text-gray-500'}`} numberOfLines={1}>
+                    {optionLabels.good}
+                  </Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -932,44 +1024,81 @@ export default function HandoverFormScreen({ route, navigation }) {
               />
             </View>
 
-
             {/* Wajib Foto Kerusakan */}
             {item.category === 'A' && (
-              <View style={tw`mt-4 items-start`}>
+              <View style={tw`mt-4 items-start w-full`}>
                 <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider mb-2`}>* Foto Kerusakan (Wajib)</Text>
-                <View style={tw`relative`}>
-                  <TouchableOpacity
-                    style={tw`w-32 h-32 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
-                    onPress={() => openCameraFor(`item_${originalIdx}`)}
-                  >
-                    {photos[`item_${originalIdx}`] ? (
-                      <>
-                        <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-                        <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
-                          <Ionicons name="checkmark-circle" size={32} color="white" />
-                        </View>
-                      </>
-                    ) : (
-                      <>
-                        <Ionicons name="camera" size={32} color="#DC2626" />
-                        <Text style={tw`text-xs text-red-600 mt-2 font-bold`}>Ambil Foto</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-
-                  {photos[`item_${originalIdx}`] && (
+                <View style={tw`flex-row items-center gap-3 w-full`}>
+                  <View style={tw`relative`}>
                     <TouchableOpacity
-                      style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
-                      onPress={() => {
-                        setPhotos(prev => {
-                          const nextPhotos = { ...prev };
-                          delete nextPhotos[`item_${originalIdx}`];
-                          return nextPhotos;
-                        });
-                      }}
+                      style={tw`w-28 h-28 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
+                      onPress={() => openCameraFor(`item_${originalIdx}`)}
                     >
-                      <Ionicons name="trash-outline" size={16} color="white" />
+                      {photos[`item_${originalIdx}`] ? (
+                        <>
+                          <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
+                          <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
+                            <Ionicons name="checkmark-circle" size={32} color="white" />
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="camera" size={32} color="#DC2626" />
+                          <Text style={tw`text-xs text-red-600 mt-2 font-bold`}>Ambil Foto</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
+
+                    {photos[`item_${originalIdx}`] && !photos[`item_${originalIdx}`].isInherited && (
+                      <TouchableOpacity
+                        style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
+                        onPress={() => {
+                          setPhotos(prev => {
+                            const nextPhotos = { ...prev };
+                            delete nextPhotos[`item_${originalIdx}`];
+                            return nextPhotos;
+                          });
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="white" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Info Card di Samping Foto Kerusakan */}
+                  {photos[`item_${originalIdx}`] ? (
+                    <View style={tw`flex-1 bg-white p-3 rounded-2xl border border-gray-200 shadow-xs justify-center`}>
+                      <View style={tw`flex-row items-center mb-1.5`}>
+                        <Ionicons name="person-circle" size={16} color="#0055A5" style={tw`mr-1.5`} />
+                        <View style={tw`flex-1`}>
+                          <Text style={tw`text-[10px] text-gray-400 font-semibold uppercase tracking-wider`}>Difoto Oleh</Text>
+                          <Text style={tw`text-xs font-black text-gray-800`} numberOfLines={1}>
+                            {photos[`item_${originalIdx}`].photographerName || item.reporterName || amt1 || user?.name || 'AMT'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={tw`flex-row items-center mb-2`}>
+                        <Ionicons name="time-outline" size={14} color="#6B7280" style={tw`mr-1.5`} />
+                        <Text style={tw`text-[10px] text-gray-500 font-medium`} numberOfLines={1}>
+                          {photos[`item_${originalIdx}`].timestampStr || 'Waktu tercatat'}
+                        </Text>
+                      </View>
+                      {photos[`item_${originalIdx}`].isInherited ? (
+                        <View style={tw`bg-amber-100/90 px-2 py-0.5 rounded-md self-start border border-amber-200`}>
+                          <Text style={tw`text-[9px] font-bold text-amber-900`}>Foto Bawaan (Otomatis)</Text>
+                        </View>
+                      ) : (
+                        <View style={tw`bg-green-100/90 px-2 py-0.5 rounded-md self-start border border-green-200`}>
+                          <Text style={tw`text-[9px] font-bold text-green-900`}>Foto Baru</Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={tw`flex-1 pr-2`}>
+                      <Text style={tw`text-xs text-gray-500 leading-4`}>
+                        Ambil foto fisik kondisi kerusakan sebagai bukti lampiran inspeksi resmi.
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>
@@ -1216,7 +1345,10 @@ export default function HandoverFormScreen({ route, navigation }) {
 
                       {/* Thumbnail Watermark */}
                       <View style={tw`absolute top-1 left-1 right-1`}>
-                        <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>{photos[side].locStr}</Text>
+                        <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg`} numberOfLines={1}>
+                          Difoto: {photos[side].photographerName || amt1 || user?.name || 'AMT'}
+                        </Text>
+                        <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].locStr}</Text>
                         <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
                       </View>
 

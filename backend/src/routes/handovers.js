@@ -203,6 +203,48 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       parsedItems = items;
     }
 
+    // Integritas Audit: Cek apakah kendaraan memiliki temuan kerusakan Kategori A yang belum disetujui perbaikannya
+    const unresolvedIssues = prisma.issue?.findMany ? await prisma.issue.findMany({
+      where: {
+        handover: { noPolisi },
+        status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
+      },
+      include: {
+        handover: {
+          include: { items: true }
+        }
+      }
+    }) : [];
+
+    const activeUnresolvedItemNames = new Set();
+    for (const iss of unresolvedIssues) {
+      for (const it of iss.handover?.items || []) {
+        if (!it.isGood && !it.isRepaired && (it.category === 'A' || !it.category || it.category !== 'B')) {
+          activeUnresolvedItemNames.add(it.name.trim().toLowerCase());
+        }
+      }
+    }
+
+    if (activeUnresolvedItemNames.size > 0 && !isAdminOrPengawas) {
+      for (const item of parsedItems) {
+        const itName = (item.name || '').trim().toLowerCase();
+        if (activeUnresolvedItemNames.has(itName) && item.isGood) {
+          return res.status(400).json({
+            error: `Item "${item.name}" masih tercatat rusak pada inspeksi sebelumnya dan belum diverifikasi perbaikan oleh Bengkel/Admin. Status tidak dapat diubah menjadi Baik secara sepihak.`
+          });
+        }
+      }
+    }
+
+    // Parse foto bawaan (inheritedPhotos) jika ada item warisan yang tidak difoto ulang
+    let inheritedPhotos = [];
+    try {
+      if (req.body.inheritedPhotos) {
+        inheritedPhotos = typeof req.body.inheritedPhotos === 'string' ? JSON.parse(req.body.inheritedPhotos) : req.body.inheritedPhotos;
+        if (!Array.isArray(inheritedPhotos)) inheritedPhotos = [];
+      }
+    } catch (e) { }
+
     // Pisahkan item bermasalah: Kategori A (Kendaraan) vs Kategori B (Perlengkapan / Kepatuhan AMT)
     const vehicleIssueItems = parsedItems.filter(item => !item.isGood && (item.category === 'A' || !item.category || item.category !== 'B'));
     const amtIssueItems = parsedItems.filter(item => !item.isGood && item.category === 'B');
@@ -351,28 +393,37 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
             }))
           },
           photos: {
-            create: validFiles.map(file => {
-              let photoType = 'TERLAMPIR';
-              if (file.originalname) {
-                let decodedOrig = file.originalname;
-                try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) { }
-                const nameWithoutExt = decodedOrig.split('.')[0];
-                if (nameWithoutExt.startsWith('photo_')) {
-                  photoType = nameWithoutExt.replace('photo_', '');
-                } else if (nameWithoutExt.startsWith('Kerusakan_')) {
-                  photoType = nameWithoutExt.replace('Kerusakan_', 'Kerusakan: ');
-                } else {
-                  photoType = nameWithoutExt;
+            create: [
+              ...validFiles.map(file => {
+                let photoType = 'TERLAMPIR';
+                if (file.originalname) {
+                  let decodedOrig = file.originalname;
+                  try { decodedOrig = decodeURIComponent(file.originalname); } catch (e) { }
+                  const nameWithoutExt = decodedOrig.split('.')[0];
+                  if (nameWithoutExt.startsWith('photo_')) {
+                    photoType = nameWithoutExt.replace('photo_', '');
+                  } else if (nameWithoutExt.startsWith('Kerusakan_')) {
+                    photoType = nameWithoutExt.replace('Kerusakan_', 'Kerusakan: ');
+                  } else {
+                    photoType = nameWithoutExt;
+                  }
                 }
-              }
-              return {
-                type: photoType,
-                url: (file.path || '').replace(/\\/g, '/'),
-                thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
-                previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
-                originalSize: file.originalSize || 0
-              };
-            })
+                return {
+                  type: photoType,
+                  url: (file.path || '').replace(/\\/g, '/'),
+                  thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
+                  previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
+                  originalSize: file.originalSize || 0
+                };
+              }),
+              ...inheritedPhotos.map(ip => ({
+                type: ip.type || 'Kerusakan Bawaan',
+                url: (ip.url || '').replace(/\\/g, '/'),
+                thumbnailUrl: ip.thumbnailUrl ? ip.thumbnailUrl.replace(/\\/g, '/') : null,
+                previewUrl: ip.previewUrl ? ip.previewUrl.replace(/\\/g, '/') : null,
+                originalSize: ip.originalSize || 0
+              }))
+            ]
           },
           // HANYA buat record Issue jika ada kerusakan kendaraan Kategori A
           issue: vehicleIssueItems.length > 0 ? {
@@ -442,7 +493,8 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
     await CacheService.delPattern('handovers:*');
 
     // Kirim notifikasi secara asinkron (non-blocking) di background agar tidak menahan response ke client
-    (async () => {
+    // Pada environment test, tunggu agar assertion jest tidak mengalami race condition
+    if (process.env.NODE_ENV === 'test') {
       try {
         if (vehicleIssueItems.length > 0) {
           await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
@@ -450,10 +502,21 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
         if (amtIssueItems.length > 0) {
           await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
         }
-      } catch (notifErr) {
-        console.error('Non-critical: Gagal mengirim notifikasi background:', notifErr.message);
-      }
-    })();
+      } catch (notifErr) { }
+    } else {
+      (async () => {
+        try {
+          if (vehicleIssueItems.length > 0) {
+            await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
+          }
+          if (amtIssueItems.length > 0) {
+            await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
+          }
+        } catch (notifErr) {
+          console.error('Non-critical: Gagal mengirim notifikasi background:', notifErr.message);
+        }
+      })();
+    }
 
     // Jika alamat belum ada di cache saat handover dibuat, jalankan geocode non-blocking di background
     if (!locationAddress && hasCoords && handover && handover.id) {

@@ -476,9 +476,16 @@ export default function HandoverDetailScreen({ route, navigation }) {
             {/* Foto Kerusakan */}
             {!isBaik && damagePhoto && (
               <View style={tw`mt-3 bg-red-50 p-3 rounded-xl border border-red-100`}>
-                <View style={tw`flex-row items-center mb-2`}>
-                  <Ionicons name="camera" size={16} color="#ED1C24" style={tw`mr-2`} />
-                  <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
+                <View style={tw`flex-row items-center justify-between mb-2`}>
+                  <View style={tw`flex-row items-center`}>
+                    <Ionicons name="camera" size={16} color="#ED1C24" style={tw`mr-2`} />
+                    <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Foto Kerusakan</Text>
+                  </View>
+                  <View style={tw`bg-red-200/70 px-2 py-0.5 rounded-md`}>
+                    <Text style={tw`text-[10px] font-bold text-red-900`}>
+                      Pelapor: {handover?.amt1 || handover?.driverName || handover?.user?.name || 'AMT'}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity onPress={() => { setSelectedPhoto(damagePhoto); setPhotoRotation(0); }}>
                   <Image source={{ uri: getPhotoUrl(damagePhoto) }} style={tw`w-full h-32 rounded-lg mt-1`} />
@@ -938,6 +945,9 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </Text>
               <Text style={tw`text-blue-300 font-bold text-xs uppercase tracking-widest mt-0.5`}>
                 Sisi {selectedPhoto?.type || 'Kendaraan'} {handover?.noPolisi ? `• ${handover.noPolisi}` : ''}
+              </Text>
+              <Text style={tw`text-gray-300 font-medium text-[11px] mt-0.5`}>
+                Difoto oleh: {handover?.amt1 || handover?.driverName || handover?.user?.name || 'AMT'}
               </Text>
             </View>
             <View style={tw`flex-row items-center gap-2`}>

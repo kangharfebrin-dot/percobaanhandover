@@ -150,6 +150,56 @@ router.get('/scan/:barcode', authenticateToken, async (req, res) => {
       }
     }
 
+    // 3.5 Ambil seluruh temuan kerusakan kendaraan (Kategori A) yang belum disetujui perbaikannya
+    const activeIssues = prisma.issue?.findMany ? await prisma.issue.findMany({
+      where: {
+        handover: { noPolisi: activeVehicle.noPolisi },
+        status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
+      },
+      include: {
+        handover: {
+          include: {
+            items: true,
+            photos: true,
+            user: { select: { id: true, name: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    }) : [];
+
+    const unresolvedDamageItems = [];
+    for (const issue of activeIssues) {
+      const items = (issue.handover?.items || []).filter(i => !i.isGood && !i.isRepaired && (i.category === 'A' || !i.category || i.category !== 'B'));
+      for (const it of items) {
+        if (!unresolvedDamageItems.some(u => u.name === it.name)) {
+          const cleanItem = it.name.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+          const matchedPhoto = (issue.handover?.photos || []).find(p => {
+            const pType = (p.type || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+            const pUrl = (p.url || '').toLowerCase();
+            return pType.includes(cleanItem) || pUrl.includes(cleanItem.replace(/\s+/g, '_'));
+          }) || null;
+
+          unresolvedDamageItems.push({
+            name: it.name,
+            category: it.category || 'A',
+            severity: it.severity || 'Minor',
+            notes: it.notes,
+            reportedBy: issue.handover?.amt1 || issue.handover?.user?.name || 'Kru Sebelumnya',
+            reportedAt: issue.handover?.timestamp || issue.handover?.createdAt,
+            handoverId: issue.handoverId,
+            issueId: issue.id,
+            photo: matchedPhoto ? {
+              url: matchedPhoto.url,
+              previewUrl: matchedPhoto.previewUrl,
+              thumbnailUrl: matchedPhoto.thumbnailUrl,
+              type: matchedPhoto.type
+            } : null
+          });
+        }
+      }
+    }
+
     // 4. Issue scan token satu kali pakai — diikat pada userId + vehicleId + processType
     // Token ini harus disertakan saat submit handover untuk membuktikan scan telah dilakukan
     const processType = req.query.processType || 'mulai';
@@ -167,6 +217,7 @@ router.get('/scan/:barcode', authenticateToken, async (req, res) => {
       activeUserHandover,
       isHangingShift,
       elapsedHours,
+      unresolvedDamageItems,
       scanToken
     });
   } catch (error) {

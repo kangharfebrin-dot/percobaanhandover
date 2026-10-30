@@ -46,6 +46,7 @@ export default function ScannerScreen({ route, navigation }) {
   const [hangingElapsedHours, setHangingElapsedHours] = useState(0);
   const isFocused = useIsFocused();
   const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
+  const [unresolvedDamageItems, setUnresolvedDamageItems] = useState([]);
 
   // Pastikan flash/senter mati saat pindah layar atau muncul popup/modal hasil scan
   useEffect(() => {
@@ -228,6 +229,7 @@ export default function ScannerScreen({ route, navigation }) {
       if (res.data.scanToken) {
         setScanToken(res.data.scanToken);
       }
+      setUnresolvedDamageItems(res.data.unresolvedDamageItems || []);
 
       // === STEP 1: Cek apakah kendaraan sedang dalam perbaikan (ada issue ONGOING / PENDING_APPROVAL) ===
       // Jika status kendaraan READY_TO_START dan perbaikan pada handover terakhir sudah disetujui (RESOLVED),
@@ -463,7 +465,13 @@ export default function ScannerScreen({ route, navigation }) {
 
   const proceedToForm = () => {
     setScanResult(null);
-    navigation.navigate('HandoverForm', { noPolisi: scannedNoPolisi, type, lastHandover, scanToken });
+    navigation.navigate('HandoverForm', {
+      noPolisi: scannedNoPolisi,
+      type,
+      lastHandover,
+      scanToken,
+      unresolvedDamageItems
+    });
   };
 
   const renderRecapModal = () => {
@@ -613,6 +621,21 @@ export default function ScannerScreen({ route, navigation }) {
               <Text style={tw`font-black text-[#111827] text-[16px]`}>{odoMeter} km</Text>
             </View>
           </View>
+
+          {/* Banner Catatan Kerusakan Warisan (Jika ada) */}
+          {unresolvedDamageItems && unresolvedDamageItems.length > 0 && (
+            <View style={tw`bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4`}>
+              <View style={tw`flex-row items-center mb-1`}>
+                <Ionicons name="shield-checkmark" size={16} color="#D97706" style={tw`mr-1.5`} />
+                <Text style={tw`text-[12px] font-bold text-amber-900`}>
+                  Catatan Kerusakan Warisan ({unresolvedDamageItems.length})
+                </Text>
+              </View>
+              <Text style={tw`text-[11px] text-amber-800 leading-4`}>
+                Item <Text style={tw`font-bold`}>{unresolvedDamageItems.map(u => u.name).join(', ')}</Text> dilaporkan rusak oleh <Text style={tw`font-bold`}>{unresolvedDamageItems[0].reportedBy}</Text> dan terkunci di form hingga perbaikan disetujui Admin.
+              </Text>
+            </View>
+          )}
 
           {/* Button Lanjut */}
           <TouchableOpacity onPress={proceedToForm} style={tw`w-full`}>
