@@ -622,17 +622,17 @@ export default function ScannerScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Banner Catatan Kerusakan Warisan (Jika ada) */}
+          {/* Banner Catatan Kerusakan Sebelumnya (Jika ada) */}
           {unresolvedDamageItems && unresolvedDamageItems.length > 0 && (
             <View style={tw`bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4`}>
               <View style={tw`flex-row items-center mb-1`}>
                 <Ionicons name="shield-checkmark" size={16} color="#D97706" style={tw`mr-1.5`} />
                 <Text style={tw`text-[12px] font-bold text-amber-900`}>
-                  Catatan Kerusakan Warisan ({unresolvedDamageItems.length})
+                  Catatan Kerusakan Sebelumnya ({unresolvedDamageItems.length})
                 </Text>
               </View>
               <Text style={tw`text-[11px] text-amber-800 leading-4`}>
-                Item <Text style={tw`font-bold`}>{unresolvedDamageItems.map(u => u.name).join(', ')}</Text> dilaporkan rusak oleh <Text style={tw`font-bold`}>{unresolvedDamageItems[0].reportedBy}</Text> dan terkunci di form hingga perbaikan disetujui Admin.
+                Item <Text style={tw`font-bold`}>{unresolvedDamageItems.map(u => u.baseName || u.name).join(', ')}</Text> dilaporkan rusak oleh <Text style={tw`font-bold`}>{unresolvedDamageItems[0].reportedBy}</Text> dan terkunci di form hingga perbaikan disetujui Admin.
               </Text>
             </View>
           )}

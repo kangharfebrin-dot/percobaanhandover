@@ -172,19 +172,24 @@ router.get('/scan/:barcode', authenticateToken, async (req, res) => {
     for (const issue of activeIssues) {
       const items = (issue.handover?.items || []).filter(i => !i.isGood && !i.isRepaired && (i.category === 'A' || !i.category || i.category !== 'B'));
       for (const it of items) {
-        if (!unresolvedDamageItems.some(u => u.name === it.name)) {
-          const cleanItem = it.name.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+        const rawName = it.name || '';
+        const baseName = rawName.replace(/\s*\[(MAJOR|MINOR)\]/gi, '').split(/\s*-\s*/)[0].trim();
+        const extractedNotes = it.notes || (rawName.includes(' - ') ? rawName.split(/\s*-\s*/).slice(1).join(' - ') : '');
+
+        if (!unresolvedDamageItems.some(u => u.baseName === baseName || u.name === rawName)) {
+          const cleanItem = baseName.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
           const matchedPhoto = (issue.handover?.photos || []).find(p => {
             const pType = (p.type || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
             const pUrl = (p.url || '').toLowerCase();
             return pType.includes(cleanItem) || pUrl.includes(cleanItem.replace(/\s+/g, '_'));
-          }) || null;
+          }) || (issue.handover?.photos || []).find(p => (p.type || '').toLowerCase().startsWith('kerusakan:')) || null;
 
           unresolvedDamageItems.push({
-            name: it.name,
+            name: rawName,
+            baseName: baseName,
             category: it.category || 'A',
             severity: it.severity || 'Minor',
-            notes: it.notes,
+            notes: extractedNotes || 'Kerusakan dari inspeksi sebelumnya.',
             reportedBy: issue.handover?.amt1 || issue.handover?.user?.name || 'Kru Sebelumnya',
             reportedAt: issue.handover?.timestamp || issue.handover?.createdAt,
             handoverId: issue.handoverId,

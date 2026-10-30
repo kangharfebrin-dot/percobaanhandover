@@ -261,6 +261,16 @@ export default function HandoverFormScreen({ route, navigation }) {
     };
     loadWorkers();
 
+    const normalizeItemName = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/\s*\[(MAJOR|MINOR)\]/gi, '')
+        .split(/\s*-\s*/)[0]
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .toLowerCase()
+        .trim();
+    };
+
     const loadChecklist = async () => {
       const mapSourceItems = (sourceList) => {
         const initialInheritedPhotos = {};
@@ -273,16 +283,18 @@ export default function HandoverFormScreen({ route, navigation }) {
           let reporterTime = null;
           let inheritedPhoto = null;
 
+          const cleanTarget = normalizeItemName(item.name);
+
           // 1. Cek dari unresolvedDamageItems
           const unresolved = (unresolvedDamageItems || []).find(u =>
-            (u.name || '').toLowerCase().trim() === (item.name || '').toLowerCase().trim()
+            normalizeItemName(u.baseName || u.name) === cleanTarget
           );
 
           // 2. Cek dari lastHandover
           let pastItem = null;
           if (lastHandover && lastHandover.items) {
             pastItem = lastHandover.items.find(i =>
-              (i.name || '').toLowerCase().trim() === (item.name || '').toLowerCase().trim() &&
+              normalizeItemName(i.name) === cleanTarget &&
               (i.category === item.category || item.category === 'A')
             );
           }
@@ -291,7 +303,7 @@ export default function HandoverFormScreen({ route, navigation }) {
             status = 'RUSAK';
             isLocked = true;
             isInherited = true;
-            catatan = unresolved.notes || 'Kerusakan bawaan dari inspeksi sebelumnya.';
+            catatan = unresolved.notes || 'Kerusakan dari inspeksi sebelumnya.';
             reporterName = unresolved.reportedBy;
             reporterTime = unresolved.reportedAt;
             inheritedPhoto = unresolved.photo;
@@ -299,16 +311,15 @@ export default function HandoverFormScreen({ route, navigation }) {
             status = 'RUSAK';
             isLocked = true;
             isInherited = true;
-            catatan = pastItem.repairNote || pastItem.notes || 'Kerusakan bawaan dari inspeksi sebelumnya.';
+            catatan = pastItem.repairNote || pastItem.notes || (pastItem.name?.includes(' - ') ? pastItem.name.split(/\s*-\s*/).slice(1).join(' - ') : '') || 'Kerusakan dari inspeksi sebelumnya.';
             reporterName = lastHandover.amt1 || lastHandover.driverName || (lastHandover.user ? lastHandover.user.name : 'Kru Sebelumnya');
             reporterTime = lastHandover.timestamp || lastHandover.createdAt;
 
-            const cleanItem = item.name.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
             inheritedPhoto = (lastHandover.photos || []).find(p => {
               const pType = (p.type || '').replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
               const pUrl = (p.url || '').toLowerCase();
-              return pType.includes(cleanItem) || pUrl.includes(cleanItem.replace(/\s+/g, '_'));
-            }) || null;
+              return pType.includes(cleanTarget) || pUrl.includes(cleanTarget.replace(/\s+/g, '_'));
+            }) || (lastHandover.photos || []).find(p => (p.type || '').toLowerCase().startsWith('kerusakan:')) || null;
           }
 
           if (isInherited && inheritedPhoto) {
@@ -824,10 +835,10 @@ export default function HandoverFormScreen({ route, navigation }) {
       for (const key of Object.keys(photos)) {
         const p = photos[key];
         if (p) {
-          // Jika foto adalah foto warisan yang sudah ada di server, tidak perlu unggah ulang multipart
+          // Jika foto adalah foto sebelumnya yang sudah ada di server, tidak perlu unggah ulang multipart
           if (p.isInherited && p.inheritedPhotoData) {
             inheritedPhotosToSend.push({
-              type: p.inheritedPhotoData.type || 'Kerusakan Bawaan',
+              type: p.inheritedPhotoData.type || 'Kerusakan Sebelumnya',
               url: p.inheritedPhotoData.url,
               previewUrl: p.inheritedPhotoData.previewUrl,
               thumbnailUrl: p.inheritedPhotoData.thumbnailUrl,
@@ -1012,12 +1023,13 @@ export default function HandoverFormScreen({ route, navigation }) {
               <Text style={tw`text-xs font-bold text-red-800 uppercase tracking-wider`}>Detail Kerusakan / Catatan:</Text>
             </View>
 
-            <View style={tw`bg-white rounded-xl shadow-sm border border-red-100 p-1`}>
+            <View style={tw`bg-white rounded-xl shadow-sm border border-red-100 p-1 ${item.isLocked ? 'bg-gray-100 border-gray-300' : ''}`}>
               <TextInput
-                style={[tw`p-3 text-sm text-gray-800 font-medium`, { minHeight: 80, textAlignVertical: 'top' }]}
+                style={[tw`p-3 text-sm font-medium ${item.isLocked ? 'text-gray-600 bg-gray-100' : 'text-gray-800'}`, { minHeight: 80, textAlignVertical: 'top' }]}
                 placeholder="Ketik detail kerusakan di sini... (Opsional)"
                 placeholderTextColor="#9CA3AF"
                 value={item.catatan}
+                editable={!item.isLocked}
                 onChangeText={(text) => updateItemCatatan(originalIdx, text)}
                 multiline
                 maxLength={500}
@@ -1032,7 +1044,16 @@ export default function HandoverFormScreen({ route, navigation }) {
                   <View style={tw`relative`}>
                     <TouchableOpacity
                       style={tw`w-28 h-28 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
-                      onPress={() => openCameraFor(`item_${originalIdx}`)}
+                      onPress={() => {
+                        if (item.isLocked) {
+                          Alert.alert(
+                            "Foto Terkunci 🔒",
+                            `Foto kerusakan ini diambil oleh ${item.reporterName || 'kru sebelumnya'} pada inspeksi sebelumnya dan terkunci.`
+                          );
+                          return;
+                        }
+                        openCameraFor(`item_${originalIdx}`);
+                      }}
                     >
                       {photos[`item_${originalIdx}`] ? (
                         <>
@@ -1049,7 +1070,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                       )}
                     </TouchableOpacity>
 
-                    {photos[`item_${originalIdx}`] && !photos[`item_${originalIdx}`].isInherited && (
+                    {photos[`item_${originalIdx}`] && !item.isLocked && !photos[`item_${originalIdx}`].isInherited && (
                       <TouchableOpacity
                         style={tw`absolute -top-2 -right-2 bg-red-600 rounded-full p-1.5 shadow-md z-10 border-2 border-white`}
                         onPress={() => {
@@ -1085,7 +1106,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                       </View>
                       {photos[`item_${originalIdx}`].isInherited ? (
                         <View style={tw`bg-amber-100/90 px-2 py-0.5 rounded-md self-start border border-amber-200`}>
-                          <Text style={tw`text-[9px] font-bold text-amber-900`}>Foto Bawaan (Otomatis)</Text>
+                          <Text style={tw`text-[9px] font-bold text-amber-900`}>Foto Inspeksi Sebelumnya</Text>
                         </View>
                       ) : (
                         <View style={tw`bg-green-100/90 px-2 py-0.5 rounded-md self-start border border-green-200`}>

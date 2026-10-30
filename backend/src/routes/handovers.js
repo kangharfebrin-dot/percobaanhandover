@@ -216,18 +216,28 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       }
     }) : [];
 
+    const normalizeChecklistItemName = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/\s*\[(MAJOR|MINOR)\]/gi, '')
+        .split(/\s*-\s*/)[0]
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .toLowerCase()
+        .trim();
+    };
+
     const activeUnresolvedItemNames = new Set();
     for (const iss of unresolvedIssues) {
       for (const it of iss.handover?.items || []) {
         if (!it.isGood && !it.isRepaired && (it.category === 'A' || !it.category || it.category !== 'B')) {
-          activeUnresolvedItemNames.add(it.name.trim().toLowerCase());
+          activeUnresolvedItemNames.add(normalizeChecklistItemName(it.name));
         }
       }
     }
 
     if (activeUnresolvedItemNames.size > 0 && !isAdminOrPengawas) {
       for (const item of parsedItems) {
-        const itName = (item.name || '').trim().toLowerCase();
+        const itName = normalizeChecklistItemName(item.name);
         if (activeUnresolvedItemNames.has(itName) && item.isGood) {
           return res.status(400).json({
             error: `Item "${item.name}" masih tercatat rusak pada inspeksi sebelumnya dan belum diverifikasi perbaikan oleh Bengkel/Admin. Status tidak dapat diubah menjadi Baik secara sepihak.`
@@ -236,7 +246,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       }
     }
 
-    // Parse foto bawaan (inheritedPhotos) jika ada item warisan yang tidak difoto ulang
+    // Parse foto sebelumnya (inheritedPhotos) jika ada item yang tidak difoto ulang
     let inheritedPhotos = [];
     try {
       if (req.body.inheritedPhotos) {
@@ -417,7 +427,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
                 };
               }),
               ...inheritedPhotos.map(ip => ({
-                type: ip.type || 'Kerusakan Bawaan',
+                type: ip.type || 'Kerusakan Sebelumnya',
                 url: (ip.url || '').replace(/\\/g, '/'),
                 thumbnailUrl: ip.thumbnailUrl ? ip.thumbnailUrl.replace(/\\/g, '/') : null,
                 previewUrl: ip.previewUrl ? ip.previewUrl.replace(/\\/g, '/') : null,
