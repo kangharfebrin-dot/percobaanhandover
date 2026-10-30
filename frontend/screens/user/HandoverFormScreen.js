@@ -184,6 +184,7 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [photoViewerState, setPhotoViewerState] = useState(null);
   const [lockedItemModal, setLockedItemModal] = useState(null);
+  const [authToken, setAuthToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState('USER');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -275,7 +276,23 @@ export default function HandoverFormScreen({ route, navigation }) {
         .trim();
     };
 
+    const buildPhotoUrl = (url, tokenStr) => {
+      if (!url) return '';
+      const clean = url.replace(/\\/g, '/').replace(/^\/+/, '');
+      let full = clean.startsWith('http') ? clean : `${API_URL}/${clean}`;
+      if (tokenStr && !full.includes('?token=')) {
+        full += `${full.includes('?') ? '&' : '?'}token=${tokenStr}`;
+      }
+      return full;
+    };
+
     const loadChecklist = async () => {
+      let activeToken = '';
+      try {
+        activeToken = (await AsyncStorage.getItem('token')) || '';
+        if (activeToken) setAuthToken(activeToken);
+      } catch (e) {}
+
       const mapSourceItems = (sourceList) => {
         const initialInheritedPhotos = {};
         const mapped = sourceList.map((item, idx) => {
@@ -329,7 +346,7 @@ export default function HandoverFormScreen({ route, navigation }) {
           if (isInherited && inheritedPhoto) {
             const photoUrl = inheritedPhoto.previewUrl || inheritedPhoto.url;
             if (photoUrl) {
-              const rawUri = photoUrl.startsWith('http') ? photoUrl : `${API_URL}/${photoUrl.replace(/\\/g, '/').replace(/^\/+/, '')}`;
+              const rawUri = buildPhotoUrl(photoUrl, activeToken);
               initialInheritedPhotos[`item_${idx}`] = {
                 uri: rawUri,
                 isInherited: true,
@@ -1064,7 +1081,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                     >
                       {photos[`item_${originalIdx}`] ? (
                         <>
-                          <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
+                          <Image source={{ uri: photos[`item_${originalIdx}`].uri, headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} }} style={tw`w-full h-full`} resizeMode="cover" />
                           <View style={tw`absolute inset-0 bg-black/25 justify-center items-center`}>
                             <View style={tw`bg-black/60 px-2.5 py-1 rounded-full flex-row items-center border border-white/20`}>
                               <Ionicons name="eye-outline" size={13} color="white" style={tw`mr-1`} />
@@ -1932,7 +1949,7 @@ export default function HandoverFormScreen({ route, navigation }) {
               {/* Main Image Display */}
               <View style={tw`flex-1 justify-center items-center bg-black px-2`}>
                 <Image
-                  source={{ uri: photoViewerState.uri }}
+                  source={{ uri: photoViewerState.uri, headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} }}
                   style={tw`w-full h-full`}
                   resizeMode="contain"
                 />

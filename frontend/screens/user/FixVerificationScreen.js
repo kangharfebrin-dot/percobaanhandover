@@ -120,10 +120,13 @@ export default function FixVerificationScreen({ route, navigation }) {
       let activeIssue = null;
       const targetId = issueId || (noPolisi && !noPolisi.includes(' ') && noPolisi.length > 15 ? noPolisi : null);
 
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       // 1. Coba fetch langsung via endpoint /api/issues/:id jika ada targetId
       if (targetId) {
         try {
-          const detailRes = await axios.get(`${API_URL}/api/issues/${targetId}`);
+          const detailRes = await axios.get(`${API_URL}/api/issues/${targetId}`, { headers });
           if (detailRes.data && (detailRes.data.handover || detailRes.data.id)) {
             activeIssue = detailRes.data;
           }
@@ -134,7 +137,17 @@ export default function FixVerificationScreen({ route, navigation }) {
 
       // 2. Fallback ke /api/issues/ongoing
       if (!activeIssue) {
-        const res = await axios.get(`${API_URL}/api/issues/ongoing`);
+        // Coba endpoint /api/issues/:noPolisi jika belum dapat
+        if (noPolisi) {
+          try {
+            const vehIssueRes = await axios.get(`${API_URL}/api/issues/${encodeURIComponent(noPolisi)}`, { headers });
+            if (vehIssueRes.data && (vehIssueRes.data.handover || vehIssueRes.data.id)) {
+              activeIssue = vehIssueRes.data;
+            }
+          } catch (e) { }
+        }
+
+        const res = !activeIssue ? await axios.get(`${API_URL}/api/issues/ongoing${noPolisi ? '?noPolisi=' + encodeURIComponent(noPolisi) : ''}`, { headers }) : { data: [] };
         const ongoingIssues = res.data || [];
         activeIssue = ongoingIssues.find(iss => 
           (targetId && (iss.id === targetId || iss.handoverId === targetId)) ||
@@ -350,6 +363,19 @@ export default function FixVerificationScreen({ route, navigation }) {
         />
 
         <ScrollView style={tw`flex-1 px-4 py-6 max-w-4xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
+          {/* Card Info Petugas Verifikasi */}
+          <View style={tw`bg-blue-50/90 border border-blue-200 rounded-2xl p-4 mb-5 flex-row items-center shadow-xs`}>
+            <View style={tw`bg-[#0055A5] w-11 h-11 rounded-xl items-center justify-center mr-3.5 shadow-sm`}>
+              <Ionicons name="shield-checkmark" size={22} color="white" />
+            </View>
+            <View style={tw`flex-1`}>
+              <Text style={tw`text-[10px] font-bold text-blue-900 uppercase tracking-wider`}>Petugas Verifikasi Perbaikan</Text>
+              <Text style={tw`text-sm font-extrabold text-gray-900`}>{user?.name || 'AMT'}</Text>
+              <Text style={tw`text-[11px] text-gray-600 mt-0.5 leading-4`}>
+                Bertugas memverifikasi kelayakan fisik komponen sebelum kendaraan beroperasi kembali.
+              </Text>
+            </View>
+          </View>
         {brokenItems.length === 0 ? (
           <View style={tw`items-center mt-20`}>
             <View style={tw`w-24 h-24 bg-blue-50 rounded-full items-center justify-center mb-4`}>

@@ -68,7 +68,18 @@ router.get('/', authenticateToken, async (req, res) => {
       take: limit
     });
 
-    res.json({ success: true, notifications });
+    // Deduplikasi pesan kembar (misal targetRole ADMIN & PENGAWAS yang dibuat bersamaan untuk 1 event)
+    const seenMap = new Set();
+    const uniqueNotifications = [];
+    for (const notif of notifications) {
+      const dedupKey = `${notif.actionType || ''}_${notif.actionId || ''}_${notif.title}_${notif.message}`;
+      if (!seenMap.has(dedupKey)) {
+        seenMap.add(dedupKey);
+        uniqueNotifications.push(notif);
+      }
+    }
+
+    res.json({ success: true, notifications: uniqueNotifications });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -104,6 +115,20 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
       where: { id },
       data: { isRead: true }
     });
+
+    // Tandai juga kembaran notifikasi untuk role lain agar tidak tertinggal unread
+    if (notification.actionId && notification.actionType) {
+      await prisma.notification.updateMany({
+        where: {
+          actionId: notification.actionId,
+          actionType: notification.actionType,
+          title: notification.title,
+          isRead: false
+        },
+        data: { isRead: true }
+      }).catch(() => {});
+    }
+
     res.json({ success: true, notification: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });

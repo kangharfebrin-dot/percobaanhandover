@@ -21,9 +21,9 @@ router.get('/ongoing', authenticateToken, async (req, res) => {
       status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
     };
 
-    if (role === 'AMT') {
+    if (req.query.noPolisi) {
       where.handover = {
-        userId: userId
+        noPolisi: req.query.noPolisi
       };
     }
 
@@ -182,14 +182,10 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
     });
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
 
-    if (['USER', 'AMT'].includes(req.user.role)) {
-      if (target.handover?.userId !== req.user.id) {
-        return res.status(403).json({ error: 'Tidak ada akses untuk memverifikasi perbaikan ini' });
-      }
-    }
     const issueId = target.id;
     const { itemsData } = req.body;
     const items = JSON.parse(itemsData || '[]');
+    const verifyingAmtName = req.user?.name || 'Petugas AMT';
 
     for (const item of items) {
       const file = (req.files || []).find(f => f.fieldname === 'photo_' + item.id);
@@ -198,8 +194,13 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
         photoUrl = (file.path || '').replace(/\\/g, '/');
       }
 
+      const cleanNote = item.repairNote ? item.repairNote.trim() : '';
+      const formattedNote = cleanNote.startsWith('[Diverifikasi oleh:')
+        ? cleanNote
+        : `[Diverifikasi oleh: ${verifyingAmtName}] ${cleanNote}`;
+
       const updatePayload = {
-        repairNote: item.repairNote,
+        repairNote: formattedNote,
         isRepaired: true
       };
       if (photoUrl) {
@@ -230,7 +231,7 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
       const notifData = [
         {
           title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
-          message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+          message: `AMT ${verifyingAmtName} telah mengirim bukti verifikasi perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
           type: 'INFO',
           targetRole: 'ADMIN',
           actionType: 'VIEW_ISSUE',
@@ -239,7 +240,7 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
         },
         {
           title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
-          message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+          message: `AMT ${verifyingAmtName} telah mengirim bukti verifikasi perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
           type: 'INFO',
           targetRole: 'PENGAWAS',
           actionType: 'VIEW_ISSUE',

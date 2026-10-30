@@ -253,11 +253,8 @@ export default function ScannerScreen({ route, navigation }) {
       const hasUnrepairedMajor = activeIssue?.handover?.items?.some(item => isVehicleItem(item) && item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
       const hasUnrepairedMinor = activeIssue?.handover?.items?.some(item => isVehicleItem(item) && !item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
 
-      // Cek apakah user ini berhak melakukan verifikasi perbaikan (fuzzy match toleran typo/spasi & pengawas/admin)
-      const isReporter = String(activeIssue?.handover?.userId) === String(userId);
-      const isAmt1 = isNameMatch(activeIssue?.handover?.amt1, user?.name);
-      const isAmt2 = isNameMatch(activeIssue?.handover?.amt2, user?.name);
-      const canRepair = isUnderRepair ? (isAmt1 || isAmt2 || isReporter || isAdminOrPengawas || userRole === 'SUPER_ADMIN') : false;
+      // Seluruh kru AMT / pengguna yang bertugas di kendaraan berhak melakukan verifikasi perbaikan fisik komponen
+      const canRepair = isUnderRepair ? true : false;
 
       // === STEP 1.5: Handle kendaraan yang sedang menunggu respon/persetujuan dari Admin ===
       if (isUnderRepair && isPendingApproval) {
@@ -271,13 +268,7 @@ export default function ScannerScreen({ route, navigation }) {
 
       // === STEP 2: Handle kendaraan dengan issue Major yang belum diperbaiki (DIBLOKIR) ===
       if (isUnderRepair && hasUnrepairedMajor) {
-        if (!canRepair) {
-          setErrorMessage('Kendaraan ini sedang dalam perbaikan (Kerusakan Major). Hanya AMT 1 dan AMT 2 yang bertugas yang dapat mengirim laporan perbaikan.');
-          setScanResult('error');
-          setLoading(false);
-          return;
-        }
-        // AMT bertugas → tampilkan opsi verifikasi perbaikan
+        // Kru bertugas → tampilkan opsi verifikasi perbaikan
         setScanResult('repair');
         setLoading(false);
         return;
