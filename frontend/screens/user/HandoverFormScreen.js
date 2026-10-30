@@ -182,6 +182,8 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activePhotoType, setActivePhotoType] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [photoViewerState, setPhotoViewerState] = useState(null);
+  const [lockedItemModal, setLockedItemModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState('USER');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -222,6 +224,8 @@ export default function HandoverFormScreen({ route, navigation }) {
     navigation,
     user,
     modals: [
+      { isOpen: !!photoViewerState, close: () => setPhotoViewerState(null) },
+      { isOpen: !!lockedItemModal, close: () => setLockedItemModal(null) },
       { isOpen: !!previewPhoto, close: () => setPreviewPhoto(null) },
       { isOpen: isCameraOpen, close: () => setIsCameraOpen(false) },
       { isOpen: showExitConfirmModal, close: () => setShowExitConfirmModal(false) },
@@ -976,11 +980,7 @@ export default function HandoverFormScreen({ route, navigation }) {
               style={tw`flex-1 rounded-xl overflow-hidden shadow-sm ${item.isLocked ? 'opacity-40' : ''}`}
               onPress={() => {
                 if (item.isLocked) {
-                  Alert.alert(
-                    "Status Terkunci 🔒",
-                    `Item "${item.name}" dilaporkan rusak oleh ${item.reporterName || 'kru sebelumnya'} dan BELUM diverifikasi perbaikannya oleh Bengkel/Admin.\n\nSesuai SOP Pertamina, status kerusakan tidak dapat diubah menjadi Baik secara sepihak. Silakan lakukan verifikasi perbaikan bersama Admin/Pengawas jika fisik komponen sudah selesai diperbaiki.`,
-                    [{ text: "Mengerti", style: "default" }]
-                  );
+                  setLockedItemModal(item);
                   return;
                 }
                 setItemStatus(originalIdx, 'BAIK');
@@ -1045,11 +1045,18 @@ export default function HandoverFormScreen({ route, navigation }) {
                     <TouchableOpacity
                       style={tw`w-28 h-28 bg-slate-50 rounded-2xl border-2 ${photos[`item_${originalIdx}`] ? 'border-green-500 shadow-md' : 'border-dashed border-red-300'} justify-center items-center overflow-hidden`}
                       onPress={() => {
-                        if (item.isLocked) {
-                          Alert.alert(
-                            "Foto Terkunci 🔒",
-                            `Foto kerusakan ini diambil oleh ${item.reporterName || 'kru sebelumnya'} pada inspeksi sebelumnya dan terkunci.`
-                          );
+                        if (photos[`item_${originalIdx}`]) {
+                          setPhotoViewerState({
+                            uri: photos[`item_${originalIdx}`].uri,
+                            title: item.name,
+                            reporter: photos[`item_${originalIdx}`].photographerName || item.reporterName || amt1 || user?.name || 'AMT',
+                            timestamp: photos[`item_${originalIdx}`].timestampStr || 'Inspeksi Sebelumnya',
+                            locStr: photos[`item_${originalIdx}`].locStr,
+                            addressStr: photos[`item_${originalIdx}`].addressStr,
+                            isInherited: photos[`item_${originalIdx}`].isInherited || item.isLocked,
+                            canRetake: !item.isLocked,
+                            photoKey: `item_${originalIdx}`,
+                          });
                           return;
                         }
                         openCameraFor(`item_${originalIdx}`);
@@ -1058,8 +1065,11 @@ export default function HandoverFormScreen({ route, navigation }) {
                       {photos[`item_${originalIdx}`] ? (
                         <>
                           <Image source={{ uri: photos[`item_${originalIdx}`].uri }} style={tw`w-full h-full`} resizeMode="cover" />
-                          <View style={tw`absolute inset-0 bg-black/20 justify-center items-center`}>
-                            <Ionicons name="checkmark-circle" size={32} color="white" />
+                          <View style={tw`absolute inset-0 bg-black/25 justify-center items-center`}>
+                            <View style={tw`bg-black/60 px-2.5 py-1 rounded-full flex-row items-center border border-white/20`}>
+                              <Ionicons name="eye-outline" size={13} color="white" style={tw`mr-1`} />
+                              <Text style={tw`text-white text-[10px] font-bold`}>Lihat</Text>
+                            </View>
                           </View>
                         </>
                       ) : (
@@ -1104,15 +1114,45 @@ export default function HandoverFormScreen({ route, navigation }) {
                           {photos[`item_${originalIdx}`].timestampStr || 'Waktu tercatat'}
                         </Text>
                       </View>
-                      {photos[`item_${originalIdx}`].isInherited ? (
-                        <View style={tw`bg-amber-100/90 px-2 py-0.5 rounded-md self-start border border-amber-200`}>
-                          <Text style={tw`text-[9px] font-bold text-amber-900`}>Foto Inspeksi Sebelumnya</Text>
-                        </View>
-                      ) : (
-                        <View style={tw`bg-green-100/90 px-2 py-0.5 rounded-md self-start border border-green-200`}>
-                          <Text style={tw`text-[9px] font-bold text-green-900`}>Foto Baru</Text>
-                        </View>
-                      )}
+                      <View style={tw`flex-row items-center gap-1.5 flex-wrap`}>
+                        {photos[`item_${originalIdx}`].isInherited ? (
+                          <View style={tw`bg-amber-100/90 px-2 py-0.5 rounded-md self-start border border-amber-200`}>
+                            <Text style={tw`text-[9px] font-bold text-amber-900`}>Foto Inspeksi Sebelumnya</Text>
+                          </View>
+                        ) : (
+                          <View style={tw`bg-green-100/90 px-2 py-0.5 rounded-md self-start border border-green-200`}>
+                            <Text style={tw`text-[9px] font-bold text-green-900`}>Foto Baru</Text>
+                          </View>
+                        )}
+
+                        <TouchableOpacity
+                          style={tw`flex-row items-center bg-[#0055A5] px-2.5 py-1 rounded-md shadow-xs`}
+                          onPress={() => setPhotoViewerState({
+                            uri: photos[`item_${originalIdx}`].uri,
+                            title: item.name,
+                            reporter: photos[`item_${originalIdx}`].photographerName || item.reporterName || amt1 || user?.name || 'AMT',
+                            timestamp: photos[`item_${originalIdx}`].timestampStr || 'Inspeksi Sebelumnya',
+                            locStr: photos[`item_${originalIdx}`].locStr,
+                            addressStr: photos[`item_${originalIdx}`].addressStr,
+                            isInherited: photos[`item_${originalIdx}`].isInherited || item.isLocked,
+                            canRetake: !item.isLocked,
+                            photoKey: `item_${originalIdx}`,
+                          })}
+                        >
+                          <Ionicons name="eye" size={12} color="white" style={tw`mr-1`} />
+                          <Text style={tw`text-[10px] font-extrabold text-white`}>Lihat Foto</Text>
+                        </TouchableOpacity>
+
+                        {!item.isLocked && (
+                          <TouchableOpacity
+                            style={tw`flex-row items-center bg-gray-100 px-2 py-1 rounded-md border border-gray-200`}
+                            onPress={() => openCameraFor(`item_${originalIdx}`)}
+                          >
+                            <Ionicons name="camera-outline" size={12} color="#4B5563" style={tw`mr-1`} />
+                            <Text style={tw`text-[10px] font-bold text-gray-700`}>Foto Ulang</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   ) : (
                     <View style={tw`flex-1 pr-2`}>
@@ -1358,7 +1398,23 @@ export default function HandoverFormScreen({ route, navigation }) {
                 <TouchableOpacity
                   key={side}
                   style={tw`w-[48%] aspect-square bg-slate-50 rounded-2xl border-2 ${photos[side] ? 'border-green-500 shadow-md' : 'border-dashed border-slate-300'} justify-center items-center overflow-hidden`}
-                  onPress={() => openCameraFor(side)}
+                  onPress={() => {
+                    if (photos[side]) {
+                      setPhotoViewerState({
+                        uri: photos[side].uri,
+                        title: `Foto Kendaraan: Tampak ${side.toUpperCase()}`,
+                        reporter: photos[side].photographerName || amt1 || user?.name || 'AMT',
+                        timestamp: photos[side].timestampStr || 'Waktu tercatat',
+                        locStr: photos[side].locStr,
+                        addressStr: photos[side].addressStr,
+                        isInherited: false,
+                        canRetake: true,
+                        photoKey: side,
+                      });
+                      return;
+                    }
+                    openCameraFor(side);
+                  }}
                 >
                   {photos[side] ? (
                     <View style={tw`w-full h-full relative`}>
@@ -1790,6 +1846,142 @@ export default function HandoverFormScreen({ route, navigation }) {
           ]}
         />
       </AppModal>
+
+      {/* MODAL STATUS ITEM TERKUNCI (SOP STATUS KERUSAKAN) */}
+      <AppModal
+        visible={!!lockedItemModal}
+        type="warning"
+        icon="lock-closed"
+        badge="SOP Status Kerusakan"
+        title="Status Terkunci 🔒"
+        message="Item ini tercatat rusak dari inspeksi sebelumnya dan belum diverifikasi perbaikannya oleh Bengkel/Admin."
+        showClose
+        onClose={() => setLockedItemModal(null)}
+        primaryText="Saya Mengerti"
+        onPrimary={() => setLockedItemModal(null)}
+      >
+        {lockedItemModal && (
+          <AppModalDetail
+            tone="warning"
+            rows={[
+              { label: 'Item Checklist', value: lockedItemModal.name },
+              { label: 'Dilaporkan Oleh', value: lockedItemModal.reporterName || 'Kru Sebelumnya' },
+              { label: 'Status Saat Ini', value: 'Menunggu Verifikasi Bengkel / Admin', color: '#ED1C24' },
+              { label: 'Ketentuan SOP', value: 'Status kerusakan tidak dapat diubah menjadi Baik secara sepihak. Silakan lakukan verifikasi perbaikan bersama Admin/Pengawas jika fisik komponen sudah selesai diperbaiki.' },
+            ]}
+          />
+        )}
+      </AppModal>
+
+      {/* MODAL PRATINJAU FOTO PENUH (LIHAT FOTO BUKTI / PEMERIKSAAN) */}
+      <Modal
+        visible={!!photoViewerState}
+        transparent={false}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPhotoViewerState(null)}
+      >
+        <SafeAreaView style={tw`flex-1 bg-black`}>
+          {photoViewerState && (
+            <View style={tw`flex-1 bg-black justify-between`}>
+              {/* Top Header Bar */}
+              <View style={tw`pt-3 pb-3 px-4 bg-black/90 flex-row items-center justify-between border-b border-gray-800 z-20`}>
+                <TouchableOpacity
+                  style={tw`w-10 h-10 rounded-full bg-white/20 items-center justify-center`}
+                  onPress={() => setPhotoViewerState(null)}
+                >
+                  <Ionicons name="close" size={24} color="white" />
+                </TouchableOpacity>
+
+                <View style={tw`flex-1 items-center px-2`}>
+                  <Text style={tw`text-white font-extrabold text-sm text-center`} numberOfLines={1}>
+                    {photoViewerState.title || 'Pratinjau Foto'}
+                  </Text>
+                  <View style={tw`flex-row items-center mt-1`}>
+                    {photoViewerState.isInherited ? (
+                      <View style={tw`bg-amber-500/90 px-2.5 py-0.5 rounded-full flex-row items-center`}>
+                        <Ionicons name="time" size={11} color="white" style={tw`mr-1`} />
+                        <Text style={tw`text-[10px] text-white font-bold`}>Foto Inspeksi Sebelumnya</Text>
+                      </View>
+                    ) : (
+                      <View style={tw`bg-green-600/90 px-2.5 py-0.5 rounded-full flex-row items-center`}>
+                        <Ionicons name="checkmark-circle" size={11} color="white" style={tw`mr-1`} />
+                        <Text style={tw`text-[10px] text-white font-bold`}>Foto Hasil Pemeriksaan</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {photoViewerState.canRetake ? (
+                  <TouchableOpacity
+                    style={tw`bg-white/20 px-3 py-2 rounded-xl flex-row items-center`}
+                    onPress={() => {
+                      const key = photoViewerState.photoKey;
+                      setPhotoViewerState(null);
+                      if (key) openCameraFor(key);
+                    }}
+                  >
+                    <Ionicons name="camera" size={16} color="white" style={tw`mr-1`} />
+                    <Text style={tw`text-white text-xs font-bold`}>Foto Ulang</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={tw`w-10`} />
+                )}
+              </View>
+
+              {/* Main Image Display */}
+              <View style={tw`flex-1 justify-center items-center bg-black px-2`}>
+                <Image
+                  source={{ uri: photoViewerState.uri }}
+                  style={tw`w-full h-full`}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Bottom Info & Watermark Details */}
+              <View style={tw`p-4 bg-black/90 border-t border-gray-800 z-20`}>
+                <View style={tw`bg-gray-900 rounded-2xl p-3.5 border border-gray-800 mb-3`}>
+                  <View style={tw`flex-row items-center justify-between mb-1.5`}>
+                    <View style={tw`flex-row items-center flex-1 mr-2`}>
+                      <Ionicons name="person-circle" size={18} color="#4A90E2" style={tw`mr-1.5`} />
+                      <Text style={tw`text-gray-300 text-xs`} numberOfLines={1}>
+                        Difoto oleh: <Text style={tw`text-white font-bold`}>{photoViewerState.reporter || '-'}</Text>
+                      </Text>
+                    </View>
+                    <View style={tw`flex-row items-center`}>
+                      <Ionicons name="time-outline" size={14} color="#9CA3AF" style={tw`mr-1`} />
+                      <Text style={tw`text-gray-300 text-xs font-medium`}>{photoViewerState.timestamp || '-'}</Text>
+                    </View>
+                  </View>
+
+                  {photoViewerState.addressStr ? (
+                    <View style={tw`flex-row items-start mt-1`}>
+                      <Ionicons name="location" size={14} color="#2ECC71" style={tw`mr-1 mt-0.5`} />
+                      <Text style={tw`text-emerald-300 text-[11px] leading-4 flex-1`} numberOfLines={2}>
+                        {photoViewerState.addressStr}
+                      </Text>
+                    </View>
+                  ) : photoViewerState.locStr ? (
+                    <View style={tw`flex-row items-center mt-1`}>
+                      <Ionicons name="navigate-outline" size={14} color="#9CA3AF" style={tw`mr-1`} />
+                      <Text style={tw`text-gray-400 text-[11px]`}>{photoViewerState.locStr}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Tombol Tutup */}
+                <TouchableOpacity
+                  style={tw`w-full bg-[#0055A5] py-3.5 rounded-2xl items-center shadow-lg shadow-blue-500/30 flex-row justify-center`}
+                  onPress={() => setPhotoViewerState(null)}
+                >
+                  <Ionicons name="chevron-back" size={18} color="white" style={tw`mr-1`} />
+                  <Text style={tw`text-white font-extrabold text-sm`}>Tutup Pratinjau</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
 
     </SafeAreaView>
   );
