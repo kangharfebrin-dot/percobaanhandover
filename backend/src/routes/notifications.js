@@ -3,56 +3,64 @@ const router = express.Router();
 const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
 
-// 1. GET Notifications (B3: User-targeted & role-based)
+// 1. GET Notifications (User-targeted & role-based scoping)
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const role = req.user.role;
     const userId = req.user.id;
-
-    let targetRoles = [];
-    if (role === 'AMT' || role === 'USER') {
-      targetRoles = ['USER', 'AMT', 'ALL'];
-    } else if (role === 'PENGAWAS') {
-      targetRoles = ['PENGAWAS', 'ALL'];
-    } else {
-      // ADMIN, SUPER_ADMIN
-      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'ALL'];
-    }
-
     const limit = parseInt(req.query.limit) || 250;
     const { date, noPolisi, search } = req.query;
 
-    const where = {
-      OR: [
-        { targetUserId: userId },
-        {
-          targetRole: { in: targetRoles },
-          targetUserId: null
-        }
-      ]
-    };
+    const conditions = [];
+
+    // Role-based scoping:
+    // - ADMIN & SUPER_ADMIN: Bebas melihat semua notifikasi di sistem ("admin mah bebas bisa lihat semua")
+    // - PENGAWAS: Melihat notifikasi pengawasan operasional armada (targetRole PENGAWAS/ALL) dan notifikasi miliknya
+    // - AMT / USER: STRICTLY PRIVATE! Hanya notifikasi yang secara eksplisit ditujukan ke akun AMT ini ("fokus ke akun amt itu ... jadi kek privet")
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+      // Tidak dibatasi, melihat seluruh notifikasi
+    } else if (role === 'PENGAWAS') {
+      conditions.push({
+        OR: [
+          { targetUserId: userId },
+          {
+            targetRole: { in: ['PENGAWAS', 'ALL'] },
+            targetUserId: null
+          }
+        ]
+      });
+    } else {
+      // AMT / USER: Hanya notifikasi yang secara spesifik ditujukan ke akun ini
+      conditions.push({
+        targetUserId: userId
+      });
+    }
 
     if (noPolisi) {
-      where.noPolisi = { contains: noPolisi.replace(/\s+/g, '') };
+      conditions.push({
+        noPolisi: { contains: noPolisi.replace(/\s+/g, '') }
+      });
     }
 
     if (date) {
       const start = new Date(`${date}T00:00:00.000Z`);
       const end = new Date(`${date}T23:59:59.999Z`);
-      where.createdAt = { gte: start, lte: end };
+      conditions.push({
+        createdAt: { gte: start, lte: end }
+      });
     }
 
     if (search) {
-      where.AND = [
-        {
-          OR: [
-            { title: { contains: search } },
-            { message: { contains: search } },
-            { noPolisi: { contains: search.replace(/\s+/g, '') } }
-          ]
-        }
-      ];
+      conditions.push({
+        OR: [
+          { title: { contains: search } },
+          { message: { contains: search } },
+          { noPolisi: { contains: search.replace(/\s+/g, '') } }
+        ]
+      });
     }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const notifications = await prisma.notification.findMany({
       where,
@@ -75,20 +83,21 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
 
     const role = req.user.role;
     const userId = req.user.id;
-    let targetRoles = [];
-    if (role === 'AMT' || role === 'USER') {
-      targetRoles = ['USER', 'AMT', 'ALL'];
-    } else if (role === 'PENGAWAS') {
-      targetRoles = ['PENGAWAS', 'ALL'];
-    } else {
-      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'ALL'];
-    }
 
-    const isTargetUser = notification.targetUserId === userId;
-    const isTargetRole = !notification.targetUserId && targetRoles.includes(notification.targetRole);
-
-    if (!isTargetUser && !isTargetRole) {
-      return res.status(403).json({ error: 'Tidak ada akses untuk notifikasi ini' });
+    // Admin & Super Admin bebas mengelola semua notifikasi
+    if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+      if (role === 'PENGAWAS') {
+        const isTargetUser = notification.targetUserId === userId;
+        const isTargetRole = !notification.targetUserId && ['PENGAWAS', 'ALL'].includes(notification.targetRole);
+        if (!isTargetUser && !isTargetRole) {
+          return res.status(403).json({ error: 'Tidak ada akses untuk notifikasi ini' });
+        }
+      } else {
+        // AMT / USER: Hanya berhak menandai notifikasi yang ditujukan khusus ke dirinya
+        if (notification.targetUserId !== userId) {
+          return res.status(403).json({ error: 'Tidak ada akses untuk notifikasi ini' });
+        }
+      }
     }
 
     const updated = await prisma.notification.update({
@@ -107,26 +116,38 @@ router.put('/read-all', authenticateToken, async (req, res) => {
     const role = req.user.role;
     const userId = req.user.id;
 
-    let targetRoles = [];
-    if (role === 'AMT' || role === 'USER') {
-      targetRoles = ['USER', 'AMT', 'ALL'];
-    } else if (role === 'PENGAWAS') {
-      targetRoles = ['PENGAWAS', 'ALL'];
-    } else {
-      targetRoles = ['ADMIN', 'SUPER_ADMIN', 'ALL'];
-    }
+    let updateWhere = { isRead: false };
 
-    await prisma.notification.updateMany({
-      where: {
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+      // Admin dapat menandai notifikasi target role ADMIN/ALL atau targetUserId miliknya
+      updateWhere = {
+        isRead: false,
+        OR: [
+          { targetRole: { in: ['ADMIN', 'SUPER_ADMIN', 'ALL'] } },
+          { targetUserId: userId }
+        ]
+      };
+    } else if (role === 'PENGAWAS') {
+      updateWhere = {
         isRead: false,
         OR: [
           { targetUserId: userId },
           {
-            targetRole: { in: targetRoles },
+            targetRole: { in: ['PENGAWAS', 'ALL'] },
             targetUserId: null
           }
         ]
-      },
+      };
+    } else {
+      // AMT / USER: Hanya tandai notifikasi akun pribadinya sendiri
+      updateWhere = {
+        isRead: false,
+        targetUserId: userId
+      };
+    }
+
+    await prisma.notification.updateMany({
+      where: updateWhere,
       data: { isRead: true }
     });
 

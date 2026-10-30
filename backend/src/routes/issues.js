@@ -206,27 +206,43 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
 
     const vehicleNoPolisi = updatedIssue.handover?.noPolisi || '';
     try {
+      const notifData = [
+        {
+          title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
+          message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+          type: 'INFO',
+          targetRole: 'ADMIN',
+          actionType: 'VIEW_ISSUE',
+          actionId: issueId,
+          noPolisi: vehicleNoPolisi
+        },
+        {
+          title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
+          message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
+          type: 'INFO',
+          targetRole: 'PENGAWAS',
+          actionType: 'VIEW_ISSUE',
+          actionId: issueId,
+          noPolisi: vehicleNoPolisi
+        }
+      ];
+
+      // Konfirmasi privat untuk AMT yang mengirim bukti perbaikan
+      if (req.user && req.user.id) {
+        notifData.push({
+          title: `Bukti Perbaikan Terkirim: ${vehicleNoPolisi}`,
+          message: `Bukti perbaikan untuk truk ${vehicleNoPolisi} telah berhasil dikirim. Menunggu verifikasi dari Pengawas atau Admin.`,
+          type: 'INFO',
+          targetRole: 'USER',
+          targetUserId: req.user.id,
+          actionType: 'SCAN_REPAIR',
+          actionId: issueId,
+          noPolisi: vehicleNoPolisi
+        });
+      }
+
       await prisma.notification.createMany({
-        data: [
-          {
-            title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
-            message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
-            type: 'INFO',
-            targetRole: 'ADMIN',
-            actionType: 'VIEW_ISSUE',
-            actionId: issueId,
-            noPolisi: vehicleNoPolisi
-          },
-          {
-            title: `Verifikasi Perbaikan: ${vehicleNoPolisi}`,
-            message: `AMT telah mengirim bukti perbaikan untuk truk ${vehicleNoPolisi}. Silakan periksa dan setujui/tolak.`,
-            type: 'INFO',
-            targetRole: 'PENGAWAS',
-            actionType: 'VIEW_ISSUE',
-            actionId: issueId,
-            noPolisi: vehicleNoPolisi
-          }
-        ]
+        data: notifData
       });
     } catch (notifErr) {
       console.error('Notification creation error:', notifErr);
@@ -296,20 +312,36 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
         data: { status: 'READY_TO_START' }
       });
 
-      // Target AMT specifically if targetUserId is available
-      await prisma.notification.create({
-        data: {
-          title: 'Perbaikan Disetujui',
-          message: `Perbaikan untuk truk ${issue.handover.noPolisi} telah disetujui. Kendaraan siap jalan.`,
-          type: 'SUCCESS',
-          targetRole: 'USER',
-          targetUserId: issue.handover.userId,
-          actionType: 'VIEW_HANDOVER',
-          actionId: issue.handoverId,
-          noPolisi: issue.handover.noPolisi,
-          isRead: false
+      // Target AMT specifically (driver dan co-driver pada handover)
+      const targetUserIds = [issue.handover.userId];
+      if (issue.handover.amt2) {
+        try {
+          const amt2User = await prisma.user.findFirst({
+            where: { name: issue.handover.amt2, deletedAt: null }
+          });
+          if (amt2User && !targetUserIds.includes(amt2User.id)) {
+            targetUserIds.push(amt2User.id);
+          }
+        } catch (e) { }
+      }
+
+      for (const tId of targetUserIds) {
+        if (tId) {
+          await prisma.notification.create({
+            data: {
+              title: 'Perbaikan Disetujui',
+              message: `Perbaikan untuk truk ${issue.handover.noPolisi} telah disetujui. Kendaraan siap jalan.`,
+              type: 'SUCCESS',
+              targetRole: 'USER',
+              targetUserId: tId,
+              actionType: 'VIEW_HANDOVER',
+              actionId: issue.handoverId,
+              noPolisi: issue.handover.noPolisi,
+              isRead: false
+            }
+          });
         }
-      });
+      }
       res.json({ success: true, issue: updatedIssue, status: 'RESOLVED' });
     } else {
       const updatedIssue = await prisma.issue.update({
@@ -317,19 +349,36 @@ router.post('/:id/evaluate-repair', authenticateToken, authorizeRole(['ADMIN', '
         data: { status: 'ONGOING' }
       });
 
-      await prisma.notification.create({
-        data: {
-          title: 'Perbaikan Ditolak',
-          message: `Beberapa perbaikan untuk truk ${issue.handover.noPolisi} ditolak. Silakan periksa catatan Admin dan perbaiki kembali.`,
-          type: 'WARNING',
-          targetRole: 'USER',
-          targetUserId: issue.handover.userId,
-          actionType: 'SCAN_REPAIR',
-          actionId: issueId,
-          noPolisi: issue.handover.noPolisi,
-          isRead: false
+      // Target AMT specifically (driver dan co-driver pada handover)
+      const targetUserIds = [issue.handover.userId];
+      if (issue.handover.amt2) {
+        try {
+          const amt2User = await prisma.user.findFirst({
+            where: { name: issue.handover.amt2, deletedAt: null }
+          });
+          if (amt2User && !targetUserIds.includes(amt2User.id)) {
+            targetUserIds.push(amt2User.id);
+          }
+        } catch (e) { }
+      }
+
+      for (const tId of targetUserIds) {
+        if (tId) {
+          await prisma.notification.create({
+            data: {
+              title: 'Perbaikan Ditolak',
+              message: `Beberapa perbaikan untuk truk ${issue.handover.noPolisi} ditolak. Silakan periksa catatan Admin dan perbaiki kembali.`,
+              type: 'WARNING',
+              targetRole: 'USER',
+              targetUserId: tId,
+              actionType: 'SCAN_REPAIR',
+              actionId: issueId,
+              noPolisi: issue.handover.noPolisi,
+              isRead: false
+            }
+          });
         }
-      });
+      }
       res.json({ success: true, issue: updatedIssue, status: 'ONGOING' });
     }
   } catch (error) {

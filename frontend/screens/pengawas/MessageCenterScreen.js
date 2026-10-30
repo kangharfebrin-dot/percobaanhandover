@@ -375,8 +375,12 @@ export default function MessageCenterScreen({ navigation }) {
         <View style={tw`flex-1 relative`}>
           <WebNavbar
             user={user}
-            title="Pesan & Notifikasi"
-            subtitle="Pusat informasi dan pemberitahuan"
+            title={user?.role === 'AMT' || user?.role === 'USER' ? 'Pesan Masuk' : 'Pesan & Notifikasi'}
+            subtitle={
+              user?.role === 'AMT' || user?.role === 'USER'
+                ? 'Pesan dan pemberitahuan khusus akun Anda'
+                : 'Pusat informasi dan pengawasan operasional'
+            }
             navigation={navigation}
             showBack={true}
             onBack={() => {
@@ -441,12 +445,17 @@ export default function MessageCenterScreen({ navigation }) {
 
                 {/* Filter Pills */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tw`flex-row pb-1`}>
-                  {[
+                  {(user?.role === 'AMT' || user?.role === 'USER' ? [
+                    { id: 'ALL', label: 'Semua', count: messages.length },
+                    { id: 'AMT', label: '⚠️ Catatan Perlengkapan', count: messages.filter(m => m.actionType === 'VIEW_AMT_ISSUE').length },
+                    { id: 'SUCCESS', label: '✅ Disetujui / Selesai', count: messages.filter(m => m.type === 'success').length },
+                    { id: 'EMERGENCY', label: '🚨 Peringatan Penting', count: messages.filter(m => m.type === 'error').length },
+                  ] : [
                     { id: 'ALL', label: 'Semua', count: messages.length },
                     { id: 'EMERGENCY', label: '🚨 Darurat / Insiden', count: messages.filter(m => m.type === 'error').length },
                     { id: 'AMT', label: '⚠️ Temuan AMT', count: messages.filter(m => m.actionType === 'VIEW_AMT_ISSUE').length },
                     { id: 'SUCCESS', label: '✅ Selesai / Info', count: messages.filter(m => m.type === 'success').length },
-                  ].map(f => {
+                  ]).map(f => {
                     const isActive = activeFilter === f.id;
                     return (
                       <TouchableOpacity
@@ -474,10 +483,15 @@ export default function MessageCenterScreen({ navigation }) {
               </View>
             }
             ListEmptyComponent={
-              <View style={tw`items-center mt-20`}>
+              <View style={tw`items-center mt-20 px-6`}>
                 <Ionicons name="chatbubble-outline" size={60} color="#CBD5E1" />
                 <Text style={tw`text-center text-gray-400 font-bold mt-4 text-lg`}>
                   {searchQuery.trim() ? 'Tidak ada pesan yang cocok dengan pencarian.' : 'Tidak ada pesan baru.'}
+                </Text>
+                <Text style={tw`text-center text-gray-400 text-xs mt-1.5 max-w-sm`}>
+                  {user?.role === 'AMT' || user?.role === 'USER'
+                    ? 'Pemberitahuan verifikasi perbaikan, catatan perlengkapan, dan tugas Anda akan masuk ke sini.'
+                    : 'Seluruh notifikasi operasional armada dan peringatan sistem akan ditampilkan di sini.'}
                 </Text>
               </View>
             }

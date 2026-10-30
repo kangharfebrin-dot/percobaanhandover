@@ -176,6 +176,28 @@ router.put('/handover/:handoverId/resolve', authenticateToken, authorizeRole(['A
       }
     });
 
+    // Kirim notifikasi privat ke AMT pelapor handover
+    try {
+      const handover = await prisma.handover.findUnique({ where: { id: handoverId } });
+      if (handover && handover.userId) {
+        await prisma.notification.create({
+          data: {
+            title: 'Isu Perlengkapan AMT Diselesaikan',
+            message: `Seluruh temuan perlengkapan AMT untuk unit ${handover.noPolisi || ''} telah diverifikasi selesai oleh ${req.user.name}.`,
+            type: 'SUCCESS',
+            targetRole: 'USER',
+            targetUserId: handover.userId,
+            actionType: 'VIEW_AMT_ISSUE',
+            actionId: handoverId,
+            noPolisi: handover.noPolisi,
+            isRead: false
+          }
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Failed to send resolve notification for AMT issues:', notifErr.message);
+    }
+
     res.json({ success: true, count: countResult.count, message: 'Seluruh temuan kepatuhan AMT pada handover ini telah diselesaikan' });
   } catch (error) {
     console.error('Error resolving all AMT issues for handover:', error);

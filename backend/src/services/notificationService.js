@@ -23,11 +23,31 @@ async function sendNotification(handoverId, noPolisi, issueItems = [], isBlocked
       if (relatedIssue) targetActionId = relatedIssue.id;
     }
 
+    const notifRows = [
+      { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'ADMIN', actionType, actionId: targetActionId, noPolisi },
+      { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: targetActionId, noPolisi }
+    ];
+
+    if (isResolved && handoverId) {
+      try {
+        const handover = await prisma.handover.findUnique({ where: { id: handoverId } });
+        if (handover && handover.userId) {
+          notifRows.push({
+            title: `Isu Kendaraan Selesai: ${noPolisi}`,
+            message: `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan siap digunakan kembali.`,
+            type: 'SUCCESS',
+            targetRole: 'USER',
+            targetUserId: handover.userId,
+            actionType: 'VIEW_HANDOVER',
+            actionId: handoverId,
+            noPolisi
+          });
+        }
+      } catch (e) { }
+    }
+
     await prisma.notification.createMany({
-      data: [
-        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'ADMIN', actionType, actionId: targetActionId, noPolisi },
-        { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: targetActionId, noPolisi }
-      ]
+      data: notifRows
     });
 
     // FCM Push Notifications
