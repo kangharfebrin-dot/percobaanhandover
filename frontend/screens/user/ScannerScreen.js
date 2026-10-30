@@ -321,18 +321,25 @@ export default function ScannerScreen({ route, navigation }) {
               return;
             }
 
-            if (shiftGantungDetected && !isAdminOrPengawas) {
-              setHangingElapsedHours(elapsedHours);
-              setLastHandover(res.data.lastHandover);
-              setScanResult('shift_gantung');
+            // Jika user adalah kru AMT (bukan Admin / Pengawas):
+            // AMT TIDAK DAPAT memulai shift baru dan TIDAK BERWENANG menutup paksa shift rekan lain.
+            // Sesuai SOP Pertamina: Kru harus konfirmasi / lapor ke Admin atau Pengawas.
+            if (!isAdminOrPengawas) {
+              const prevAmt = res.data.lastHandover?.amt1 || 'kru sebelumnya';
+              const durasiText = elapsedHours >= 1 ? ` (sudah berjalan ± ${Math.floor(elapsedHours)} jam)` : '';
+              setErrorTitle('Shift Belum Diakhiri');
+              setErrorMessage(`Kendaraan ${vehicleNoPolisi} masih memiliki pekerjaan aktif yang belum diakhiri oleh ${prevAmt}${durasiText}.\n\nSesuai SOP, silakan konfirmasi ke Pengawas atau Admin untuk menyelesaikan atau mereset shift kendaraan ini terlebih dahulu.`);
               setLoading(false);
+              setScanResult('error');
               return;
             }
 
-            setErrorTitle('Pekerjaan Masih Berjalan');
-            setErrorMessage(`Kendaraan ${vehicleNoPolisi} masih memiliki pekerjaan aktif yang belum diakhiri.\n\nSilakan selesaikan dengan scan "Akhiri Pekerjaan" terlebih dahulu.`);
+            // Khusus Admin atau Pengawas:
+            // Diberikan wewenang menutup shift gantung secara langsung dari scanner
+            setHangingElapsedHours(elapsedHours);
+            setLastHandover(res.data.lastHandover);
+            setScanResult('shift_gantung');
             setLoading(false);
-            setScanResult('error');
             return;
           }
 
@@ -830,7 +837,7 @@ export default function ScannerScreen({ route, navigation }) {
           visible={scanResult === 'shift_gantung'}
           type="warning"
           icon="time"
-          badge="Shift Gantung Terdeteksi"
+          badge="Wewenang Pengawas / Admin"
           title="Shift Belum Diakhiri"
           message={`Sesi pekerjaan sebelumnya dimulai lebih dari ${Math.floor(hangingElapsedHours)} jam yang lalu dan belum diakhiri oleh supir sebelumnya.`}
           showClose

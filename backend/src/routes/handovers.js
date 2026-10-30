@@ -512,20 +512,15 @@ router.post('/force-release', authenticateToken, async (req, res) => {
 
     const isAdminOrPengawas = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(req.user?.role);
 
-    // Jika bukan Admin/Pengawas, validasi bahwa ini benar-benar shift gantung (> 12 jam sejak mulai)
+    // Force release HANYA diizinkan untuk Admin dan Pengawas sesuai SOP Pertamina
     if (!isAdminOrPengawas) {
-      if (lastHandover.type !== 'mulai') {
-        return res.status(400).json({ error: 'Hanya shift yang belum diakhiri yang dapat ditutup paksa' });
-      }
+      return res.status(403).json({
+        error: 'Akses ditolak: Hanya Admin atau Pengawas yang berwenang menutup paksa shift kendaraan.'
+      });
+    }
 
-      const lastTime = new Date(lastHandover.timestamp || lastHandover.createdAt).getTime();
-      const elapsedHours = (Date.now() - lastTime) / (1000 * 60 * 60);
-
-      if (elapsedHours < 12) {
-        return res.status(403).json({
-          error: `Akses ditolak: Shift ini baru berjalan ${elapsedHours.toFixed(1)} jam. Force release hanya diizinkan untuk shift gantung (> 12 jam) atau oleh Pengawas/Admin.`
-        });
-      }
+    if (lastHandover.type !== 'mulai') {
+      return res.status(400).json({ error: 'Hanya shift yang belum diakhiri yang dapat ditutup paksa' });
     }
 
     const releaseReason = reason || 'Shift gantung ditutup paksa agar mobil siap beroperasi kembali';
