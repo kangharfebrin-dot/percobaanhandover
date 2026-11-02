@@ -47,6 +47,7 @@ export default function ScannerScreen({ route, navigation }) {
   const isFocused = useIsFocused();
   const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
   const [unresolvedDamageItems, setUnresolvedDamageItems] = useState([]);
+  const [currentActiveIssue, setCurrentActiveIssue] = useState(null);
 
   // Pastikan flash/senter mati saat pindah layar atau muncul popup/modal hasil scan
   useEffect(() => {
@@ -238,13 +239,17 @@ export default function ScannerScreen({ route, navigation }) {
       const lastHandoverIssueResolved = res.data.lastHandover?.issue?.status === 'RESOLVED';
       const allLastItemsRepaired = res.data.lastHandover?.items?.every(item => item.isGood || item.isRepaired) ?? true;
 
+      const cleanVehicleNoPolisi = (vehicleNoPolisi || '').replace(/\s+/g, '').toUpperCase();
+      const matchedOngoingIssue = ongoingIssues.find(issue => {
+        const issPlate = (issue.handover?.noPolisi || '').replace(/\s+/g, '').toUpperCase();
+        return issPlate === cleanVehicleNoPolisi && (issue.status === 'ONGOING' || issue.status === 'PENDING_APPROVAL');
+      });
+
       const activeIssue = (isVehicleReady && (lastHandoverIssueResolved || allLastItemsRepaired))
         ? null
-        : ongoingIssues.find(issue =>
-            issue.handover &&
-            issue.handover.noPolisi === vehicleNoPolisi &&
-            (!res.data.lastHandover || issue.handoverId === res.data.lastHandover.id)
-          );
+        : (matchedOngoingIssue || (res.data.lastHandover?.issue?.status !== 'RESOLVED' ? res.data.lastHandover?.issue : null));
+
+      setCurrentActiveIssue(activeIssue);
 
       const isUnderRepair = !!activeIssue;
       const isPendingApproval = activeIssue?.status === 'PENDING_APPROVAL';
@@ -804,10 +809,30 @@ export default function ScannerScreen({ route, navigation }) {
           onClose={() => setScanResult(null)}
           buttonsDirection="column"
           primaryText="Verifikasi Sudah Diperbaiki"
-          onPrimary={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi }); }}
+          onPrimary={() => { 
+            const targetIssueId = currentActiveIssue?.id || (unresolvedDamageItems && unresolvedDamageItems[0]?.issueId);
+            const targetHandoverId = currentActiveIssue?.handoverId || (unresolvedDamageItems && unresolvedDamageItems[0]?.handoverId);
+            setScanResult(null); 
+            navigation.navigate('FixVerification', { 
+              noPolisi: scannedNoPolisi, 
+              issueId: targetIssueId, 
+              handoverId: targetHandoverId 
+            }); 
+          }}
           secondaryText="Kembali ke Beranda"
           onSecondary={() => { setScanResult(null); navigateToDashboard(); }}
-        />
+        >
+          <AppModalDetail
+            tone="error"
+            rows={[
+              { label: 'Truk', value: scannedNoPolisi || '-' },
+              { label: 'Status', value: 'Perbaikan Major Diperlukan', color: '#ED1C24' },
+              ...(unresolvedDamageItems && unresolvedDamageItems.length > 0
+                ? [{ label: 'Item Kerusakan', value: unresolvedDamageItems.map(d => d.baseName || d.name).join(', ') }]
+                : []),
+            ]}
+          />
+        </AppModal>
 
         <AppModal
           visible={scanResult === 'repair_minor'}
@@ -818,12 +843,32 @@ export default function ScannerScreen({ route, navigation }) {
           showClose
           onClose={() => setScanResult(null)}
           primaryText="Verifikasi Sudah Diperbaiki"
-          onPrimary={() => { setScanResult(null); navigation.navigate('FixVerification', { noPolisi: scannedNoPolisi }); }}
+          onPrimary={() => { 
+            const targetIssueId = currentActiveIssue?.id || (unresolvedDamageItems && unresolvedDamageItems[0]?.issueId);
+            const targetHandoverId = currentActiveIssue?.handoverId || (unresolvedDamageItems && unresolvedDamageItems[0]?.handoverId);
+            setScanResult(null); 
+            navigation.navigate('FixVerification', { 
+              noPolisi: scannedNoPolisi, 
+              issueId: targetIssueId, 
+              handoverId: targetHandoverId 
+            }); 
+          }}
           secondaryText="Lanjut Pekerjaan"
           onSecondary={() => { setScanResult(nextScanResult); }}
           tertiaryText="Kembali ke Beranda"
           onTertiary={() => { setScanResult(null); navigateToDashboard(); }}
-        />
+        >
+          <AppModalDetail
+            tone="warning"
+            rows={[
+              { label: 'Truk', value: scannedNoPolisi || '-' },
+              { label: 'Status', value: 'Kerusakan Minor', color: '#F97316' },
+              ...(unresolvedDamageItems && unresolvedDamageItems.length > 0
+                ? [{ label: 'Item Catatan', value: unresolvedDamageItems.map(d => d.baseName || d.name).join(', ') }]
+                : []),
+            ]}
+          />
+        </AppModal>
 
         <AppModal
           visible={scanResult === 'maintenance'}

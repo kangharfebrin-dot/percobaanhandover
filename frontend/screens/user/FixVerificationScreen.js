@@ -118,6 +118,7 @@ export default function FixVerificationScreen({ route, navigation }) {
   const fetchIssue = async () => {
     try {
       let activeIssue = null;
+      const cleanNoPolisi = (noPolisi || '').replace(/\s+/g, '').toUpperCase();
       const targetId = issueId || (noPolisi && !noPolisi.includes(' ') && noPolisi.length > 15 ? noPolisi : null);
 
       const token = await AsyncStorage.getItem('token');
@@ -135,26 +136,35 @@ export default function FixVerificationScreen({ route, navigation }) {
         }
       }
 
-      // 2. Fallback ke /api/issues/ongoing
-      if (!activeIssue) {
-        // Coba endpoint /api/issues/:noPolisi jika belum dapat
-        if (noPolisi) {
-          try {
-            const vehIssueRes = await axios.get(`${API_URL}/api/issues/${encodeURIComponent(noPolisi)}`, { headers });
-            if (vehIssueRes.data && (vehIssueRes.data.handover || vehIssueRes.data.id)) {
-              activeIssue = vehIssueRes.data;
-            }
-          } catch (e) { }
+      // 2. Coba endpoint /api/issues/:noPolisi jika belum dapat
+      if (!activeIssue && cleanNoPolisi) {
+        try {
+          const vehIssueRes = await axios.get(`${API_URL}/api/issues/${encodeURIComponent(cleanNoPolisi)}`, { headers });
+          if (vehIssueRes.data && (vehIssueRes.data.handover || vehIssueRes.data.id)) {
+            activeIssue = vehIssueRes.data;
+          }
+        } catch (e) {
+          console.log('Vehicle issue lookup by plate fallback:', e.message);
         }
+      }
 
-        const res = !activeIssue ? await axios.get(`${API_URL}/api/issues/ongoing${noPolisi ? '?noPolisi=' + encodeURIComponent(noPolisi) : ''}`, { headers }) : { data: [] };
-        const ongoingIssues = res.data || [];
-        activeIssue = ongoingIssues.find(iss => 
-          (targetId && (iss.id === targetId || iss.handoverId === targetId)) ||
-          (issueId && iss.id === issueId) ||
-          (handoverId && iss.handoverId === handoverId) ||
-          (noPolisi && (iss.handover?.noPolisi === noPolisi || iss.id === noPolisi || iss.handoverId === noPolisi))
-        );
+      // 3. Fallback ke /api/issues/ongoing jika belum dapat
+      if (!activeIssue) {
+        try {
+          const res = await axios.get(`${API_URL}/api/issues/ongoing${cleanNoPolisi ? '?noPolisi=' + encodeURIComponent(cleanNoPolisi) : ''}`, { headers });
+          const ongoingIssues = res.data || [];
+          activeIssue = ongoingIssues.find(iss => {
+            const issPlate = (iss.handover?.noPolisi || '').replace(/\s+/g, '').toUpperCase();
+            return (
+              (targetId && (iss.id === targetId || iss.handoverId === targetId)) ||
+              (issueId && iss.id === issueId) ||
+              (handoverId && iss.handoverId === handoverId) ||
+              (cleanNoPolisi && (issPlate === cleanNoPolisi || iss.id === cleanNoPolisi || iss.handoverId === cleanNoPolisi))
+            );
+          });
+        } catch (e) {
+          console.log('Ongoing issues fallback lookup error:', e.message);
+        }
       }
       
       if (activeIssue && activeIssue.handover) {
@@ -167,6 +177,13 @@ export default function FixVerificationScreen({ route, navigation }) {
           photo: null
         }));
         setBrokenItems(items);
+        if (items.length === 0) {
+          Toast.show({
+            type: 'info',
+            text1: 'Informasi',
+            text2: 'Semua item kerusakan pada kendaraan ini telah selesai diverifikasi.'
+          });
+        }
       } else {
         Toast.show({
           type: 'info',
@@ -182,6 +199,7 @@ export default function FixVerificationScreen({ route, navigation }) {
         text1: 'Error',
         text2: 'Gagal memuat data isu.'
       });
+      navigation.goBack();
     } finally {
       setLoading(false);
     }

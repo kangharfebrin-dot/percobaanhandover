@@ -13,7 +13,7 @@ router.get('/ongoing', authenticateToken, async (req, res) => {
   try {
     const { role, id: userId } = req.user;
 
-    if (!['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'AMT'].includes(role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'PENGAWAS', 'AMT', 'USER'].includes(role)) {
       return res.status(403).json({ error: 'Akses ditolak' });
     }
 
@@ -22,8 +22,11 @@ router.get('/ongoing', authenticateToken, async (req, res) => {
     };
 
     if (req.query.noPolisi) {
+      const cleanPlate = req.query.noPolisi.replace(/\s+/g, '').toUpperCase();
+      const allVehicles = await prisma.vehicle.findMany({ select: { noPolisi: true } });
+      const matchedVeh = allVehicles.find(v => v.noPolisi.replace(/\s+/g, '').toUpperCase() === cleanPlate);
       where.handover = {
-        noPolisi: req.query.noPolisi
+        noPolisi: matchedVeh ? matchedVeh.noPolisi : req.query.noPolisi
       };
     }
 
@@ -82,11 +85,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
       const allVehicles = await prisma.vehicle.findMany();
       const matchedVeh = allVehicles.find(v => v.noPolisi.replace(/\s+/g, '').toUpperCase() === cleanPlate);
       if (matchedVeh) {
+        // Prioritaskan isu yang masih ONGOING atau PENDING_APPROVAL
         issue = await prisma.issue.findFirst({
           where: {
             handover: {
               noPolisi: matchedVeh.noPolisi
-            }
+            },
+            status: { in: ['ONGOING', 'PENDING_APPROVAL'] }
           },
           orderBy: { createdAt: 'desc' },
           include: {
@@ -95,6 +100,23 @@ router.get('/:id', authenticateToken, async (req, res) => {
             }
           }
         });
+
+        // Jika tidak ada yang ongoing, ambil isu terakhir
+        if (!issue) {
+          issue = await prisma.issue.findFirst({
+            where: {
+              handover: {
+                noPolisi: matchedVeh.noPolisi
+              }
+            },
+            orderBy: { createdAt: 'desc' },
+            include: {
+              handover: {
+                include: { user: true, items: true, photos: true }
+              }
+            }
+          });
+        }
       }
     }
 
@@ -103,7 +125,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     if (['USER', 'AMT'].includes(req.user.role)) {
-      if (issue.handover?.userId !== req.user.id) {
+      const isOwner = issue.handover?.userId === req.user.id;
+      const isCrew = (issue.handover?.amt1 && issue.handover.amt1.trim().toLowerCase() === (req.user.name || '').trim().toLowerCase()) ||
+                     (issue.handover?.amt2 && issue.handover.amt2.trim().toLowerCase() === (req.user.name || '').trim().toLowerCase());
+      const isActionable = ['ONGOING', 'PENDING_APPROVAL'].includes(issue.status);
+
+      if (!isOwner && !isCrew && !isActionable) {
         return res.status(403).json({ error: 'Tidak ada akses untuk isu ini' });
       }
     }
