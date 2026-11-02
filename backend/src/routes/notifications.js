@@ -78,8 +78,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Urutkan prioritas: notifikasi yang sesuai targetRole user diutamakan
     const sortedNotifications = [...notifications].sort((a, b) => {
-      const aIsDirect = (a.targetRole === role) || (a.targetUserId === userId);
-      const bIsDirect = (b.targetRole === role) || (b.targetUserId === userId);
+      const aIsDirect = (a.targetRole === role) || (role === 'SUPER_ADMIN' && a.targetRole === 'ADMIN') || (a.targetUserId === userId);
+      const bIsDirect = (b.targetRole === role) || (role === 'SUPER_ADMIN' && b.targetRole === 'ADMIN') || (b.targetUserId === userId);
       if (aIsDirect && !bIsDirect) return -1;
       if (!aIsDirect && bIsDirect) return 1;
       return 0;
@@ -99,7 +99,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     // Kembalikan urutan sesuai waktu terbaru (createdAt desc)
-    uniqueNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    uniqueNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({ success: true, notifications: uniqueNotifications });
   } catch (error) {
@@ -161,7 +161,7 @@ router.put('/read-all', authenticateToken, async (req, res) => {
     const role = req.user.role;
     const userId = req.user.id;
 
-    let updateWhere = { isRead: false };
+    let updateWhere;
 
     if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
       // Admin dapat menandai notifikasi target role ADMIN/ALL atau targetUserId miliknya
