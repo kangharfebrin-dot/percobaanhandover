@@ -521,131 +521,85 @@ export default function ScannerScreen({ route, navigation }) {
     const amtColor = hasAmtIssue ? '#F97316' : '#10B981';
 
     return (
-      <View style={tw`absolute inset-0 bg-black/60 justify-center items-center px-5 z-50`}>
-        {/* Slightly smaller modal container w-[90%] max-w-[340px] */}
-        <View style={tw`bg-white w-[90%] max-w-[330px] rounded-[32px] pt-5 pb-5 px-5 relative overflow-visible shadow-2xl`}>
-
-          {/* Close Button inside modal */}
-          <TouchableOpacity
-            style={tw`absolute top-4 right-4 z-50 p-2 bg-gray-100/80 rounded-full`}
-            onPress={() => { setScanResult(null); navigateToDashboard(); }}
-          >
-            <Ionicons name="close" size={20} color="#4B5563" />
-          </TouchableOpacity>
-
-          {/* Header Recap */}
-          <View style={tw`items-center mb-5`}>
-            {/* Checkmark with perfectly sized glow */}
-            <View style={tw`relative items-center justify-center mb-4 mt-2`}>
-              <View style={[tw`absolute rounded-full bg-green-400`, { width: 70, height: 70, opacity: 0.15, transform: [{ scale: 1.2 }], shadowColor: '#4ade80', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 15, elevation: 10 }]} />
-              <View style={tw`w-16 h-16 rounded-full border-[4px] border-[#22c55e] items-center justify-center bg-white z-10`}>
-                <Ionicons name="checkmark-sharp" size={40} color="#22c55e" />
-              </View>
-            </View>
-
-            {/* Pill */}
-            <View style={tw`bg-[#575F6A] px-3.5 py-1 rounded-full mb-5 shadow-sm`}>
-              <Text style={tw`text-white font-bold text-[10px] tracking-[2px]`}>RINGKASAN INSPEKSI</Text>
-            </View>
-
-            {/* Title & Subtitle */}
-            <Text style={tw`text-[20px] font-black text-[#1F2937] text-center mb-2.5 leading-[26px] tracking-tight`}>Data Inspeksi Terakhir{"\n"}Berhasil Ditemukan!</Text>
-            <Text style={tw`text-[#4B5563] text-center text-[12px] px-1 leading-4`}>Seluruh alur pemeriksaan telah tervalidasi dalam{"\n"}sistem digital iAMT Pertamina.</Text>
+      <AppModal
+        visible={scanResult === 'recap'}
+        type="success"
+        tone={hasMajor ? 'error' : hasMinor || hasAmtIssue ? 'warning' : 'success'}
+        icon={hasMajor ? 'alert-circle' : hasMinor || hasAmtIssue ? 'warning' : 'checkmark-circle'}
+        badge="RINGKASAN INSPEKSI"
+        title={'Data Inspeksi Terakhir\nBerhasil Ditemukan!'}
+        message="Seluruh alur pemeriksaan telah tervalidasi dalam sistem digital iAMT Pertamina."
+        showClose
+        onClose={() => { setScanResult(null); navigateToDashboard(); }}
+        primaryText={type === 'akhiri' ? 'Lanjut ke Pengisian Akhir' : 'Lanjut ke Pengisian Awal'}
+        primaryIcon="arrow-forward"
+        onPrimary={proceedToForm}
+      >
+        {/* Table Data */}
+        <View style={tw`w-full bg-[#FAF9F6] rounded-2xl border border-gray-200/80 p-4 mb-2`}>
+          {/* Row: No Polisi */}
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>No Polisi</Text>
+            <Text style={tw`font-black text-[#111827] text-[15px]`}>{lastHandover.noPolisi}</Text>
           </View>
 
-          {/* Table Data */}
-          <View style={[tw`w-full bg-[#FAF9F6] rounded-[24px] p-4 mb-5 overflow-hidden relative`, { borderTopWidth: 4, borderTopColor: '#ED1C24' }]}>
-            {/* Aksen Coretan Pertamina (Top Left) */}
-            <View style={tw`absolute top-[-2px] left-[-2px] opacity-10`}>
-              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#ED1C24] rounded-br-[40px]`, { top: 0, left: 0, width: 75, height: 75 }]} />
-              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#00A651] rounded-br-[30px]`, { top: 0, left: 0, width: 60, height: 60 }]} />
-              <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#0055A5] rounded-br-[20px]`, { top: 0, left: 0, width: 45, height: 45 }]} />
-            </View>
+          {/* Row: Shift */}
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Shift</Text>
+            <Text style={tw`font-bold text-[#111827] text-[14px]`}>{lastHandover.shift}</Text>
+          </View>
 
-            {/* Aksen Coretan Pertamina (Bottom Right) */}
-            <View style={tw`absolute bottom-[-2px] right-[-2px] opacity-10`}>
-              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#ED1C24] rounded-tl-[40px]`, { bottom: 0, right: 0, width: 75, height: 75 }]} />
-              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#00A651] rounded-tl-[30px]`, { bottom: 0, right: 0, width: 60, height: 60 }]} />
-              <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#0055A5] rounded-tl-[20px]`, { bottom: 0, right: 0, width: 45, height: 45 }]} />
-            </View>
-
-            {/* Row: No Polisi */}
-            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>No Polisi</Text>
-              <Text style={tw`font-black text-[#111827] text-[16px]`}>{lastHandover.noPolisi}</Text>
-            </View>
-
-            {/* Row: Shift */}
-            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>Shift</Text>
-              <Text style={tw`font-black text-[#111827] text-[16px]`}>{lastHandover.shift}</Text>
-            </View>
-
-            {/* Row: Status */}
-            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>Status</Text>
-              <View style={tw`${statusBg} px-2.5 py-1 rounded-md flex-row items-center`}>
-                <View style={tw`w-2 h-2 ${statusDot} rounded-full mr-2`} />
-                <Text style={tw`${statusColor} font-bold text-[12px]`}>{statusText}</Text>
-              </View>
-            </View>
-
-            {/* Row: Checklist */}
-            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>Checklist Kendaraan</Text>
-              <View style={[tw`border-b-[3px] pb-0.5`, { borderColor: vehicleChecklistColor }]}>
-                <Text style={[tw`font-bold text-[15px]`, { color: vehicleChecklistColor }]}>{countAGood}/{itemsA.length} Baik</Text>
-              </View>
-            </View>
-
-            {/* Row: Perlengkapan */}
-            <View style={tw`flex-row justify-between py-2.5 border-b border-gray-200/70 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>Perlengkapan AMT</Text>
-              <View style={[tw`border-b-[3px] pb-0.5`, { borderColor: amtColor }]}>
-                <Text style={[tw`font-bold text-[15px]`, { color: amtColor }]}>{countBGood}/{itemsB.length} Lengkap</Text>
-              </View>
-            </View>
-
-            {/* Row: ODO Meter */}
-            <View style={tw`flex-row justify-between pt-2.5 z-10 items-center`}>
-              <Text style={tw`text-[#4B5563] text-[14px]`}>ODO Meter</Text>
-              <Text style={tw`font-black text-[#111827] text-[16px]`}>{odoMeter} km</Text>
+          {/* Row: Status */}
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Status</Text>
+            <View style={tw`${statusBg} px-2.5 py-1 rounded-full flex-row items-center`}>
+              <View style={tw`w-2 h-2 ${statusDot} rounded-full mr-1.5`} />
+              <Text style={tw`${statusColor} font-bold text-[12px]`}>{statusText}</Text>
             </View>
           </View>
 
-          {/* Banner Catatan Kerusakan Sebelumnya (Jika ada) */}
-          {unresolvedDamageItems && unresolvedDamageItems.length > 0 && (
-            <View style={tw`bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4`}>
-              <View style={tw`flex-row items-center mb-1`}>
-                <Ionicons name="shield-checkmark" size={16} color="#D97706" style={tw`mr-1.5`} />
-                <Text style={tw`text-[12px] font-bold text-amber-900`}>
-                  Catatan Kerusakan Sebelumnya ({unresolvedDamageItems.length})
-                </Text>
-              </View>
-              <Text style={tw`text-[11px] text-amber-800 leading-4`}>
-                Item <Text style={tw`font-bold`}>{unresolvedDamageItems.map(u => u.baseName || u.name).join(', ')}</Text> dilaporkan rusak oleh <Text style={tw`font-bold`}>{unresolvedDamageItems[0].reportedBy}</Text> dan terkunci di form hingga perbaikan disetujui Admin.
+          {/* Row: Checklist */}
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Checklist Kendaraan</Text>
+            <View style={[tw`border-b-2 pb-0.5`, { borderColor: vehicleChecklistColor }]}>
+              <Text style={[tw`font-bold text-[13.5px]`, { color: vehicleChecklistColor }]}>
+                {countAGood}/{itemsA.length} Baik
               </Text>
             </View>
-          )}
+          </View>
 
-          {/* Button Lanjut */}
-          <TouchableOpacity onPress={proceedToForm} style={tw`w-full`}>
-            <View style={[tw`w-full bg-[#003366] px-4 py-3.5 rounded-xl flex-row items-center justify-between`, { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 12 }]}>
-              <View style={tw`flex-1 items-center justify-center pl-2 pr-2`}>
-                <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                  style={tw`text-white font-bold text-[12.5px] text-center`}
-                >
-                  {type === 'akhiri' ? 'Lanjut ke Pengisian Akhir Perjalanan ➔' : 'Lanjut ke Pengisian Awal Perjalanan ➔'}
-                </Text>
-              </View>
-              <Image source={require('../../assets/clean_emblem.png')} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
+          {/* Row: Perlengkapan */}
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Perlengkapan AMT</Text>
+            <View style={[tw`border-b-2 pb-0.5`, { borderColor: amtColor }]}>
+              <Text style={[tw`font-bold text-[13.5px]`, { color: amtColor }]}>
+                {countBGood}/{itemsB.length} Lengkap
+              </Text>
             </View>
-          </TouchableOpacity>
+          </View>
+
+          {/* Row: ODO Meter */}
+          <View style={tw`flex-row justify-between pt-2 items-center`}>
+            <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>ODO Meter</Text>
+            <Text style={tw`font-black text-[#111827] text-[15px]`}>{odoMeter} km</Text>
+          </View>
         </View>
-      </View>
+
+        {/* Banner Catatan Kerusakan Sebelumnya (Jika ada) */}
+        {unresolvedDamageItems && unresolvedDamageItems.length > 0 && (
+          <View style={tw`bg-amber-50 border border-amber-200 rounded-2xl p-3 mt-2`}>
+            <View style={tw`flex-row items-center mb-1`}>
+              <Ionicons name="shield-checkmark" size={16} color="#D97706" style={tw`mr-1.5`} />
+              <Text style={tw`text-[12px] font-bold text-amber-900`}>
+                Catatan Kerusakan Sebelumnya ({unresolvedDamageItems.length})
+              </Text>
+            </View>
+            <Text style={tw`text-[11px] text-amber-800 leading-4`}>
+              Item <Text style={tw`font-bold`}>{unresolvedDamageItems.map(u => u.baseName || u.name).join(', ')}</Text> dilaporkan rusak oleh <Text style={tw`font-bold`}>{unresolvedDamageItems[0].reportedBy}</Text> dan terkunci di form hingga perbaikan disetujui Admin.
+            </Text>
+          </View>
+        )}
+      </AppModal>
     );
   };
 

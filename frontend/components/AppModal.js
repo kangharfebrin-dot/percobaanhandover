@@ -61,8 +61,10 @@ function ActionButton({ label, onPress, variant = 'primary', gradient, icon, loa
         <Ionicons name={icon} size={18} color={variant === 'secondary' ? APP_COLORS.muted : '#fff'} style={tw`mr-2`} />
       ) : null}
       <Text
-        style={tw`${variant === 'secondary' ? 'text-gray-600' : 'text-white'} font-bold text-[15px]`}
+        style={tw`${variant === 'secondary' ? 'text-gray-600' : 'text-white'} font-bold text-[14.5px]`}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {label}
       </Text>
