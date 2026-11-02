@@ -473,7 +473,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           data: {
             status: 'Maintenance',
             isManualMaintenance: false,
-            maintenanceReason: `Temuan Major pada Handover ${type.toUpperCase()}`
+            maintenanceReason: `Kendaraan Perlu Perbaikan (Handover ${type.toUpperCase()})`
           }
         });
       } else if (type === 'mulai') {

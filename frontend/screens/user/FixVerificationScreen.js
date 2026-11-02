@@ -514,7 +514,7 @@ export default function FixVerificationScreen({ route, navigation }) {
                     <Text style={tw`text-xs font-bold text-gray-400 uppercase tracking-wider mb-1`}>
                       {isCategoryB ? 'B. PERLENGKAPAN AMT' : 'A. PERLENGKAPAN TANGKI'}
                     </Text>
-                    <Text style={tw`font-bold text-gray-800 text-base mb-1`}>{item.name}</Text>
+                    <Text style={tw`font-bold text-gray-800 text-base mb-1`}>{(item.baseName || item.name || '').replace(/\s*\[(MAJOR|MINOR)\]/gi, '').trim()}</Text>
                     <Text style={tw`text-xs ${isCategoryB ? 'text-amber-600 bg-amber-50' : 'text-red-500 bg-red-50'} font-bold self-start px-2 py-1 rounded`}>
                       {statusPrevLabel}
                     </Text>
@@ -543,7 +543,7 @@ export default function FixVerificationScreen({ route, navigation }) {
                         onPress={() => {
                           setSelectedPreviewPhoto({
                             title: 'Foto Kerusakan Awal',
-                            subtitle: item.name,
+                            subtitle: (item.baseName || item.name || '').replace(/\s*\[(MAJOR|MINOR)\]/gi, '').trim(),
                             url: `${API_URL}/${damagePhoto.previewUrl || damagePhoto.url}`,
                             type: 'Temuan Serah Terima'
                           });

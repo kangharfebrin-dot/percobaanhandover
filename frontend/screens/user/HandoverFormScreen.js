@@ -1801,13 +1801,12 @@ export default function HandoverFormScreen({ route, navigation }) {
         visible={showSuccessModal}
         type={submittedWithMajorIssue ? 'warning' : 'success'}
         tone={submittedWithMajorIssue ? 'error' : 'success'}
-        badge={submittedWithMajorIssue ? 'Kendaraan Diblokir' : null}
+        badge={submittedWithMajorIssue ? 'Kendaraan Perlu Perbaikan' : null}
         title={submittedWithMajorIssue ? 'Perhatian!' : 'Berhasil!'}
         message={
           submittedWithMajorIssue ? (
             <Text>
-              Laporan Anda tersimpan. Karena terdapat temuan kerusakan MAJOR, kendaraan ini otomatis{' '}
-              <Text style={tw`font-bold text-red-600`}>DIBLOKIR</Text> dan tidak dapat digunakan.
+              Laporan Anda tersimpan. Karena kendaraan memerlukan perbaikan, kendaraan ini otomatis <Text style={tw`font-bold text-red-600`}>DIBLOKIR</Text> dan tidak dapat digunakan sebelum diperbaiki.
             </Text>
           ) : (
             'Laporan Handover kendaraan Anda telah tersimpan dengan aman ke server Pertamina.'

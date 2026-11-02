@@ -305,9 +305,10 @@ export default function ScannerScreen({ route, navigation }) {
 
       // Format informasi lengkap pemblokiran: alasan, item kerusakan, catatan, dan nama kru
       const allMajor = majorItemsInIssue.length > 0 ? majorItemsInIssue : majorItemsInUnresolved;
-      const damagedItemNames = allMajor.map(i => i.baseName || i.name).filter(Boolean).join(', ') ||
-                               (res.data.unresolvedDamageItems || []).map(i => i.baseName || i.name).join(', ') ||
-                               'Kerusakan Komponen Major';
+      const cleanName = (str) => (str || '').replace(/\s*\[(MAJOR|MINOR)\]/gi, '').trim();
+      const damagedItemNames = allMajor.map(i => cleanName(i.baseName || i.name)).filter(Boolean).join(', ') ||
+                               (res.data.unresolvedDamageItems || []).map(i => cleanName(i.baseName || i.name)).filter(Boolean).join(', ') ||
+                               'Kendaraan Perlu Perbaikan';
       const damagedItemNotes = allMajor.map(i => i.notes).filter(Boolean).join('; ') ||
                                reportingHandover?.notes ||
                                '';
@@ -880,9 +881,9 @@ export default function ScannerScreen({ route, navigation }) {
           type="error"
           tone="error"
           icon="lock-closed"
-          badge="Kendaraan Diblokir"
-          title={'Kendaraan\nDiblokir'}
-          message="Truk ini diblokir dari operasional karena terdapat temuan kerusakan Major. Sesuai SOP Pertamina, verifikasi perbaikan hanya dapat dilakukan oleh kru petugas yang melaporkan temuan atau Pengawas/Admin."
+          badge="Kendaraan Perlu Perbaikan"
+          title={'Kendaraan Perlu\nPerbaikan'}
+          message="Kendaraan ini perlu perbaikan dan belum dapat dioperasikan. Sesuai SOP Pertamina, verifikasi perbaikan hanya dapat dilakukan oleh kru petugas pelapor atau Pengawas/Admin."
           showClose
           onClose={() => setScanResult(null)}
           primaryText="Kembali ke Beranda"
@@ -892,10 +893,10 @@ export default function ScannerScreen({ route, navigation }) {
             tone="error"
             rows={[
               { label: 'Truk', value: scannedNoPolisi || '-' },
-              { label: 'Status Truk', value: 'DIBLOKIR OPERASIONAL', color: '#ED1C24', accent: true },
+              { label: 'Status Truk', value: 'KENDARAAN PERLU PERBAIKAN', color: '#ED1C24', accent: true },
               { 
-                label: 'Alasan Pemblokiran', 
-                value: blockedDetails.itemNames || 'Temuan Kerusakan Major', 
+                label: 'Keterangan Isu',
+                value: blockedDetails.itemNames || 'Kendaraan Perlu Perbaikan', 
                 color: '#ED1C24' 
               },
               ...(blockedDetails.itemNotes
@@ -923,8 +924,8 @@ export default function ScannerScreen({ route, navigation }) {
           visible={scanResult === 'repair'}
           type="maintenance"
           tone="error"
-          title={'Truk Dalam\nPerbaikan'}
-          message="Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan sebelum diverifikasi."
+          title={'Kendaraan Perlu\nPerbaikan'}
+          message="Kendaraan ini perlu perbaikan. Tidak dapat melanjutkan perjalanan sebelum diverifikasi."
           showClose
           onClose={() => setScanResult(null)}
           buttonsDirection="column"
@@ -947,8 +948,8 @@ export default function ScannerScreen({ route, navigation }) {
             tone="error"
             rows={[
               { label: 'Truk', value: scannedNoPolisi || '-' },
-              { label: 'Status Truk', value: 'Perbaikan Major Diperlukan', color: '#ED1C24' },
-              { label: 'Item Kerusakan', value: blockedDetails.itemNames || 'Temuan Kerusakan Major', color: '#ED1C24' },
+              { label: 'Status Truk', value: 'Kendaraan Perlu Perbaikan', color: '#ED1C24' },
+              { label: 'Item Kerusakan', value: blockedDetails.itemNames || 'Kendaraan Perlu Perbaikan', color: '#ED1C24' },
               ...(blockedDetails.itemNotes ? [{ label: 'Catatan Kerusakan', value: blockedDetails.itemNotes }] : []),
               { label: 'Kru Pelapor', value: blockedDetails.crewText || 'Kru Petugas' },
               ...(blockedDetails.reportTime ? [{ label: 'Waktu Temuan', value: blockedDetails.reportTime }] : []),

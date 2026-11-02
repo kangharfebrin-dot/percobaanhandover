@@ -9,7 +9,7 @@ async function sendNotification(handoverId, noPolisi, issueItems = [], isBlocked
     const isResolved = type === 'RESOLVED';
     let textBody = isResolved
       ? `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan dapat beroperasi kembali.`
-      : `Kendaraan ${noPolisi} dilaporkan memiliki temuan isu kendaraan:\n${issueItems.map(i => '- ' + i.name).join('\n')}\n\nStatus: ${isBlocked ? 'MAINTENANCE (Kerusakan Major)' : 'PERLU PERBAIKAN (Minor)'}`;
+      : `Kendaraan ${noPolisi} dilaporkan memiliki temuan isu kendaraan:\n${issueItems.map(i => '- ' + i.name).join('\n')}\n\nStatus: ${isBlocked ? 'MAINTENANCE (Kendaraan Perlu Perbaikan)' : 'PERLU PERBAIKAN'}`;
 
     const notificationTitle = isResolved 
       ? `Isu Kendaraan Selesai: ${noPolisi}` 
@@ -28,20 +28,33 @@ async function sendNotification(handoverId, noPolisi, issueItems = [], isBlocked
       { title: notificationTitle, message: textBody, type: notificationType, targetRole: 'PENGAWAS', actionType, actionId: targetActionId, noPolisi }
     ];
 
-    if (isResolved && handoverId) {
+    if (handoverId) {
       try {
         const handover = await prisma.handover.findUnique({ where: { id: handoverId } });
         if (handover && handover.userId) {
-          notifRows.push({
-            title: `Isu Kendaraan Selesai: ${noPolisi}`,
-            message: `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan siap digunakan kembali.`,
-            type: 'SUCCESS',
-            targetRole: 'USER',
-            targetUserId: handover.userId,
-            actionType: 'VIEW_HANDOVER',
-            actionId: handoverId,
-            noPolisi
-          });
+          if (isResolved) {
+            notifRows.push({
+              title: `Isu Kendaraan Selesai: ${noPolisi}`,
+              message: `Perbaikan pada kendaraan ${noPolisi} telah selesai dan kendaraan siap digunakan kembali.`,
+              type: 'SUCCESS',
+              targetRole: 'USER',
+              targetUserId: handover.userId,
+              actionType: 'VIEW_HANDOVER',
+              actionId: handoverId,
+              noPolisi
+            });
+          } else {
+            notifRows.push({
+              title: `Kendaraan Perlu Perbaikan: ${noPolisi}`,
+              message: `Kendaraan ${noPolisi} tercatat memerlukan perbaikan sebelum dapat dioperasikan. Silakan lakukan verifikasi jika telah selesai diperbaiki.`,
+              type: 'WARNING',
+              targetRole: 'USER',
+              targetUserId: handover.userId,
+              actionType: 'VIEW_ISSUE',
+              actionId: targetActionId,
+              noPolisi
+            });
+          }
         }
       } catch (e) { }
     }
