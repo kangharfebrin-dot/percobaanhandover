@@ -126,12 +126,21 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     if (['USER', 'AMT'].includes(req.user.role)) {
       const isOwner = issue.handover?.userId === req.user.id;
-      const isCrew = (issue.handover?.amt1 && issue.handover.amt1.trim().toLowerCase() === (req.user.name || '').trim().toLowerCase()) ||
-                     (issue.handover?.amt2 && issue.handover.amt2.trim().toLowerCase() === (req.user.name || '').trim().toLowerCase());
-      const isActionable = ['ONGOING', 'PENDING_APPROVAL'].includes(issue.status);
+      const normalizeName = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+      const isNameMatch = (t, c) => {
+        if (!t || !c) return false;
+        const n1 = normalizeName(t);
+        const n2 = normalizeName(c);
+        if (n1 === n2) return true;
+        const p1 = n1.split(' ').filter(x => x.length > 2);
+        const p2 = n2.split(' ').filter(x => x.length > 2);
+        return p1.some(p => p2.includes(p));
+      };
 
-      if (!isOwner && !isCrew && !isActionable) {
-        return res.status(403).json({ error: 'Tidak ada akses untuk isu ini' });
+      const isCrew = isNameMatch(issue.handover?.amt1, req.user?.name) || isNameMatch(issue.handover?.amt2, req.user?.name);
+
+      if (!isOwner && !isCrew) {
+        return res.status(403).json({ error: 'Akses ditolak: Hanya kru yang bertugas saat serah terima (AMT 1 & AMT 2) atau Pengawas/Admin yang berhak mengakses isu ini' });
       }
     }
 
@@ -210,6 +219,29 @@ router.post('/:id/verify-repair', authenticateToken, upload.any(), optimizeImage
     if (!target) return res.status(404).json({ error: 'Issue tidak ditemukan' });
 
     const issueId = target.id;
+
+    if (['USER', 'AMT'].includes(req.user.role)) {
+      const isOwner = target.handover?.userId === req.user.id;
+      const normalizeName = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+      const isNameMatch = (t, c) => {
+        if (!t || !c) return false;
+        const n1 = normalizeName(t);
+        const n2 = normalizeName(c);
+        if (n1 === n2) return true;
+        const p1 = n1.split(' ').filter(x => x.length > 2);
+        const p2 = n2.split(' ').filter(x => x.length > 2);
+        return p1.some(p => p2.includes(p));
+      };
+
+      const isCrew = isNameMatch(target.handover?.amt1, req.user?.name) || isNameMatch(target.handover?.amt2, req.user?.name);
+
+      if (!isOwner && !isCrew) {
+        return res.status(403).json({
+          error: 'Akses ditolak: Hanya kru yang bertugas saat serah terima (AMT 1 & AMT 2) atau Pengawas/Admin yang berhak memverifikasi perbaikan'
+        });
+      }
+    }
+
     const { itemsData } = req.body;
     const items = JSON.parse(itemsData || '[]');
     const verifyingAmtName = req.user?.name || 'Petugas AMT';

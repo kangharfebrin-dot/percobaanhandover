@@ -48,6 +48,13 @@ export default function ScannerScreen({ route, navigation }) {
   const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
   const [unresolvedDamageItems, setUnresolvedDamageItems] = useState([]);
   const [currentActiveIssue, setCurrentActiveIssue] = useState(null);
+  const [blockedDetails, setBlockedDetails] = useState({
+    itemNames: '',
+    itemNotes: '',
+    crewText: '',
+    reportTime: '',
+    isAuthorizedCrew: false
+  });
 
   // Pastikan flash/senter mati saat pindah layar atau muncul popup/modal hasil scan
   useEffect(() => {
@@ -258,8 +265,72 @@ export default function ScannerScreen({ route, navigation }) {
       const hasUnrepairedMajor = activeIssue?.handover?.items?.some(item => isVehicleItem(item) && item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
       const hasUnrepairedMinor = activeIssue?.handover?.items?.some(item => isVehicleItem(item) && !item.name.includes('[MAJOR]') && !item.isGood && !item.isRepaired);
 
-      // Seluruh kru AMT / pengguna yang bertugas di kendaraan berhak melakukan verifikasi perbaikan fisik komponen
-      const canRepair = isUnderRepair ? true : false;
+      // Identifikasi temuan kerusakan Major
+      const majorItemsInIssue = (activeIssue?.handover?.items || []).filter(item => 
+        isVehicleItem(item) && 
+        item.name.includes('[MAJOR]') && 
+        !item.isGood && 
+        !item.isRepaired
+      );
+      const majorItemsInUnresolved = (res.data.unresolvedDamageItems || []).filter(item =>
+        (item.severity && item.severity.toLowerCase() === 'major') ||
+        (item.name && item.name.toUpperCase().includes('[MAJOR]'))
+      );
+      const hasMajorProblem = hasUnrepairedMajor || majorItemsInIssue.length > 0 || majorItemsInUnresolved.length > 0;
+
+      // Identifikasi kru yang bertugas saat handover diisi (kru sepaket)
+      const reportingHandover = activeIssue?.handover || res.data.lastHandover;
+      const crewAmt1 = reportingHandover?.amt1 || '';
+      const crewAmt2 = reportingHandover?.amt2 || '';
+      const isCrewAmt1 = isNameMatch(crewAmt1, user?.name);
+      const isCrewAmt2 = isNameMatch(crewAmt2, user?.name);
+      const isCreatorUser = reportingHandover?.userId && String(reportingHandover.userId) === String(userId);
+      const isAuthorizedCrew = isAdminOrPengawas || isCrewAmt1 || isCrewAmt2 || isCreatorUser;
+
+      // Format informasi lengkap pemblokiran: alasan, item kerusakan, catatan, dan nama kru
+      const allMajor = majorItemsInIssue.length > 0 ? majorItemsInIssue : majorItemsInUnresolved;
+      const damagedItemNames = allMajor.map(i => i.baseName || i.name).filter(Boolean).join(', ') ||
+                               (res.data.unresolvedDamageItems || []).map(i => i.baseName || i.name).join(', ') ||
+                               'Kerusakan Komponen Major';
+      const damagedItemNotes = allMajor.map(i => i.notes).filter(Boolean).join('; ') ||
+                               reportingHandover?.notes ||
+                               '';
+      let crewNamesText = '';
+      if (crewAmt1 && crewAmt2) {
+        crewNamesText = `${crewAmt1} (AMT 1) & ${crewAmt2} (AMT 2)`;
+      } else if (crewAmt1) {
+        crewNamesText = `${crewAmt1} (AMT 1)`;
+      } else if (crewAmt2) {
+        crewNamesText = `${crewAmt2} (AMT 2)`;
+      } else if (reportingHandover?.user?.name) {
+        crewNamesText = `${reportingHandover.user.name} (Petugas Pelapor)`;
+      } else {
+        crewNamesText = 'Kru Petugas Sebelumnya';
+      }
+
+      let reportingHandoverTime = '';
+      const rawTimestamp = reportingHandover?.timestamp || reportingHandover?.createdAt;
+      if (rawTimestamp) {
+        try {
+          reportingHandoverTime = new Date(rawTimestamp).toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) + ' WIB';
+        } catch (e) {
+          reportingHandoverTime = String(rawTimestamp);
+        }
+      }
+
+      setBlockedDetails({
+        itemNames: damagedItemNames,
+        itemNotes: damagedItemNotes,
+        crewText: crewNamesText,
+        reportTime: reportingHandoverTime,
+        isAuthorizedCrew
+      });
 
       // === STEP 1.5: Handle kendaraan yang sedang menunggu respon/persetujuan dari Admin ===
       if (isUnderRepair && isPendingApproval) {
@@ -272,16 +343,27 @@ export default function ScannerScreen({ route, navigation }) {
       }
 
       // === STEP 2: Handle kendaraan dengan issue Major yang belum diperbaiki (DIBLOKIR) ===
-      if (isUnderRepair && hasUnrepairedMajor) {
-        // Kru bertugas → tampilkan opsi verifikasi perbaikan
-        setScanResult('repair');
+      if ((isUnderRepair && hasMajorProblem) || (res.data.vehicle?.status === 'Maintenance' && hasMajorProblem)) {
+        if (isAuthorizedCrew) {
+          // Kru bertugas sepaket yang melapor / Admin / Pengawas -> tampilkan modal dengan opsi verifikasi perbaikan
+          setScanResult('repair');
+        } else {
+          // Kru AMT lain yang bukan bagian dari serah terima tersebut -> DIBLOKIR TOTAL
+          setScanResult('blocked_major');
+        }
         setLoading(false);
         return;
       }
 
-      // === STEP 3: Handle status Maintenance (tanpa issue ONGOING — dead end) ===
-      if (res.data.vehicle.status === 'Maintenance' && !isUnderRepair) {
-        setScanResult('maintenance');
+      // === STEP 3: Handle status Maintenance (tanpa issue ONGOING / umum) ===
+      if (res.data.vehicle?.status === 'Maintenance') {
+        if (isAuthorizedCrew && isUnderRepair) {
+          setScanResult('repair');
+        } else if (hasMajorProblem) {
+          setScanResult('blocked_major');
+        } else {
+          setScanResult('maintenance');
+        }
         setLoading(false);
         return;
       }
@@ -799,12 +881,57 @@ export default function ScannerScreen({ route, navigation }) {
           />
         </AppModal>
 
+        {/* Modal Pemblokiran Khusus untuk Kru AMT Lain (Bukan Kru Pelapor) */}
+        <AppModal
+          visible={scanResult === 'blocked_major'}
+          type="error"
+          tone="error"
+          icon="lock-closed"
+          badge="Kendaraan Diblokir"
+          title={'Kendaraan\nDiblokir'}
+          message="Truk ini diblokir dari operasional karena terdapat temuan kerusakan Major. Sesuai SOP Pertamina, verifikasi perbaikan hanya dapat dilakukan oleh kru petugas yang melaporkan temuan atau Pengawas/Admin."
+          showClose
+          onClose={() => setScanResult(null)}
+          primaryText="Kembali ke Beranda"
+          onPrimary={() => { setScanResult(null); navigateToDashboard(); }}
+        >
+          <AppModalDetail
+            tone="error"
+            rows={[
+              { label: 'Truk', value: scannedNoPolisi || '-' },
+              { label: 'Status Truk', value: 'DIBLOKIR OPERASIONAL', color: '#ED1C24', accent: true },
+              { 
+                label: 'Alasan Pemblokiran', 
+                value: blockedDetails.itemNames || 'Temuan Kerusakan Major', 
+                color: '#ED1C24' 
+              },
+              ...(blockedDetails.itemNotes
+                ? [{ label: 'Catatan Temuan', value: blockedDetails.itemNotes }]
+                : []),
+              { 
+                label: 'Ditemukan Oleh', 
+                value: blockedDetails.crewText || 'Kru Petugas Sebelumnya',
+                accent: true
+              },
+              ...(blockedDetails.reportTime
+                ? [{ label: 'Waktu Temuan', value: blockedDetails.reportTime }]
+                : []),
+              {
+                label: 'Wewenang Verifikasi',
+                value: 'Hanya Kru Pelapor (AMT 1 & AMT 2) atau Pengawas/Admin',
+                color: '#4B5563'
+              }
+            ]}
+          />
+        </AppModal>
+
+        {/* Modal untuk Kru Pelapor (AMT 1 & AMT 2) atau Admin / Pengawas */}
         <AppModal
           visible={scanResult === 'repair'}
           type="maintenance"
           tone="error"
           title={'Truk Dalam\nPerbaikan'}
-          message="Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan."
+          message="Truk ini sedang dalam perbaikan (Kerusakan Major). Tidak dapat melanjutkan perjalanan sebelum diverifikasi."
           showClose
           onClose={() => setScanResult(null)}
           buttonsDirection="column"
@@ -826,10 +953,11 @@ export default function ScannerScreen({ route, navigation }) {
             tone="error"
             rows={[
               { label: 'Truk', value: scannedNoPolisi || '-' },
-              { label: 'Status', value: 'Perbaikan Major Diperlukan', color: '#ED1C24' },
-              ...(unresolvedDamageItems && unresolvedDamageItems.length > 0
-                ? [{ label: 'Item Kerusakan', value: unresolvedDamageItems.map(d => d.baseName || d.name).join(', ') }]
-                : []),
+              { label: 'Status Truk', value: 'Perbaikan Major Diperlukan', color: '#ED1C24' },
+              { label: 'Item Kerusakan', value: blockedDetails.itemNames || 'Temuan Kerusakan Major', color: '#ED1C24' },
+              ...(blockedDetails.itemNotes ? [{ label: 'Catatan Kerusakan', value: blockedDetails.itemNotes }] : []),
+              { label: 'Kru Pelapor', value: blockedDetails.crewText || 'Kru Petugas' },
+              ...(blockedDetails.reportTime ? [{ label: 'Waktu Temuan', value: blockedDetails.reportTime }] : []),
             ]}
           />
         </AppModal>
@@ -842,30 +970,41 @@ export default function ScannerScreen({ route, navigation }) {
           message="Truk ini memiliki catatan kerusakan minor, namun masih bisa digunakan."
           showClose
           onClose={() => setScanResult(null)}
-          primaryText="Verifikasi Sudah Diperbaiki"
+          primaryText={blockedDetails.isAuthorizedCrew ? "Verifikasi Sudah Diperbaiki" : "Lanjut Pekerjaan"}
           onPrimary={() => { 
-            const targetIssueId = currentActiveIssue?.id || (unresolvedDamageItems && unresolvedDamageItems[0]?.issueId);
-            const targetHandoverId = currentActiveIssue?.handoverId || (unresolvedDamageItems && unresolvedDamageItems[0]?.handoverId);
-            setScanResult(null); 
-            navigation.navigate('FixVerification', { 
-              noPolisi: scannedNoPolisi, 
-              issueId: targetIssueId, 
-              handoverId: targetHandoverId 
-            }); 
+            if (blockedDetails.isAuthorizedCrew) {
+              const targetIssueId = currentActiveIssue?.id || (unresolvedDamageItems && unresolvedDamageItems[0]?.issueId);
+              const targetHandoverId = currentActiveIssue?.handoverId || (unresolvedDamageItems && unresolvedDamageItems[0]?.handoverId);
+              setScanResult(null); 
+              navigation.navigate('FixVerification', { 
+                noPolisi: scannedNoPolisi, 
+                issueId: targetIssueId, 
+                handoverId: targetHandoverId 
+              }); 
+            } else {
+              setScanResult(nextScanResult);
+            }
           }}
-          secondaryText="Lanjut Pekerjaan"
-          onSecondary={() => { setScanResult(nextScanResult); }}
-          tertiaryText="Kembali ke Beranda"
-          onTertiary={() => { setScanResult(null); navigateToDashboard(); }}
+          secondaryText={blockedDetails.isAuthorizedCrew ? "Lanjut Pekerjaan" : "Kembali ke Beranda"}
+          onSecondary={() => { 
+            if (blockedDetails.isAuthorizedCrew) {
+              setScanResult(nextScanResult);
+            } else {
+              setScanResult(null);
+              navigateToDashboard();
+            }
+          }}
+          tertiaryText={blockedDetails.isAuthorizedCrew ? "Kembali ke Beranda" : undefined}
+          onTertiary={blockedDetails.isAuthorizedCrew ? () => { setScanResult(null); navigateToDashboard(); } : undefined}
         >
           <AppModalDetail
             tone="warning"
             rows={[
               { label: 'Truk', value: scannedNoPolisi || '-' },
-              { label: 'Status', value: 'Kerusakan Minor', color: '#F97316' },
-              ...(unresolvedDamageItems && unresolvedDamageItems.length > 0
-                ? [{ label: 'Item Catatan', value: unresolvedDamageItems.map(d => d.baseName || d.name).join(', ') }]
-                : []),
+              { label: 'Status', value: 'Catatan Kerusakan Minor', color: '#F97316' },
+              { label: 'Item Catatan', value: blockedDetails.itemNames || 'Catatan Minor', color: '#F97316' },
+              ...(blockedDetails.itemNotes ? [{ label: 'Keterangan', value: blockedDetails.itemNotes }] : []),
+              { label: 'Kru Pelapor', value: blockedDetails.crewText || 'Kru Petugas' },
             ]}
           />
         </AppModal>

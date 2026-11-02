@@ -17,6 +17,21 @@ import { useSubpageBackHandler } from '../../hooks/useSubpageBackHandler';
 import CameraFlashControl from '../../components/CameraFlashControl';
 import { FLASH_MODES } from '../../utils/cameraFlashHelper';
 
+const normalizeName = (name) => {
+  if (!name) return '';
+  return name.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const isNameMatch = (targetName, currentUserName) => {
+  if (!targetName || !currentUserName) return false;
+  const n1 = normalizeName(targetName);
+  const n2 = normalizeName(currentUserName);
+  if (n1 === n2) return true;
+  const parts1 = n1.split(' ').filter(p => p.length > 2);
+  const parts2 = n2.split(' ').filter(p => p.length > 2);
+  return parts1.some(p => parts2.includes(p));
+};
+
 const getPhotoUrl = (path, token) => {
   if (!path) return `${API_URL}/uploads/default.png${token ? '?token=' + token : ''}`;
   const cleanPath = path.replace(/\\/g, '/');
@@ -168,6 +183,26 @@ export default function FixVerificationScreen({ route, navigation }) {
       }
       
       if (activeIssue && activeIssue.handover) {
+        // Validasi kewenangan: hanya kru pelapor sepaket (AMT 1 & AMT 2) atau Pengawas/Admin
+        const userStr = await AsyncStorage.getItem('user');
+        const currentUser = userStr ? JSON.parse(userStr) : user;
+        const currentRole = currentUser?.role || 'USER';
+        const isAdminOrPengawas = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(currentRole);
+
+        const isCrewAmt1 = isNameMatch(activeIssue.handover.amt1, currentUser?.name);
+        const isCrewAmt2 = isNameMatch(activeIssue.handover.amt2, currentUser?.name);
+        const isCreator = activeIssue.handover.userId && String(activeIssue.handover.userId) === String(currentUser?.id);
+
+        if (!isAdminOrPengawas && !isCrewAmt1 && !isCrewAmt2 && !isCreator) {
+          Toast.show({
+            type: 'error',
+            text1: 'Akses Ditolak',
+            text2: 'Hanya kru pelapor (AMT 1 & AMT 2) atau Pengawas/Admin yang berhak memverifikasi perbaikan kendaraan ini.'
+          });
+          navigation.goBack();
+          return;
+        }
+
         setIssue(activeIssue);
         // Only get items that are not good and not yet repaired
         const items = (activeIssue.handover.items || []).filter(i => !i.isGood && !i.isRepaired).map(i => ({
@@ -251,6 +286,22 @@ export default function FixVerificationScreen({ route, navigation }) {
 
   const submitVerification = async () => {
     if (submitting) return;
+
+    // Validasi kewenangan sebelum submit
+    const currentRole = user?.role || 'USER';
+    const isAdminOrPengawas = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(currentRole);
+    const isCrewAmt1 = isNameMatch(issue?.handover?.amt1, user?.name);
+    const isCrewAmt2 = isNameMatch(issue?.handover?.amt2, user?.name);
+    const isCreator = issue?.handover?.userId && String(issue?.handover?.userId) === String(user?.id);
+
+    if (!isAdminOrPengawas && !isCrewAmt1 && !isCrewAmt2 && !isCreator) {
+      Toast.show({
+        type: 'error',
+        text1: 'Akses Ditolak',
+        text2: 'Hanya kru pelapor (AMT 1 & AMT 2) atau Pengawas/Admin yang berhak memverifikasi perbaikan ini.'
+      });
+      return;
+    }
 
     // Validate
     const itemsToRepair = brokenItems.filter(i => i.repairStatus === 'BAIK');
@@ -382,7 +433,7 @@ export default function FixVerificationScreen({ route, navigation }) {
 
         <ScrollView style={tw`flex-1 px-4 py-6 max-w-4xl mx-auto w-full`} showsVerticalScrollIndicator={false}>
           {/* Card Info Petugas Verifikasi */}
-          <View style={tw`bg-blue-50/90 border border-blue-200 rounded-2xl p-4 mb-5 flex-row items-center shadow-xs`}>
+          <View style={tw`bg-blue-50/90 border border-blue-200 rounded-2xl p-4 mb-3 flex-row items-center shadow-xs`}>
             <View style={tw`bg-[#0055A5] w-11 h-11 rounded-xl items-center justify-center mr-3.5 shadow-sm`}>
               <Ionicons name="shield-checkmark" size={22} color="white" />
             </View>
@@ -390,10 +441,31 @@ export default function FixVerificationScreen({ route, navigation }) {
               <Text style={tw`text-[10px] font-bold text-blue-900 uppercase tracking-wider`}>Petugas Verifikasi Perbaikan</Text>
               <Text style={tw`text-sm font-extrabold text-gray-900`}>{user?.name || 'AMT'}</Text>
               <Text style={tw`text-[11px] text-gray-600 mt-0.5 leading-4`}>
-                Bertugas memverifikasi kelayakan fisik komponen sebelum kendaraan beroperasi kembali.
+                Kru berwenang memverifikasi kelayakan fisik komponen sebelum kendaraan beroperasi kembali.
               </Text>
             </View>
           </View>
+
+          {/* Card Info Kru Pelapor Temuan Awal */}
+          {issue?.handover && (
+            <View style={tw`bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 mb-5 flex-row items-center shadow-xs`}>
+              <View style={tw`bg-amber-500 w-9 h-9 rounded-xl items-center justify-center mr-3`}>
+                <Ionicons name="alert-circle" size={20} color="white" />
+              </View>
+              <View style={tw`flex-1`}>
+                <Text style={tw`text-[10px] font-bold text-amber-900 uppercase tracking-wider`}>Kru Pelapor Temuan Handover</Text>
+                <Text style={tw`text-xs font-bold text-gray-800`}>
+                  {issue.handover.amt1 ? `AMT 1: ${issue.handover.amt1}` : ''}
+                  {issue.handover.amt2 ? ` • AMT 2: ${issue.handover.amt2}` : ''}
+                </Text>
+                {issue.handover.notes ? (
+                  <Text style={tw`text-[11px] text-gray-600 mt-0.5 italic`}>
+                    Catatan: "{issue.handover.notes}"
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          )}
         {brokenItems.length === 0 ? (
           <View style={tw`items-center mt-20`}>
             <View style={tw`w-24 h-24 bg-blue-50 rounded-full items-center justify-center mb-4`}>
