@@ -770,10 +770,16 @@ export default function IssueListScreen({ navigation, route }) {
             <View style={tw`w-24 h-24 bg-green-500 rounded-full items-center justify-center mb-6 shadow-xl shadow-green-500/40 border-4 border-white z-10`}>
               <Ionicons name="checkmark" size={60} color="white" />
             </View>
-            <Text style={tw`text-3xl font-black text-green-500 tracking-tighter mb-2 z-10`}>SUKSES!</Text>
-            <Text style={tw`text-sm font-medium text-gray-500 text-center z-10`}>
-              Isu pada kendaraan {selectedVehicle?.noPolisi} telah diselesaikan.
+            <Text style={tw`text-2xl font-black text-green-600 tracking-tight mb-2 z-10`}>Verifikasi Berhasil!</Text>
+            <Text style={tw`text-sm font-medium text-gray-500 text-center z-10 mb-6 leading-5`}>
+              Isu pada kendaraan {selectedVehicle?.noPolisi} telah diselesaikan dan unit siap beroperasi kembali.
             </Text>
+            <TouchableOpacity
+              style={tw`w-full bg-[#00A651] py-3.5 px-6 rounded-2xl items-center shadow-lg active:scale-95 z-10`}
+              onPress={() => setSuccessModalVisible(false)}
+            >
+              <Text style={tw`text-white font-extrabold text-[15px]`}>OK, Mengerti</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

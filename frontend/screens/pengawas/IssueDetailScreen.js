@@ -1,6 +1,7 @@
 import Toast from 'react-native-toast-message';
 import React, { useState, useEffect } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
+import AppModal, { AppModalDetail } from '../../components/AppModal';
 import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform, Dimensions, Modal } from 'react-native';
 import tw from 'twrnc';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -55,12 +56,14 @@ export default function IssueDetailScreen({ route, navigation }) {
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [selectedPreviewPhoto, setSelectedPreviewPhoto] = useState(null);
+  const [evalSuccessData, setEvalSuccessData] = useState(null);
   const [previewRotation, setPreviewRotation] = useState(0);
 
   useSubpageBackHandler({
     navigation,
     user: currentUser,
     modals: [
+      { isOpen: !!evalSuccessData, close: () => { setEvalSuccessData(null); navigation.goBack(); } },
       { isOpen: !!selectedPreviewPhoto, close: () => setSelectedPreviewPhoto(null) },
       { isOpen: confirmModalVisible, close: () => setConfirmModalVisible(false) },
       { isOpen: resolveModalVisible, close: () => setResolveModalVisible(false) },
@@ -224,9 +227,22 @@ export default function IssueDetailScreen({ route, navigation }) {
       }));
 
       await axios.post(`${API_URL}/api/issues/${issue.id}/evaluate-repair`, { evaluations: evalArray }, { headers });
-      Toast.show({ type: 'success', text1: 'Sukses', text2: 'Verifikasi perbaikan berhasil dikirim.' });
       setConfirmModalVisible(false);
-      setTimeout(() => navigation.goBack(), 1200);
+      const allApproved = evalArray.every(e => e.approved);
+      const someApproved = evalArray.some(e => e.approved);
+      const targetNopolText = issue.handover?.noPolisi || targetNopol || '-';
+
+      setEvalSuccessData({
+        type: allApproved ? 'success' : 'warning',
+        tone: allApproved ? 'success' : 'warning',
+        badge: allApproved ? 'VERIFIKASI DISETUJUI' : 'EVALUASI DISIMPAN',
+        title: allApproved ? 'Verifikasi Perbaikan\nBerhasil Disetujui!' : 'Hasil Evaluasi\nBerhasil Disimpan',
+        message: allApproved
+          ? `Perbaikan pada kendaraan ${targetNopolText} telah diverifikasi dan disetujui. Kendaraan kini siap beroperasi normal.`
+          : `Hasil evaluasi perbaikan untuk kendaraan ${targetNopolText} telah dicatat. Catatan penolakan diteruskan ke kru pelapor untuk perbaikan ulang.`,
+        statusText: allApproved ? 'Disetujui (Siap Jalan)' : (someApproved ? 'Sebagian Disetujui' : 'Perlu Perbaikan Ulang'),
+        statusColor: allApproved ? '#00A651' : '#F59E0B'
+      });
     } catch (error) {
       console.error('Error evaluating repair:', error);
       Toast.show({
@@ -246,13 +262,17 @@ export default function IssueDetailScreen({ route, navigation }) {
     try {
       const headers = await getAuthHeaders();
       await axios.put(`${API_URL}/api/issues/${issue.id}/resolve`, {}, { headers });
-      Toast.show({
-        type: 'success',
-        text1: 'Isu Diselesaikan',
-        text2: `Kendaraan ${issue.handover?.noPolisi || ''} telah diaktifkan kembali.`
-      });
       setResolveModalVisible(false);
-      setTimeout(() => navigation.goBack(), 1200);
+      const targetNopolText = issue.handover?.noPolisi || targetNopol || '-';
+      setEvalSuccessData({
+        type: 'success',
+        tone: 'success',
+        badge: 'BLOKIR DIBUKA',
+        title: 'Isu Selesai &\nBlokir Dibuka!',
+        message: `Isu pada kendaraan ${targetNopolText} telah diselesaikan. Kendaraan telah aktif kembali dan siap operasi.`,
+        statusText: 'Aktif / Siap Operasi',
+        statusColor: '#00A651'
+      });
     } catch (error) {
       console.error('Error resolving issue:', error);
       Toast.show({
@@ -742,6 +762,34 @@ export default function IssueDetailScreen({ route, navigation }) {
           onConfirm={handleDirectResolve}
           onCancel={() => setResolveModalVisible(false)}
         />
+
+        
+        {/* Modal Sukses Keren dengan Tombol OK */}
+        <AppModal
+          visible={!!evalSuccessData}
+          type={evalSuccessData?.type || 'success'}
+          tone={evalSuccessData?.tone || 'success'}
+          badge={evalSuccessData?.badge || 'VERIFIKASI BERHASIL'}
+          title={evalSuccessData?.title || 'Verifikasi Berhasil\nDisetujui!'}
+          message={evalSuccessData?.message || 'Hasil evaluasi perbaikan telah berhasil dicatat ke sistem digital Pertamina.'}
+          showClose={false}
+          primaryText="OK, Selesai"
+          primaryIcon="checkmark-circle"
+          onPrimary={() => {
+            setEvalSuccessData(null);
+            navigation.goBack();
+          }}
+        >
+          <AppModalDetail
+            tone={evalSuccessData?.tone || 'success'}
+            rows={[
+              { label: 'Truk', value: issue?.handover?.noPolisi || targetNopol || '-' },
+              { label: 'Status Verifikasi', value: evalSuccessData?.statusText || 'Disetujui', color: evalSuccessData?.statusColor || '#00A651', accent: true },
+              { label: 'Petugas Penilai', value: currentUser?.name || 'Admin / Pengawas' },
+              { label: 'Waktu Validasi', value: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' }
+            ]}
+          />
+        </AppModal>
 
         {/* Modal Full Screen Image Viewer (Preview Foto Detail & Putar) */}
         <Modal 

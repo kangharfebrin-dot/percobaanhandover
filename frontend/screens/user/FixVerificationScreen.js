@@ -361,8 +361,8 @@ export default function FixVerificationScreen({ route, navigation }) {
       }));
       formData.append('itemsData', JSON.stringify(itemsData));
 
-      // Append photos
-      itemsToRepair.forEach(item => {
+      // Append photos with proper web blob / native file uri handling
+      for (const item of itemsToRepair) {
         if (item.photo) {
           const rawFilename = item.photo.uri.split('/').pop() || `photo_${item.id}.jpg`;
           const match = /\.(\w+)$/.exec(rawFilename);
@@ -372,22 +372,51 @@ export default function FixVerificationScreen({ route, navigation }) {
             ? rawFilename
             : `${rawFilename}.jpg`;
 
-          formData.append(`photo_${item.id}`, {
-            uri: Platform.OS === 'android' ? item.photo.uri : item.photo.uri.replace('file://', ''),
-            name: filename,
-            type
-          });
+          if (Platform.OS === 'web') {
+            try {
+              const fetchRes = await fetch(item.photo.uri);
+              const blob = await fetchRes.blob();
+              formData.append(`photo_${item.id}`, blob, filename);
+            } catch (err) {
+              console.log("Failed to append web photo:", err);
+            }
+          } else {
+            formData.append(`photo_${item.id}`, {
+              uri: Platform.OS === 'android' ? item.photo.uri : item.photo.uri.replace('file://', ''),
+              name: filename,
+              type
+            });
+          }
         }
-      });
+      }
 
       const token = await AsyncStorage.getItem('token');
-      const res = await axios.post(`${API_URL}/api/issues/${issue.id}/verify-repair`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        },
-        timeout: 45000,
-      });
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Helper dengan timeout tinggi (60s) dan auto-retry otomatis jika terjadi Network Error
+      // PENTING: Jangan set Content-Type: multipart/form-data manual agar boundary terpasang otomatis
+      const executeSubmit = async () => {
+        return await axios.post(`${API_URL}/api/issues/${issue.id}/verify-repair`, formData, {
+          headers: {
+            ...authHeaders
+          },
+          timeout: 60000,
+        });
+      };
+
+      let res;
+      try {
+        res = await executeSubmit();
+      } catch (firstErr) {
+        const isNetworkOrTimeout = !firstErr.response || firstErr.code === 'ECONNABORTED' || (firstErr.message && firstErr.message.includes('Network Error'));
+        if (isNetworkOrTimeout) {
+          console.warn('[FixVerification] Pengiriman pertama terputus (Network Error/Timeout), mencoba ulang otomatis...');
+          await new Promise(r => setTimeout(r, 1200));
+          res = await executeSubmit();
+        } else {
+          throw firstErr;
+        }
+      }
 
       setShowSuccessModal(true);
     } catch (error) {
