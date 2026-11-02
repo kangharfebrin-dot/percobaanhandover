@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Platform, Modal, ScrollView, Dimensions, ActivityIndicator, Image } from 'react-native';
 import tw from 'twrnc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -291,6 +291,41 @@ export default function ActiveSessionsScreen({ navigation }) {
               >
                 {revoking && <ActivityIndicator size="small" color="#FFFFFF" />}
                 <Text style={tw`text-white font-bold text-sm`}>Ya, Cabut Sesi</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Logout Modal */}
+      <Modal
+        visible={isLogoutVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelLogout}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-6`}>
+          <View style={tw`bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-2xl relative overflow-hidden`}>
+            <Image source={require('../../assets/logo.png')} style={[tw`absolute opacity-10`, { width: 250, height: 250, top: -50, right: -50 }]} resizeMode="contain" />
+            <View style={tw`w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4`}>
+              <Feather name="log-out" size={32} color="#ED1C24" />
+            </View>
+            <Text style={tw`text-2xl font-black text-gray-800 mb-2`}>Konfirmasi Keluar</Text>
+            <Text style={tw`text-center text-gray-500 font-medium mb-8 px-4`}>
+              Apakah Anda yakin ingin keluar dari akun ini?
+            </Text>
+            <View style={tw`flex-row w-full`}>
+              <TouchableOpacity
+                style={tw`flex-1 bg-gray-100 p-4 rounded-xl mr-2 items-center`}
+                onPress={handleCancelLogout}
+              >
+                <Text style={tw`font-bold text-gray-600`}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`flex-1 bg-[#ED1C24] p-4 rounded-xl ml-2 items-center shadow-lg shadow-red-500/30`}
+                onPress={confirmLogout}
+              >
+                <Text style={tw`font-bold text-white`}>Ya, Keluar</Text>
               </TouchableOpacity>
             </View>
           </View>
