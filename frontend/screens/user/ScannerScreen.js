@@ -533,24 +533,47 @@ export default function ScannerScreen({ route, navigation }) {
         onClose={() => { setScanResult(null); navigateToDashboard(); }}
         primaryText={type === 'akhiri' ? 'Lanjut ke Pengisian Akhir' : 'Lanjut ke Pengisian Awal'}
         primaryIcon="arrow-forward"
+        primaryRightImage={require('../../assets/clean_emblem.png')}
         onPrimary={proceedToForm}
       >
-        {/* Table Data */}
-        <View style={tw`w-full bg-[#FAF9F6] rounded-2xl border border-gray-200/80 p-4 mb-2`}>
+        {/* Table Data Card with Pertamina Signature Accents */}
+        <View style={[tw`w-full bg-[#FAF9F6] rounded-2xl border border-gray-200/80 p-4 mb-2 overflow-hidden relative`, { borderTopWidth: 3.5, borderTopColor: '#ED1C24' }]}>
+          {/* Aksen Coretan Geometris Khas Pertamina (Top Left) */}
+          <View style={tw`absolute top-[-2px] left-[-2px] opacity-20`} pointerEvents="none">
+            <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#ED1C24] rounded-br-[42px]`, { top: 0, left: 0, width: 70, height: 70 }]} />
+            <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#00A651] rounded-br-[32px]`, { top: 0, left: 0, width: 56, height: 56 }]} />
+            <View style={[tw`absolute border-b-[3px] border-r-[3px] border-[#0055A5] rounded-br-[22px]`, { top: 0, left: 0, width: 42, height: 42 }]} />
+          </View>
+
+          {/* Aksen Coretan Geometris Khas Pertamina (Bottom Right) */}
+          <View style={tw`absolute bottom-[-2px] right-[-2px] opacity-20`} pointerEvents="none">
+            <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#ED1C24] rounded-tl-[42px]`, { bottom: 0, right: 0, width: 70, height: 70 }]} />
+            <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#00A651] rounded-tl-[32px]`, { bottom: 0, right: 0, width: 56, height: 56 }]} />
+            <View style={[tw`absolute border-t-[3px] border-l-[3px] border-[#0055A5] rounded-tl-[22px]`, { bottom: 0, right: 0, width: 42, height: 42 }]} />
+          </View>
+
+          {/* Watermark Logo Pertamina Transparan di Latar Belakang Kartu */}
+          <View style={tw`absolute inset-0 items-center justify-center opacity-[0.06]`} pointerEvents="none">
+            <Image
+              source={require('../../assets/logo.png')}
+              style={{ width: 130, height: 130, resizeMode: 'contain' }}
+            />
+          </View>
+
           {/* Row: No Polisi */}
-          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>No Polisi</Text>
             <Text style={tw`font-black text-[#111827] text-[15px]`}>{lastHandover.noPolisi}</Text>
           </View>
 
           {/* Row: Shift */}
-          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Shift</Text>
             <Text style={tw`font-bold text-[#111827] text-[14px]`}>{lastHandover.shift}</Text>
           </View>
 
           {/* Row: Status */}
-          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Status</Text>
             <View style={tw`${statusBg} px-2.5 py-1 rounded-full flex-row items-center`}>
               <View style={tw`w-2 h-2 ${statusDot} rounded-full mr-1.5`} />
@@ -559,7 +582,7 @@ export default function ScannerScreen({ route, navigation }) {
           </View>
 
           {/* Row: Checklist */}
-          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Checklist Kendaraan</Text>
             <View style={[tw`border-b-2 pb-0.5`, { borderColor: vehicleChecklistColor }]}>
               <Text style={[tw`font-bold text-[13.5px]`, { color: vehicleChecklistColor }]}>
@@ -569,7 +592,7 @@ export default function ScannerScreen({ route, navigation }) {
           </View>
 
           {/* Row: Perlengkapan */}
-          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 items-center`}>
+          <View style={tw`flex-row justify-between py-2 border-b border-gray-200/70 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>Perlengkapan AMT</Text>
             <View style={[tw`border-b-2 pb-0.5`, { borderColor: amtColor }]}>
               <Text style={[tw`font-bold text-[13.5px]`, { color: amtColor }]}>
@@ -579,7 +602,7 @@ export default function ScannerScreen({ route, navigation }) {
           </View>
 
           {/* Row: ODO Meter */}
-          <View style={tw`flex-row justify-between pt-2 items-center`}>
+          <View style={tw`flex-row justify-between pt-2 z-10 items-center`}>
             <Text style={tw`text-[#4B5563] text-[13px] font-medium`}>ODO Meter</Text>
             <Text style={tw`font-black text-[#111827] text-[15px]`}>{odoMeter} km</Text>
           </View>

@@ -10,6 +10,7 @@ import {
   ScrollView,
   Platform,
   useWindowDimensions,
+  Image,
 } from 'react-native';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,7 +52,7 @@ const TYPES = {
   maintenance: { icon: 'construct', tone: 'warning' },
 };
 
-function ActionButton({ label, onPress, variant = 'primary', gradient, icon, loading, disabled, style }) {
+function ActionButton({ label, onPress, variant = 'primary', gradient, icon, rightImage, loading, disabled, style }) {
   const base = 'min-h-[50px] rounded-2xl flex-row items-center justify-center px-4';
   const content = (
     <>
@@ -68,6 +69,9 @@ function ActionButton({ label, onPress, variant = 'primary', gradient, icon, loa
       >
         {label}
       </Text>
+      {rightImage && !loading ? (
+        <Image source={rightImage} style={[tw`ml-2`, { width: 18, height: 18, resizeMode: 'contain' }]} />
+      ) : null}
     </>
   );
 
@@ -118,6 +122,7 @@ export default function AppModal({
   primaryText,
   onPrimary,
   primaryIcon,
+  primaryRightImage,
   primaryLoading = false,
   primaryDisabled = false,
   secondaryText,
@@ -275,6 +280,7 @@ export default function AppModal({
                     onPress={onPrimary}
                     gradient={palette.gradient}
                     icon={primaryIcon}
+                    rightImage={primaryRightImage}
                     loading={primaryLoading}
                     disabled={primaryDisabled}
                     style={row ? tw`flex-1 ml-2` : tw`w-full`}
