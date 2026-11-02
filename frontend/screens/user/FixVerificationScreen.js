@@ -134,7 +134,7 @@ export default function FixVerificationScreen({ route, navigation }) {
     try {
       let activeIssue = null;
       const cleanNoPolisi = (noPolisi || '').replace(/\s+/g, '').toUpperCase();
-      const targetId = issueId || (noPolisi && !noPolisi.includes(' ') && noPolisi.length > 15 ? noPolisi : null);
+      const targetId = issueId || handoverId || (noPolisi && !noPolisi.includes(' ') && noPolisi.length > 15 ? noPolisi : null);
 
       const token = await AsyncStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -182,6 +182,21 @@ export default function FixVerificationScreen({ route, navigation }) {
         }
       }
       
+      // 4. Jika activeIssue ditemukan tetapi data handover belum lengkap (misal items belum termuat), ambil langsung dari API handovers
+      if (activeIssue && (!activeIssue.handover || !activeIssue.handover.items)) {
+        try {
+          const hId = activeIssue.handoverId || targetId;
+          if (hId) {
+            const hRes = await axios.get(`${API_URL}/api/handovers/${encodeURIComponent(hId)}`, { headers });
+            if (hRes.data) {
+              activeIssue = { ...activeIssue, handover: hRes.data };
+            }
+          }
+        } catch (hErr) {
+          console.log('Handover enrichment fallback error:', hErr.message);
+        }
+      }
+
       if (activeIssue && activeIssue.handover) {
         // Validasi kewenangan: hanya kru pelapor sepaket (AMT 1 & AMT 2) atau Pengawas/Admin
         const userStr = await AsyncStorage.getItem('user');
