@@ -68,16 +68,38 @@ router.get('/', authenticateToken, async (req, res) => {
       take: limit
     });
 
-    // Deduplikasi pesan kembar (misal targetRole ADMIN & PENGAWAS yang dibuat bersamaan untuk 1 event)
-    const seenMap = new Set();
+    // Deduplikasi pesan kembar:
+    // Jika sebuah event (actionId) memiliki variasi pesan untuk role berbeda
+    // (misal judul untuk Admin/Pengawas vs judul privat untuk AMT):
+    // 1. Notifikasi yang sesuai dengan role pengguna yang sedang login diprioritaskan
+    // 2. Hilangkan duplikat untuk event yang sama agar tidak muncul double-double di notifikasi
+    const seenActionMap = new Map();
     const uniqueNotifications = [];
-    for (const notif of notifications) {
-      const dedupKey = `${notif.actionType || ''}_${notif.actionId || ''}_${notif.title}_${notif.message}`;
-      if (!seenMap.has(dedupKey)) {
-        seenMap.add(dedupKey);
+
+    // Urutkan prioritas: notifikasi yang sesuai targetRole user diutamakan
+    const sortedNotifications = [...notifications].sort((a, b) => {
+      const aIsDirect = (a.targetRole === role) || (a.targetUserId === userId);
+      const bIsDirect = (b.targetRole === role) || (b.targetUserId === userId);
+      if (aIsDirect && !bIsDirect) return -1;
+      if (!aIsDirect && bIsDirect) return 1;
+      return 0;
+    });
+
+    for (const notif of sortedNotifications) {
+      // Jika memiliki actionId (notifikasi terikat transaksi/inspeksi/isu tertentu):
+      // Kunci deduplikasi mengikat pada actionId + level/type (ERROR/WARNING/INFO/SUCCESS)
+      const dedupKey = notif.actionId
+        ? `${notif.actionId}_${notif.type || ''}`
+        : `${notif.actionType || ''}_${notif.title}_${notif.message}`;
+
+      if (!seenActionMap.has(dedupKey)) {
+        seenActionMap.set(dedupKey, notif);
         uniqueNotifications.push(notif);
       }
     }
+
+    // Kembalikan urutan sesuai waktu terbaru (createdAt desc)
+    uniqueNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json({ success: true, notifications: uniqueNotifications });
   } catch (error) {
@@ -116,13 +138,11 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
       data: { isRead: true }
     });
 
-    // Tandai juga kembaran notifikasi untuk role lain agar tidak tertinggal unread
-    if (notification.actionId && notification.actionType) {
+    // Tandai juga kembaran notifikasi untuk event yang sama agar tidak tertinggal unread
+    if (notification.actionId) {
       await prisma.notification.updateMany({
         where: {
           actionId: notification.actionId,
-          actionType: notification.actionType,
-          title: notification.title,
           isRead: false
         },
         data: { isRead: true }

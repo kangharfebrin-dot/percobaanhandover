@@ -197,5 +197,55 @@ describe('Notification Role Scoping & Privacy Tests', () => {
     expect(res.status).toBe(200);
     expect(res.body.notification.isRead).toBe(true);
   });
+
+  test('Deduplicates paired Admin and AMT notifications for the same event so neither sees double', async () => {
+    const testActionId = `HO-TEST-${Date.now()}`;
+    const testAdminNotif = await prisma.notification.create({
+      data: {
+        title: 'Temuan Kepatuhan AMT: ADES SETIAWAN',
+        message: 'Petugas ADES SETIAWAN (R 868669 C) catatan kepatuhan belum lengkap: Dokumen HSE Paspor',
+        type: 'WARNING',
+        targetRole: 'ADMIN',
+        actionType: 'VIEW_AMT_ISSUE',
+        actionId: testActionId,
+        noPolisi: 'R 868669 C'
+      }
+    });
+
+    const testUserNotif = await prisma.notification.create({
+      data: {
+        title: 'Peringatan Perlengkapan Kerja: ADES SETIAWAN',
+        message: 'Catatan perlengkapan belum lengkap: Dokumen HSE Paspor',
+        type: 'WARNING',
+        targetRole: 'USER',
+        targetUserId: amtUserA.id,
+        actionType: 'VIEW_AMT_ISSUE',
+        actionId: testActionId,
+        noPolisi: 'R 868669 C'
+      }
+    });
+
+    try {
+      // Admin request: harus dapat notifikasi versi ADMIN, dan TIDAK melihat duplikat versi USER
+      const resAdmin = await request(app)
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${adminToken}`);
+      const adminNotifIds = resAdmin.body.notifications.map(n => n.id);
+      expect(adminNotifIds).toContain(testAdminNotif.id);
+      expect(adminNotifIds).not.toContain(testUserNotif.id);
+
+      // AMT request: harus dapat notifikasi versi USER, dan TIDAK melihat versi ADMIN
+      const resAmt = await request(app)
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${amtTokenA}`);
+      const amtNotifIds = resAmt.body.notifications.map(n => n.id);
+      expect(amtNotifIds).toContain(testUserNotif.id);
+      expect(amtNotifIds).not.toContain(testAdminNotif.id);
+    } finally {
+      await prisma.notification.deleteMany({
+        where: { id: { in: [testAdminNotif.id, testUserNotif.id] } }
+      });
+    }
+  });
 });
 
