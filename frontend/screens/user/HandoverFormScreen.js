@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { API_URL } from '../../config';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, StyleSheet, Image, ActivityIndicator, Dimensions, Platform, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Image, ActivityIndicator, Dimensions, Platform, Linking } from 'react-native';
 import tw from 'twrnc';
 import TextLogo from '../../components/TextLogo';
 import AppModal, { AppModalDetail } from '../../components/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import axios from 'axios';
@@ -172,16 +172,17 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
   const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
 
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [activePhotoType, setActivePhotoType] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
   // Matikan senter/flash saat kamera ditutup atau masuk preview foto
   useEffect(() => {
     if (!isCameraOpen || previewPhoto) {
       setFlashMode(FLASH_MODES.OFF);
     }
   }, [isCameraOpen, previewPhoto]);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isCameraReady, setIsCameraReady] = useState(false);
-  const [activePhotoType, setActivePhotoType] = useState(null);
-  const [previewPhoto, setPreviewPhoto] = useState(null);
   const [photoViewerState, setPhotoViewerState] = useState(null);
   const [lockedItemModal, setLockedItemModal] = useState(null);
   const [authToken, setAuthToken] = useState('');
