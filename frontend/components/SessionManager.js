@@ -124,16 +124,30 @@ export default function SessionManager({ navigationRef }) {
         sendActivityPing();
       };
 
+      const handleVisibilityChange = () => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          checkSessionStatus();
+        }
+      };
+
       window.addEventListener('mousedown', handleUserEvent);
       window.addEventListener('keydown', handleUserEvent);
       window.addEventListener('touchstart', handleUserEvent);
       window.addEventListener('scroll', handleUserEvent);
+      window.addEventListener('focus', checkSessionStatus);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      }
 
       return () => {
         window.removeEventListener('mousedown', handleUserEvent);
         window.removeEventListener('keydown', handleUserEvent);
         window.removeEventListener('touchstart', handleUserEvent);
         window.removeEventListener('scroll', handleUserEvent);
+        window.removeEventListener('focus', checkSessionStatus);
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
       };
     } else {
       const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -146,9 +160,10 @@ export default function SessionManager({ navigationRef }) {
     }
   }, [sendActivityPing, checkSessionStatus]);
 
-  // Interval berkala untuk polling status sesi (setiap 20 detik)
+  // Interval berkala untuk polling status sesi (setiap 5 detik untuk respon instan saat admin mencabut sesi)
   useEffect(() => {
-    checkIntervalRef.current = setInterval(checkSessionStatus, 20000);
+    checkSessionStatus();
+    checkIntervalRef.current = setInterval(checkSessionStatus, 5000);
     return () => {
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
     };

@@ -4,7 +4,12 @@ const bcrypt = require('bcrypt');
 const prisma = require('../config/prisma');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { userManageSchema } = require('../validators/schemas');
-const { revokeUserSessionByAdmin, isSessionLive } = require('../services/sessionService');
+const {
+  revokeUserSessionByAdmin,
+  isSessionLive,
+  getIdleTimeoutForRole,
+  terminateSession
+} = require('../services/sessionService');
 
 // 1. GET All Admins (KHUSUS SUPER_ADMIN)
 router.get('/', authenticateToken, authorizeRole('SUPER_ADMIN'), async (req, res) => {
@@ -323,20 +328,39 @@ router.get('/sessions/active', authenticateToken, authorizeRole('SUPER_ADMIN'), 
     });
 
     const now = Date.now();
-    const result = usersWithSessions.map(u => {
+    const activeSessions = [];
+
+    for (const u of usersWithSessions) {
       const live = isSessionLive(u, now);
-      return {
+      if (!live.isActive) {
+        // Prune sesi yang telah kedaluwarsa secara pasif dari database
+        terminateSession(u.id, u.activeSessionId, prisma).catch(() => {});
+        continue;
+      }
+
+      // Hitung sisa waktu idle dan sisa waktu absolut
+      const idleTimeout = getIdleTimeoutForRole(u.role);
+      const lastActivityTime = u.sessionLastActivityAt
+        ? new Date(u.sessionLastActivityAt).getTime()
+        : (u.sessionStartedAt ? new Date(u.sessionStartedAt).getTime() : now);
+      const elapsedIdle = now - lastActivityTime;
+      const remainingIdleSeconds = Math.max(0, Math.floor((idleTimeout - elapsedIdle) / 1000));
+      const remainingAbsoluteSeconds = u.sessionExpiresAt
+        ? Math.max(0, Math.floor((new Date(u.sessionExpiresAt).getTime() - now) / 1000))
+        : 0;
+
+      activeSessions.push({
         ...u,
-        isLive: live.isActive,
-        idleExpired: live.reason === 'IDLE_TIMEOUT',
-        absoluteExpired: live.reason === 'ABSOLUTE_TIMEOUT'
-      };
-    });
+        isLive: true,
+        remainingIdleSeconds,
+        remainingAbsoluteSeconds
+      });
+    }
 
     res.json({
       success: true,
-      sessions: result,
-      activeSessions: result
+      sessions: activeSessions,
+      activeSessions: activeSessions
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

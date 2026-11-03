@@ -3,8 +3,20 @@ import axios from 'axios';
 
 const storage = AsyncStorageRaw.default || AsyncStorageRaw;
 
+let configApiUrl = null;
+try {
+  const config = require('../config');
+  configApiUrl = config.getApiUrl || config.API_URL;
+} catch (_) {}
+
 const getApiUrl = () => {
   if (axios.defaults.baseURL) return axios.defaults.baseURL;
+  if (typeof configApiUrl === 'function') {
+    const url = configApiUrl();
+    if (url) return url;
+  } else if (typeof configApiUrl === 'string' && configApiUrl) {
+    return configApiUrl;
+  }
   if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
@@ -28,12 +40,14 @@ let isLoggingOut = false;
  * @returns {Promise<{ success: boolean, serverSessionCleared: boolean, error?: string, canRetry?: boolean }>}
  */
 export const handleLogoutAndReset = async (navigation, options = {}) => {
-  if (isLoggingOut) return { success: false, serverSessionCleared: false, reason: 'ALREADY_IN_PROGRESS' };
-  isLoggingOut = true;
-
   const sessionExpiredMessage = typeof options === 'string' ? options : options?.message;
   const isForce = Boolean(options?.force);
   const isExpired = Boolean(options?.isExpired || sessionExpiredMessage);
+
+  if (isLoggingOut && !isForce && !isExpired) {
+    return { success: false, serverSessionCleared: false, reason: 'ALREADY_IN_PROGRESS' };
+  }
+  isLoggingOut = true;
 
   let serverSessionCleared = false;
   let serverError = null;
@@ -90,13 +104,21 @@ export const handleLogoutAndReset = async (navigation, options = {}) => {
     // Navigasi ke halaman login dengan reset stack
     const loginParams = sessionExpiredMessage ? { sessionExpiredMessage } : undefined;
 
-    if (navigation && typeof navigation.reset === 'function') {
-      navigation.reset({
+    const nav = (navigation && typeof navigation.reset === 'function')
+      ? navigation
+      : (navigation?.current && typeof navigation.current.reset === 'function')
+        ? navigation.current
+        : null;
+
+    if (nav && typeof nav.reset === 'function') {
+      nav.reset({
         index: 0,
         routes: [{ name: 'Login', params: loginParams }],
       });
     } else if (navigation && typeof navigation.replace === 'function') {
       navigation.replace('Login', loginParams);
+    } else if (navigation?.current && typeof navigation.current.replace === 'function') {
+      navigation.current.replace('Login', loginParams);
     }
 
     return {

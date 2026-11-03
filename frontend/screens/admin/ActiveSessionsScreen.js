@@ -120,7 +120,13 @@ export default function ActiveSessionsScreen({ navigation }) {
   };
 
   const formatRemainingMinutes = (seconds) => {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) return '-';
     if (seconds <= 0) return 'Kadaluarsa';
+    if (seconds >= 3600) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h}j ${m}m`;
+    }
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}m ${s}s`;
