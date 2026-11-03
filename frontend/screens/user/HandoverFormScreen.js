@@ -724,8 +724,18 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
-    if (!noPolisi || !odoMeter || !shift) {
-      showValidationError("Perhatian", "Informasi perjalanan (Plat, Shift, Odo Meter) tidak boleh kosong.");
+    if (!noPolisi || noPolisi.trim() === '') {
+      showValidationError("Nomor Polisi Kosong", "Nomor polisi kendaraan belum terisi. Harap periksa kembali scan kendaraan.");
+      return;
+    }
+
+    if (!shift || shift.trim() === '') {
+      showValidationError("Shift Belum Dipilih", "Harap tentukan shift atau waktu perjalanan.");
+      return;
+    }
+
+    if (!odoMeter || odoMeter.trim() === '') {
+      showValidationError("Odometer Wajib Diisi", `Harap masukkan angka ${type === 'akhiri' ? 'Odometer Akhir' : 'Odometer Awal'} kendaraan.`);
       return;
     }
 
@@ -761,7 +771,7 @@ export default function HandoverFormScreen({ route, navigation }) {
     // 2. Validasi Wajib Isi Semua Checklist
     const emptyItem = items.find(item => item.status === null);
     if (emptyItem) {
-      showValidationError("Form Belum Lengkap", `Anda belum mengecek item:\n"${emptyItem.name}"\n\nHarap pilih [NORMAL] atau [ISU]!`);
+      showValidationError("Form Belum Lengkap", `Anda belum mengecek item:\n"${emptyItem.name}"`);
       return;
     }
 
