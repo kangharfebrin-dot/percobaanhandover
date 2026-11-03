@@ -733,7 +733,12 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
-    if (amt1 && amt2 && amt1.trim().toLowerCase() === amt2.trim().toLowerCase()) {
+    if (!amt2 || amt2.trim() === '') {
+      showValidationError("AMT 2 Wajib Diisi", "Harap masukkan atau pilih nama petugas AMT 2.");
+      return;
+    }
+
+    if (amt1.trim().toLowerCase() === amt2.trim().toLowerCase()) {
       showValidationError("Data AMT Duplikat", "Petugas AMT 1 dan AMT 2 tidak boleh orang yang sama.");
       return;
     }
@@ -1269,7 +1274,7 @@ export default function HandoverFormScreen({ route, navigation }) {
               </View>
             </TouchableOpacity>
 
-            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1</Text>
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 1 <Text style={tw`text-red-500 font-black`}>*</Text></Text>
             <View style={tw`mb-5`}>
               <TextInput
                 style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt1Locked ? "text-gray-500 bg-gray-100" : ""}`}
@@ -1319,7 +1324,7 @@ export default function HandoverFormScreen({ route, navigation }) {
               )}
             </View>
 
-            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2</Text>
+            <Text style={tw`text-gray-500 font-bold text-xs uppercase tracking-wider mb-2`}>AMT 2 <Text style={tw`text-red-500 font-black`}>*</Text></Text>
             <View style={tw`mb-5`}>
               <TextInput
                 style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 text-black font-bold text-base shadow-sm ${isAmt2Locked ? "text-gray-500 bg-gray-100" : ""}`}

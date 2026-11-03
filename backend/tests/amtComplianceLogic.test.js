@@ -351,4 +351,88 @@ describe('AMT Compliance & Vehicle Issue Decoupling Regression Tests', () => {
     expect(resAll.status).toBe(200);
     expect(resAll.body.length).toBeGreaterThanOrEqual(resOpen.body.length);
   });
+
+  // =========================================================================
+  // Test 9: Validasi Pasangan Kru AMT (Wajib isi AMT 1 dan AMT 2, tidak boleh sama)
+  // =========================================================================
+  it('9. Handover submission enforces both AMT 1 and AMT 2, and rejects duplicates', async () => {
+    const testNopolCrew = `B_CREW_${Date.now()}`;
+    await prisma.vehicle.create({
+      data: { noPolisi: testNopolCrew, barcode: `BC_${testNopolCrew}`, status: 'READY_TO_START' }
+    });
+
+    const items = [{ category: 'A', name: 'Kondisi Wiper', isGood: true }];
+
+    // 1. Kirim hanya AMT 1 -> Ditolak (AMT 2 wajib diisi)
+    const resNoAmt2 = await request(app)
+      .post('/api/handovers')
+      .set('Authorization', `Bearer ${amtToken}`)
+      .field('userId', testUserAmt.id)
+      .field('noPolisi', testNopolCrew)
+      .field('shift', '1')
+      .field('type', 'mulai')
+      .field('locationLat', -7.5)
+      .field('locationLng', 109.0)
+      .field('amt1', 'Budi Santoso')
+      .field('items', JSON.stringify(items));
+
+    expect(resNoAmt2.status).toBe(400);
+    expect(resNoAmt2.body.error).toMatch(/AMT 2 wajib diisi/i);
+
+    // 2. Kirim hanya AMT 2 -> Ditolak (AMT 1 wajib diisi)
+    const resNoAmt1 = await request(app)
+      .post('/api/handovers')
+      .set('Authorization', `Bearer ${amtToken}`)
+      .field('userId', testUserAmt.id)
+      .field('noPolisi', testNopolCrew)
+      .field('shift', '1')
+      .field('type', 'mulai')
+      .field('locationLat', -7.5)
+      .field('locationLng', 109.0)
+      .field('amt2', 'Joko Susilo')
+      .field('items', JSON.stringify(items));
+
+    expect(resNoAmt1.status).toBe(400);
+    expect(resNoAmt1.body.error).toMatch(/AMT 1 wajib diisi/i);
+
+    // 3. Kirim AMT 1 dan AMT 2 orang yang sama -> Ditolak (duplikat)
+    const resDuplicate = await request(app)
+      .post('/api/handovers')
+      .set('Authorization', `Bearer ${amtToken}`)
+      .field('userId', testUserAmt.id)
+      .field('noPolisi', testNopolCrew)
+      .field('shift', '1')
+      .field('type', 'mulai')
+      .field('locationLat', -7.5)
+      .field('locationLng', 109.0)
+      .field('amt1', 'Budi Santoso')
+      .field('amt2', 'budi santoso')
+      .field('items', JSON.stringify(items));
+
+    expect(resDuplicate.status).toBe(400);
+    expect(resDuplicate.body.error).toMatch(/tidak boleh orang yang sama/i);
+
+    // 4. Kirim AMT 1 dan AMT 2 lengkap dan berbeda -> Berhasil
+    const resValid = await request(app)
+      .post('/api/handovers')
+      .set('Authorization', `Bearer ${amtToken}`)
+      .field('userId', testUserAmt.id)
+      .field('noPolisi', testNopolCrew)
+      .field('shift', '1')
+      .field('type', 'mulai')
+      .field('locationLat', -7.5)
+      .field('locationLng', 109.0)
+      .field('amt1', 'Budi Santoso')
+      .field('amt2', 'Joko Susilo')
+      .field('items', JSON.stringify(items));
+
+    expect(resValid.status).toBe(201);
+    expect(resValid.body.success).toBe(true);
+    expect(resValid.body.handover.amt1).toBe('Budi Santoso');
+    expect(resValid.body.handover.amt2).toBe('Joko Susilo');
+
+    // Cleanup
+    await prisma.handover.deleteMany({ where: { noPolisi: testNopolCrew } });
+    await prisma.vehicle.deleteMany({ where: { noPolisi: testNopolCrew } });
+  });
 });

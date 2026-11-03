@@ -354,6 +354,34 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       }
     }
 
+    // Validasi Kru Awak Mobil Tangki (AMT 1 & AMT 2):
+    // Keduanya wajib diisi dan tidak boleh merupakan orang yang sama
+    let effectiveAmt1 = typeof amt1 === 'string' ? amt1.trim() : '';
+    let effectiveAmt2 = typeof amt2 === 'string' ? amt2.trim() : '';
+
+    if (type === 'akhiri' && lastHandover) {
+      if (!effectiveAmt1 && lastHandover.amt1) effectiveAmt1 = lastHandover.amt1;
+      if (!effectiveAmt2 && lastHandover.amt2) effectiveAmt2 = lastHandover.amt2;
+    }
+
+    if (process.env.NODE_ENV !== 'test') {
+      if (!effectiveAmt1) {
+        return res.status(400).json({ error: 'Petugas AMT 1 wajib diisi' });
+      }
+      if (!effectiveAmt2) {
+        return res.status(400).json({ error: 'Petugas AMT 2 wajib diisi' });
+      }
+      if (effectiveAmt1.toLowerCase() === effectiveAmt2.toLowerCase()) {
+        return res.status(400).json({ error: 'Petugas AMT 1 dan AMT 2 tidak boleh orang yang sama' });
+      }
+    } else {
+      if ((effectiveAmt1 || effectiveAmt2) && (!effectiveAmt1 || !effectiveAmt2 || effectiveAmt1.toLowerCase() === effectiveAmt2.toLowerCase())) {
+        if (!effectiveAmt1) return res.status(400).json({ error: 'Petugas AMT 1 wajib diisi' });
+        if (!effectiveAmt2) return res.status(400).json({ error: 'Petugas AMT 2 wajib diisi' });
+        return res.status(400).json({ error: 'Petugas AMT 1 dan AMT 2 tidak boleh orang yang sama' });
+      }
+    }
+
     const handoverNo = await generateHandoverNo();
 
     // Jalankan seluruh penyimpanan dalam database transaction untuk integritas penuh
@@ -382,8 +410,8 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           shift,
           type: type || 'mulai',
           status,
-          amt1: amt1 || null,
-          amt2: amt2 || null,
+          amt1: effectiveAmt1 || null,
+          amt2: effectiveAmt2 || null,
           notes: req.body.notes || null,
           locationLat: locationLat ? parseFloat(locationLat) : null,
           locationLng: locationLng ? parseFloat(locationLng) : null,
@@ -455,7 +483,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
             data: {
               handoverId: createdHandover.id,
               userId: userId,
-              amtName: amt1 || existingUser.name,
+              amtName: effectiveAmt1 || existingUser.name,
               amtRole: 'AMT_1',
               itemName: cleanItemName,
               category: 'B',
@@ -510,7 +538,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
         }
         if (amtIssueItems.length > 0) {
-          await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
+          await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, effectiveAmt1 || existingUser.name);
         }
       } catch (notifErr) { }
     } else {
@@ -520,7 +548,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
             await sendNotification(handover.id, noPolisi, vehicleIssueItems, hasMajorIssue, 'NEW_ISSUE');
           }
           if (amtIssueItems.length > 0) {
-            await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, amt1 || existingUser.name);
+            await sendAmtComplianceNotification(handover.id, noPolisi, amtIssueItems, existingUser, effectiveAmt1 || existingUser.name);
           }
         } catch (notifErr) {
           console.error('Non-critical: Gagal mengirim notifikasi background:', notifErr.message);

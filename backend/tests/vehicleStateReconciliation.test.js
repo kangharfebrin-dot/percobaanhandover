@@ -347,6 +347,7 @@ describe('Vehicle Operational Status & State Machine Regression Tests', () => {
         noPolisi: nopol5,
         userId: testAmt.id,
         amt1: testAmt.name,
+        amt2: 'Partner AMT 2',
         shift: '1',
         type: 'mulai',
         status: 'Siap Operasi (Normal)',
@@ -546,6 +547,7 @@ describe('Vehicle Operational Status & State Machine Regression Tests', () => {
       .set('x-scan-token', amtScan.body.scanToken)
       .field('noPolisi', nopol8)
       .field('amt1', testAmt.name)
+      .field('amt2', 'Partner AMT 2')
       .field('shift', '1')
       .field('type', 'mulai')
       .field('locationLat', -7.4)
