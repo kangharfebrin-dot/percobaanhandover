@@ -694,6 +694,115 @@ export default function HandoverDetailScreen({ route, navigation }) {
               </View>
             </View>
 
+            {/* Card Verifikasi ALPR */}
+            {(handover?.plateStatus || handover?.frontPlateDetected || handover?.backPlateDetected) ? (
+              <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
+                <LinearGradient colors={['#F8FAFC', '#F1F5F9']} style={tw`p-5 flex-row items-center justify-between border-b border-gray-200`}>
+                  <View style={tw`flex-row items-center flex-1 mr-2`}>
+                    <View style={tw`bg-blue-100 p-2 rounded-xl mr-3 shadow-sm`}>
+                      <Ionicons name="scan" size={24} color="#0055A5" />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`font-extrabold text-lg text-gray-800`}>Verifikasi Plat Nomor (ALPR)</Text>
+                      <Text style={tw`text-xs text-gray-400 font-medium`}>Automatic License Plate Recognition</Text>
+                    </View>
+                  </View>
+                  <View style={tw`px-3 py-1.5 rounded-full ${
+                    handover.plateStatus === 'MATCH' ? 'bg-green-100' :
+                    handover.plateStatus === 'MANUAL_OVERRIDE' ? 'bg-amber-100' :
+                    handover.plateStatus === 'MISMATCH' ? 'bg-red-100' : 'bg-gray-100'
+                  }`}>
+                    <Text style={tw`text-xs font-black ${
+                      handover.plateStatus === 'MATCH' ? 'text-green-700' :
+                      handover.plateStatus === 'MANUAL_OVERRIDE' ? 'text-amber-700' :
+                      handover.plateStatus === 'MISMATCH' ? 'text-red-700' : 'text-gray-700'
+                    }`}>
+                      {handover.plateStatus === 'MANUAL_OVERRIDE' ? 'VERIFIKASI MANUAL' : (handover.plateStatus || 'TERVERIFIKASI')}
+                    </Text>
+                  </View>
+                </LinearGradient>
+
+                <View style={tw`p-5`}>
+                  {/* Target Plat vs Deteksi */}
+                  <View style={tw`bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4`}>
+                    <Text style={tw`text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1`}>Nomor Polisi Resmi (Database Kendaraan)</Text>
+                    <Text style={tw`text-lg font-black text-gray-900 font-mono tracking-wider`}>{handover.noPolisi}</Text>
+                  </View>
+
+                  <View style={tw`flex-row gap-3 mb-4`}>
+                    {/* Plat Depan */}
+                    <View style={tw`flex-1 bg-gray-50 p-3.5 rounded-2xl border border-gray-200`}>
+                      <View style={tw`flex-row items-center justify-between mb-2`}>
+                        <Text style={tw`text-xs font-extrabold text-gray-700`}>Tampak Depan</Text>
+                        <View style={tw`px-2 py-0.5 rounded-md ${
+                          handover.frontPlateStatus === 'MATCH' ? 'bg-green-100' :
+                          handover.frontPlateStatus === 'MISMATCH' ? 'bg-red-100' : 'bg-amber-100'
+                        }`}>
+                          <Text style={tw`text-[10px] font-bold ${
+                            handover.frontPlateStatus === 'MATCH' ? 'text-green-700' :
+                            handover.frontPlateStatus === 'MISMATCH' ? 'text-red-700' : 'text-amber-700'
+                          }`}>{handover.frontPlateStatus || '-'}</Text>
+                        </View>
+                      </View>
+                      <Text style={tw`text-base font-black text-gray-900 font-mono`}>{handover.frontPlateDetected || 'Tidak Terbaca'}</Text>
+                      {handover.frontPlateConfidence !== null && handover.frontPlateConfidence !== undefined && (
+                        <Text style={tw`text-[10px] text-gray-500 font-medium mt-1`}>
+                          Keyakinan: {(handover.frontPlateConfidence * 100).toFixed(1)}%
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Plat Belakang */}
+                    <View style={tw`flex-1 bg-gray-50 p-3.5 rounded-2xl border border-gray-200`}>
+                      <View style={tw`flex-row items-center justify-between mb-2`}>
+                        <Text style={tw`text-xs font-extrabold text-gray-700`}>Tampak Belakang</Text>
+                        <View style={tw`px-2 py-0.5 rounded-md ${
+                          handover.backPlateStatus === 'MATCH' ? 'bg-green-100' :
+                          handover.backPlateStatus === 'MISMATCH' ? 'bg-red-100' : 'bg-amber-100'
+                        }`}>
+                          <Text style={tw`text-[10px] font-bold ${
+                            handover.backPlateStatus === 'MATCH' ? 'text-green-700' :
+                            handover.backPlateStatus === 'MISMATCH' ? 'text-red-700' : 'text-amber-700'
+                          }`}>{handover.backPlateStatus || '-'}</Text>
+                        </View>
+                      </View>
+                      <Text style={tw`text-base font-black text-gray-900 font-mono`}>{handover.backPlateDetected || 'Tidak Terbaca'}</Text>
+                      {handover.backPlateConfidence !== null && handover.backPlateConfidence !== undefined && (
+                        <Text style={tw`text-[10px] text-gray-500 font-medium mt-1`}>
+                          Keyakinan: {(handover.backPlateConfidence * 100).toFixed(1)}%
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Override Info jika ada */}
+                  {handover.plateOverrideReason ? (
+                    <View style={tw`bg-amber-50 p-3.5 rounded-2xl border border-amber-200`}>
+                      <View style={tw`flex-row items-center mb-1`}>
+                        <Ionicons name="shield-checkmark" size={14} color="#D97706" style={tw`mr-1.5`} />
+                        <Text style={tw`text-xs font-bold text-amber-900`}>
+                          Diverifikasi Manual oleh: {handover.plateOverrideBy || 'Pengawas'}
+                        </Text>
+                      </View>
+                      <Text style={tw`text-xs text-amber-800 leading-5`}>
+                        Alasan: {handover.plateOverrideReason}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Engine & Timestamp Footer */}
+                  <View style={tw`flex-row justify-between items-center mt-3 pt-3 border-t border-gray-100`}>
+                    <Text style={tw`text-[10px] text-gray-400 font-medium`}>
+                      Model: {handover.plateModel || 'YOLO + PaddleOCR'}
+                    </Text>
+                    <Text style={tw`text-[10px] text-gray-400 font-medium`}>
+                      Metode: {handover.plateVerificationMethod || 'AUTOMATIC_AI'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
             {/* Kategori A */}
             {itemsA.length > 0 && (
               <View style={tw`bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-5`}>
@@ -781,6 +890,12 @@ export default function HandoverDetailScreen({ route, navigation }) {
                         style={tw`w-full h-full`}
                         resizeMode="cover"
                       />
+                      {photo.detectedPlate ? (
+                        <View style={tw`absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded-lg flex-row items-center border border-emerald-400/50 shadow-sm`}>
+                          <Ionicons name="car-outline" size={11} color="#34D399" style={tw`mr-1`} />
+                          <Text style={tw`text-white text-[9px] font-mono font-bold`}>{photo.detectedPlate}</Text>
+                        </View>
+                      ) : null}
                       <View style={tw`absolute top-2 right-2 bg-black/50 px-2 py-1 rounded-full flex-row items-center border border-white/20`}>
                         <Ionicons name="scan-outline" size={12} color="white" style={tw`mr-1`} />
                         <Text style={tw`text-white text-[10px] font-bold`}>Preview</Text>

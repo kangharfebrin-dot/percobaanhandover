@@ -170,6 +170,13 @@ export default function HandoverFormScreen({ route, navigation }) {
   const [gpsUpdatedAt, setGpsUpdatedAt] = useState(null);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [photos, setPhotos] = useState({ Depan: null, Belakang: null, Kanan: null, Kiri: null });
+  const [alprResults, setAlprResults] = useState({ Depan: null, Belakang: null });
+  const [alprLoading, setAlprLoading] = useState({ Depan: false, Belakang: false });
+  const [alprError, setAlprError] = useState({ Depan: null, Belakang: null });
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideReasonInput, setOverrideReasonInput] = useState('');
+  const [isPlateOverridden, setIsPlateOverridden] = useState(false);
+  const [plateOverrideReason, setPlateOverrideReason] = useState('');
   const [flashMode, setFlashMode] = useState(FLASH_MODES.OFF);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -677,11 +684,93 @@ export default function HandoverFormScreen({ route, navigation }) {
     }
   };
 
+  const runPlateRecognition = async (side, photo) => {
+    if (!photo || !photo.uri) return;
+    const targetNopol = noPolisi || initialNoPolisi;
+    if (!targetNopol) {
+      console.warn('[ALPR] Nomor polisi belum terisi saat foto diambil');
+      return;
+    }
+
+    setAlprLoading(prev => ({ ...prev, [side]: true }));
+    setAlprError(prev => ({ ...prev, [side]: null }));
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const formData = new FormData();
+      formData.append('noPolisi', targetNopol.trim());
+      formData.append('side', side === 'Depan' ? 'FRONT' : 'BACK');
+      formData.append('scanToken', scanToken || '');
+      formData.append('processType', type || 'mulai');
+
+      const filename = photo.uri.split('/').pop() || `plate_${side.toLowerCase()}.jpg`;
+      const match = /\.(\w+)$/.exec(filename);
+      const mimeType = match ? `image/${match[1]}` : `image/jpeg`;
+
+      if (Platform.OS === 'web') {
+        const res = await fetch(photo.uri);
+        const blob = await res.blob();
+        formData.append('photo', blob, filename);
+      } else {
+        formData.append('photo', { uri: photo.uri, name: filename, type: mimeType });
+      }
+
+      const response = await axios.post(`${API_URL}/api/plate-recognition/recognize`, formData, {
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 25000
+      });
+
+      if (response.data && response.data.success) {
+        const data = response.data.data;
+        setAlprResults(prev => ({
+          ...prev,
+          [side]: {
+            status: data.status,
+            detectedPlate: data.detectedPlate,
+            normalizedPlate: data.normalizedPlate,
+            confidence: data.confidence,
+            matchesExpected: data.matchesExpected,
+            plateToken: data.plateToken,
+            photoHash: data.photoHash,
+            modelInfo: data.modelInfo
+          }
+        }));
+      }
+    } catch (err) {
+      console.warn(`[ALPR] Gagal memeriksa plat nomor sisi ${side}:`, err?.response?.data || err.message);
+      const serverError = err?.response?.data?.error || err.message;
+      setAlprError(prev => ({ ...prev, [side]: serverError }));
+      setAlprResults(prev => ({
+        ...prev,
+        [side]: {
+          status: 'SERVICE_UNAVAILABLE',
+          detectedPlate: null,
+          confidence: 0,
+          matchesExpected: false,
+          errorMessage: serverError
+        }
+      }));
+    } finally {
+      setAlprLoading(prev => ({ ...prev, [side]: false }));
+    }
+  };
+
   const savePhoto = () => {
-    setPhotos({ ...photos, [activePhotoType]: previewPhoto });
+    const savedPhoto = previewPhoto;
+    const currentType = activePhotoType;
+    setPhotos(prev => ({ ...prev, [currentType]: savedPhoto }));
     setIsCameraOpen(false);
     setPreviewPhoto(null);
     setActivePhotoType(null);
+
+    if (currentType === 'Depan' || currentType === 'Belakang') {
+      runPlateRecognition(currentType, savedPhoto);
+    }
   };
 
   // SUBMIT LOGIC
@@ -798,6 +887,37 @@ export default function HandoverFormScreen({ route, navigation }) {
       return;
     }
 
+    // 7. Validasi ALPR (Plat Depan & Belakang)
+    const frontAlpr = alprResults.Depan;
+    const backAlpr = alprResults.Belakang;
+    const isFrontProblem = frontAlpr && (frontAlpr.status === 'MISMATCH' || frontAlpr.status === 'UNREADABLE');
+    const isBackProblem = backAlpr && (backAlpr.status === 'MISMATCH' || backAlpr.status === 'UNREADABLE');
+
+    if ((isFrontProblem || isBackProblem) && !isPlateOverridden) {
+      const isAdminOrPengawas = ['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(userRole);
+      if (!isAdminOrPengawas) {
+        const problemSides = [];
+        if (isFrontProblem) problemSides.push(`Depan (${frontAlpr.status})`);
+        if (isBackProblem) problemSides.push(`Belakang (${backAlpr.status})`);
+
+        showValidationError(
+          "Verifikasi Plat Belum Sesuai",
+          `Hasil pembacaan plat nomor pada foto ${problemSides.join(' & ')} belum sesuai dengan kendaraan ${noPolisi}.\n\nHarap ambil ulang foto plat nomor yang jelas dan tegak lurus.`
+        );
+        return;
+      } else {
+        Alert.alert(
+          "Verifikasi Plat Bermasalah",
+          `Terdapat ketidakcocokan pada hasil deteksi plat nomor kendaraan (${noPolisi}). Sebagai Pengawas/Admin, Anda dapat melakukan verifikasi manual (override).`,
+          [
+            { text: 'Foto Ulang', style: 'cancel' },
+            { text: 'Verifikasi Manual', onPress: () => setShowOverrideModal(true) }
+          ]
+        );
+        return;
+      }
+    }
+
     // SEMUA VALIDASI LULUS -> Tampilkan modal konfirmasi
     setShowConfirmSubmitModal(true);
   };
@@ -820,6 +940,17 @@ export default function HandoverFormScreen({ route, navigation }) {
       formData.append('amt1', amt1 || '');
       formData.append('amt2', amt2 || '');
       formData.append('scanToken', scanToken || '');
+
+      if (alprResults.Depan?.plateToken) {
+        formData.append('plateTokenFront', alprResults.Depan.plateToken);
+      }
+      if (alprResults.Belakang?.plateToken) {
+        formData.append('plateTokenBack', alprResults.Belakang.plateToken);
+      }
+      if (isPlateOverridden) {
+        formData.append('plateOverride', 'true');
+        formData.append('plateOverrideReason', plateOverrideReason);
+      }
 
       const finalItems = items.map(i => ({
         ...i,
@@ -1430,7 +1561,13 @@ export default function HandoverFormScreen({ route, navigation }) {
               {REQUIRED_PHOTOS.map(side => (
                 <TouchableOpacity
                   key={side}
-                  style={tw`w-[48%] aspect-square bg-slate-50 rounded-2xl border-2 ${photos[side] ? 'border-green-500 shadow-md' : 'border-dashed border-slate-300'} justify-center items-center overflow-hidden`}
+                  style={tw`w-[48%] aspect-square bg-slate-50 rounded-2xl border-2 ${
+                    photos[side] ? (
+                      (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'MISMATCH' ? 'border-red-500 shadow-md' :
+                      (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'UNREADABLE' ? 'border-amber-500 shadow-md' :
+                      'border-green-500 shadow-md'
+                    ) : 'border-dashed border-slate-300'
+                  } justify-center items-center overflow-hidden`}
                   onPress={() => {
                     if (photos[side]) {
                       setPhotoViewerState({
@@ -1443,6 +1580,7 @@ export default function HandoverFormScreen({ route, navigation }) {
                         isInherited: false,
                         canRetake: true,
                         photoKey: side,
+                        alpr: alprResults[side]
                       });
                       return;
                     }
@@ -1462,8 +1600,42 @@ export default function HandoverFormScreen({ route, navigation }) {
                         <Text style={tw`text-white text-[7px] font-bold bg-black/60 px-1 py-0.5 rounded shadow-lg mt-0.5`} numberOfLines={1}>{photos[side].timestampStr}</Text>
                       </View>
 
+                      {/* ALPR Badge on Thumbnail for Depan / Belakang */}
+                      {(side === 'Depan' || side === 'Belakang') && (
+                        <View style={tw`absolute bottom-7 left-1 right-1`}>
+                          {alprLoading[side] ? (
+                            <View style={tw`bg-blue-600/90 px-1.5 py-0.5 rounded flex-row items-center justify-center`}>
+                              <ActivityIndicator size="small" color="white" style={{ transform: [{ scale: 0.6 }], marginRight: 2 }} />
+                              <Text style={tw`text-white text-[8px] font-bold`}>Deteksi Plat...</Text>
+                            </View>
+                          ) : alprResults[side] ? (
+                            <View style={tw`px-1.5 py-0.5 rounded flex-row items-center justify-center ${
+                              alprResults[side].status === 'MATCH' ? 'bg-emerald-600/90' :
+                              alprResults[side].status === 'MISMATCH' ? 'bg-red-600/90' : 'bg-amber-600/90'
+                            }`}>
+                              <Text style={tw`text-white text-[8px] font-mono font-black`} numberOfLines={1}>
+                                {alprResults[side].detectedPlate || alprResults[side].status}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      )}
+
                       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={tw`absolute inset-0 justify-end items-center pb-3`} pointerEvents="none">
-                        <Ionicons name="checkmark-circle" size={24} color="#2ECC71" style={tw`mb-1 shadow-lg`} />
+                        <Ionicons
+                          name={
+                            (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'MISMATCH' ? 'close-circle' :
+                            (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'UNREADABLE' ? 'alert-circle' :
+                            'checkmark-circle'
+                          }
+                          size={24}
+                          color={
+                            (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'MISMATCH' ? '#EF4444' :
+                            (side === 'Depan' || side === 'Belakang') && alprResults[side]?.status === 'UNREADABLE' ? '#F59E0B' :
+                            '#2ECC71'
+                          }
+                          style={tw`mb-1 shadow-lg`}
+                        />
                         <Text style={tw`text-white font-extrabold text-[10px] tracking-wider shadow-lg`}>{side.toUpperCase()}</Text>
                       </LinearGradient>
                     </View>
@@ -1478,6 +1650,156 @@ export default function HandoverFormScreen({ route, navigation }) {
                   )}
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* ALPR STATUS CARD UNTUK FOTO DEPAN & BELAKANG */}
+            <View style={tw`mt-5 pt-4 border-t border-gray-100`}>
+              <View style={tw`flex-row items-center justify-between mb-3`}>
+                <View style={tw`flex-row items-center`}>
+                  <Ionicons name="scan-circle" size={20} color="#0055A5" style={tw`mr-1.5`} />
+                  <Text style={tw`text-sm font-extrabold text-gray-800`}>Status Pengenalan Plat Nomor (ALPR)</Text>
+                </View>
+                {isPlateOverridden && (
+                  <View style={tw`bg-amber-100 px-2 py-0.5 rounded-full flex-row items-center`}>
+                    <Ionicons name="shield-checkmark" size={12} color="#D97706" style={tw`mr-1`} />
+                    <Text style={tw`text-[10px] font-bold text-amber-800`}>OVERRIDE AKTIF</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Tampilkan Loading jika sedang proses */}
+              {(alprLoading.Depan || alprLoading.Belakang) && (
+                <View style={tw`p-3 bg-blue-50 border border-blue-200 rounded-2xl flex-row items-center mb-3`}>
+                  <ActivityIndicator size="small" color="#0055A5" style={tw`mr-3`} />
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`text-xs font-bold text-blue-900`}>Menganalisis Plat Nomor (AI)...</Text>
+                    <Text style={tw`text-[11px] text-blue-700`}>
+                      {alprLoading.Depan ? 'Memeriksa plat Depan... ' : ''}
+                      {alprLoading.Belakang ? 'Memeriksa plat Belakang...' : ''}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Status Depan & Belakang */}
+              {['Depan', 'Belakang'].map(side => {
+                const res = alprResults[side];
+                const hasPhoto = !!photos[side];
+                if (!hasPhoto) return null;
+
+                const isMatch = res?.status === 'MATCH';
+                const isMismatch = res?.status === 'MISMATCH';
+                const isUnreadable = res?.status === 'UNREADABLE';
+                const isUnavailable = res?.status === 'SERVICE_UNAVAILABLE';
+
+                return (
+                  <View
+                    key={side}
+                    style={tw`p-3.5 mb-2.5 rounded-2xl border ${
+                      isMatch ? 'bg-emerald-50/60 border-emerald-200' :
+                      isMismatch ? 'bg-red-50/80 border-red-200' :
+                      isUnreadable ? 'bg-amber-50/80 border-amber-200' :
+                      'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <View style={tw`flex-row items-center justify-between mb-1.5`}>
+                      <View style={tw`flex-row items-center`}>
+                        <Ionicons
+                          name={
+                            isMatch ? 'checkmark-circle' :
+                            isMismatch ? 'close-circle' :
+                            isUnreadable ? 'alert-circle' : 'help-circle'
+                          }
+                          size={18}
+                          color={
+                            isMatch ? '#059669' :
+                            isMismatch ? '#DC2626' :
+                            isUnreadable ? '#D97706' : '#64748B'
+                          }
+                          style={tw`mr-2`} />
+                        <Text style={tw`text-xs font-black text-gray-800`}>Plat Tampak {side}</Text>
+                      </View>
+                      <View style={tw`px-2.5 py-0.5 rounded-full ${
+                        isMatch ? 'bg-emerald-100' :
+                        isMismatch ? 'bg-red-100' :
+                        isUnreadable ? 'bg-amber-100' : 'bg-slate-200'
+                      }`}>
+                        <Text style={tw`text-[10px] font-extrabold ${
+                          isMatch ? 'text-emerald-800' :
+                          isMismatch ? 'text-red-800' :
+                          isUnreadable ? 'text-amber-800' : 'text-slate-700'
+                        }`}>
+                          {res?.status || (alprLoading[side] ? 'PROSES' : 'BELUM DICEK')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {res?.detectedPlate ? (
+                      <View style={tw`flex-row items-center justify-between mt-1`}>
+                        <Text style={tw`text-xs text-gray-600`}>
+                          Terbaca: <Text style={tw`font-mono font-black text-gray-900`}>{res.detectedPlate}</Text>
+                        </Text>
+                        {res.confidence !== undefined && (
+                          <Text style={tw`text-[11px] font-bold text-gray-500`}>
+                            Akurasi: {(res.confidence * 100).toFixed(1)}%
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <Text style={tw`text-xs text-gray-500 italic mt-0.5`}>
+                        {isUnavailable ? 'Layanan AI offline (fail-safe mode)' :
+                         isUnreadable ? 'Nomor plat tidak terdeteksi jelas pada gambar' :
+                         alprLoading[side] ? 'Sedang diproses...' : 'Belum dianalisis'}
+                      </Text>
+                    )}
+
+                    {/* Tombol Aksi jika Mismatch atau Unreadable */}
+                    {(isMismatch || isUnreadable) && (
+                      <View style={tw`flex-row items-center gap-2 mt-2.5 pt-2 border-t border-gray-200/60`}>
+                        <TouchableOpacity
+                          style={tw`flex-row items-center bg-white px-3 py-1.5 rounded-xl border border-gray-300 shadow-sm`}
+                          onPress={() => {
+                            setPhotos(prev => ({ ...prev, [side]: null }));
+                            setAlprResults(prev => ({ ...prev, [side]: null }));
+                            openCameraFor(side);
+                          }}
+                        >
+                          <Ionicons name="camera-reverse" size={14} color="#ED1C24" style={tw`mr-1.5`} />
+                          <Text style={tw`text-xs font-bold text-red-600`}>Foto Ulang {side}</Text>
+                        </TouchableOpacity>
+
+                        {['ADMIN', 'SUPER_ADMIN', 'PENGAWAS'].includes(userRole) && !isPlateOverridden && (
+                          <TouchableOpacity
+                            style={tw`flex-row items-center bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-300 shadow-sm`}
+                            onPress={() => setShowOverrideModal(true)}
+                          >
+                            <Ionicons name="shield-checkmark" size={14} color="#D97706" style={tw`mr-1.5`} />
+                            <Text style={tw`text-xs font-bold text-amber-800`}>Verifikasi Manual</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {/* Banner jika Override Aktif */}
+              {isPlateOverridden && (
+                <View style={tw`p-3 bg-amber-50 border border-amber-200 rounded-2xl mt-1`}>
+                  <View style={tw`flex-row items-center justify-between mb-1`}>
+                    <View style={tw`flex-row items-center`}>
+                      <Ionicons name="shield-checkmark" size={14} color="#D97706" style={tw`mr-1`} />
+                      <Text style={tw`text-xs font-bold text-amber-900`}>Disetujui Manual Pengawas</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setIsPlateOverridden(false)}>
+                      <Text style={tw`text-[11px] font-bold text-red-600`}>Batalkan</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={tw`text-xs text-amber-800`}>
+                    Alasan: {plateOverrideReason}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -1904,6 +2226,68 @@ export default function HandoverFormScreen({ route, navigation }) {
           />
         )}
       </AppModal>
+
+      {/* MODAL VERIFIKASI MANUAL OVERRIDE (Pengawas / Admin) */}
+      <Modal visible={showOverrideModal} transparent={true} animationType="fade">
+        <View style={tw`flex-1 justify-center items-center bg-black/60 px-5`}>
+          <View style={tw`bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-gray-100`}>
+            <View style={tw`flex-row justify-between items-center mb-4 pb-3 border-b border-gray-100`}>
+              <View style={tw`flex-row items-center`}>
+                <View style={tw`w-10 h-10 rounded-xl bg-amber-100 items-center justify-center mr-3`}>
+                  <Ionicons name="shield-checkmark" size={22} color="#D97706" />
+                </View>
+                <View>
+                  <Text style={tw`text-lg font-black text-gray-800`}>Verifikasi Manual Plat</Text>
+                  <Text style={tw`text-xs text-gray-500 font-medium`}>Otoritas Pengawas / Admin</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowOverrideModal(false)} style={tw`p-2 bg-gray-100 rounded-full`}>
+                <Ionicons name="close" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={tw`text-xs text-gray-600 font-medium leading-5 mb-3`}>
+              Gunakan fitur ini jika plat fisik kendaraan kotor, rusak, terhalang selang, atau gagal terbaca oleh AI, namun armada dipastikan valid sesuai data kendaraan.
+            </Text>
+
+            <Text style={tw`text-xs font-bold text-gray-700 uppercase tracking-wider mb-2`}>
+              Alasan Verifikasi Manual (Wajib min. 5 karakter)
+            </Text>
+            <TextInput
+              style={[tw`bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm text-gray-800 mb-2`, { minHeight: 90, textAlignVertical: 'top' }]}
+              placeholder="Contoh: Plat nomor kotor tertutup lumpur dari lapangan, nomor fisik sudah dicek manual sesuai."}
+              placeholderTextColor="#9CA3AF"
+              multiline
+              value={overrideReasonInput}
+              onChangeText={setOverrideReasonInput}
+            />
+            <Text style={tw`text-[11px] text-gray-400 text-right mb-4 font-medium`}>
+              {overrideReasonInput.length} karakter (minimal 5)
+            </Text>
+
+            <View style={tw`flex-row gap-3`}>
+              <TouchableOpacity
+                style={tw`flex-1 p-3.5 bg-gray-100 rounded-2xl items-center`}
+                onPress={() => setShowOverrideModal(false)}
+              >
+                <Text style={tw`text-gray-600 font-bold text-sm`}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`flex-1 p-3.5 bg-amber-500 rounded-2xl items-center ${overrideReasonInput.trim().length < 5 ? 'opacity-50' : ''}`}
+                disabled={overrideReasonInput.trim().length < 5}
+                onPress={() => {
+                  setIsPlateOverridden(true);
+                  setPlateOverrideReason(overrideReasonInput.trim());
+                  setShowOverrideModal(false);
+                }}
+              >
+                <Text style={tw`text-white font-extrabold text-sm`}>Izinkan Override</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* MODAL PRATINJAU FOTO PENUH (LIHAT FOTO BUKTI / PEMERIKSAAN) */}
       <Modal

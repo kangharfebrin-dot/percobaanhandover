@@ -1,0 +1,79 @@
+1
+00:00:01,000 --> 00:00:05,000
+Halo, pada video ini kita akan melihat alur operasional Awak Mobil Tangki atau AMT.
+
+2
+00:00:05,500 --> 00:00:10,000
+Mulai dari proses login, scan mulai perjalanan, checklist, hingga akhiri perjalanan.
+
+3
+00:00:10,500 --> 00:00:15,000
+Langkah pertama, masukkan NIP pekerja dan kata sandi pada halaman login, lalu tekan Masuk.
+
+4
+00:00:15,500 --> 00:00:21,000
+Setelah berhasil masuk, kita diarahkan ke Dashboard AMT yang menampilkan nama dan status tugas aktif.
+
+5
+00:00:21,500 --> 00:00:26,000
+Untuk memulai pemeriksaan sebelum bertugas, tekan tombol hijau Mulai Pekerjaan.
+
+6
+00:00:26,500 --> 00:00:32,000
+Aplikasi akan membuka pemindai kamera. Arahkan kamera ponsel ke kode QR pada mobil tangki.
+
+7
+00:00:32,500 --> 00:00:38,000
+Kode QR berhasil dipindai dan identitas unit mobil tangki terdeteksi secara otomatis dan presisi.
+
+8
+00:00:38,500 --> 00:00:44,000
+Selanjutnya, kita masuk ke Formulir Handover. Data armada dan kru telah terisi secara otomatis.
+
+9
+00:00:44,500 --> 00:00:49,500
+Pilih shift kerja yang sedang berjalan, dan pastikan sinyal lokasi GPS terdeteksi dengan baik.
+
+10
+00:00:50,000 --> 00:00:55,500
+Lakukan pemeriksaan fisik armada secara teliti sesuai item checklist keselamatan standar HSSE.
+
+11
+00:00:56,000 --> 00:01:02,000
+Periksa sistem pengereman, kemudi, kondisi ban dan baut roda, sistem kelistrikan, serta APAR.
+
+12
+00:01:02,500 --> 00:01:08,000
+Karena seluruh komponen dalam kondisi prima, pilih status Baik atau OK pada setiap item pemeriksaan.
+
+13
+00:01:08,500 --> 00:01:14,000
+Setelah seluruh checklist lengkap terisi, tekan tombol Kirim dan konfirmasi pengiriman laporan.
+
+14
+00:01:14,500 --> 00:01:20,500
+Laporan serah terima berhasil tersimpan di sistem, dan armada resmi berstatus Siap Operasi.
+
+15
+00:01:21,000 --> 00:01:26,500
+Pada dashboard, status tugas AMT kini tercatat aktif dengan tombol Akhiri Pekerjaan.
+
+16
+00:01:27,000 --> 00:01:33,000
+Setelah pengantaran BBM selesai dan armada kembali ke terminal, tekan tombol Akhiri Pekerjaan.
+
+17
+00:01:33,500 --> 00:01:39,000
+Pindai kembali kode QR armada untuk memvalidasi keberadaan fisik unit di akhir perjalanan.
+
+18
+00:01:39,500 --> 00:01:45,500
+Periksa ringkasan serah terima akhir, lalu tekan Selesaikan Pekerjaan untuk menutup shift bertugas.
+
+19
+00:01:46,000 --> 00:01:52,000
+Perjalanan dinas berhasil diakhiri dengan aman dan armada siap diserahterimakan ke shift berikutnya.
+
+20
+00:01:52,500 --> 00:01:57,500
+Terima kasih telah menerapkan standar keselamatan kerja PT Pertamina Patra Niaga.

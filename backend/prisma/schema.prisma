@@ -42,6 +42,21 @@ model Handover {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ALPR Verification Metadata (Nullable untuk kompatibilitas data historis)
+  plateStatus              String?   @db.VarChar(50)
+  plateOverallMatch        Boolean?
+  frontPlateDetected       String?   @db.VarChar(50)
+  frontPlateConfidence     Float?
+  frontPlateStatus         String?   @db.VarChar(50)
+  backPlateDetected        String?   @db.VarChar(50)
+  backPlateConfidence      Float?
+  backPlateStatus          String?   @db.VarChar(50)
+  plateModel               String?   @db.VarChar(100)
+  plateVerifiedAt          DateTime?
+  plateVerificationMethod  String?   @db.VarChar(50)
+  plateOverrideReason      String?   @db.Text
+  plateOverrideBy          String?   @db.VarChar(100)
+
   user   User           @relation(fields: [userId], references: [id])
   items  HandoverItem[]
   photos Photo[]
@@ -121,6 +136,10 @@ model Photo {
   thumbnailUrl String?
   previewUrl   String?
   originalSize Int?
+  detectedPlate String?   @db.VarChar(50)
+  plateConfidence Float?
+  plateMatch    Boolean?
+  plateStatus   String?   @db.VarChar(50)
   handoverId   String
 
   handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)

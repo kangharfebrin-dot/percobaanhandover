@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pertamina DIGI Handover - Prototype Interaktif</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 6.5.1 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            pertamina: {
+              blue: '#0055A5',
+              navy: '#003366',
+              red: '#ED1C24',
+              darkred: '#B30000',
+              green: '#00A651',
+              darkgreen: '#007A3E',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Display Utility Classes to completely avoid Tailwind CSS conflicts */
+    .app-hidden { display: none !important; }
+    .app-flex { display: flex !important; }
+    .app-block { display: block !important; }
+    .app-grid { display: grid !important; }
+
+    /* Cross-browser backdrop blur for Safari and Modern Browsers */
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.85);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+    .glass-dark {
+      background: rgba(15, 23, 42, 0.85);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Laser Scanning Animation */
+    @keyframes scanLaser {
+      0% { top: 6%; opacity: 0.8; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 6%; opacity: 0.8; }
+    }
+    .laser-line {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #ED1C24, #ff6b6b, #ED1C24, transparent);
+      box-shadow: 0 0 14px 2px #ED1C24;
+      animation: scanLaser 2.2s ease-in-out infinite;
+    }
+
+    /* Smartphone Mockup Frame */
+    .phone-container {
+      width: 100%;
+      max-width: 430px;
+      height: 890px;
+      border-radius: 46px;
+      border: 12px solid #1e293b;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+      background: #f8fafc;
+      transition: all 0.3s ease;
+    }
+
+    /* Fullscreen Desktop Mode */
+    .desktop-container {
+      width: 100% !important;
+      max-width: 1280px !important;
+      height: calc(100vh - 120px) !important;
+      border-radius: 20px !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+      background: #ffffff !important;
+    }
+
+    /* Pulse dot */
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+    .pulse-dot {
+      animation: pulseSoft 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col items-center justify-start antialiased selection:bg-pertamina-blue selection:text-white">
+
+  <!-- ==================== TOP SYSTEM HEADER ==================== -->
+  <header class="w-full bg-pertamina-navy text-white px-4 py-3 shadow-md border-b border-blue-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="handleLogoClick()">
+        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-1.5 shadow-sm">
+          <i class="fa-solid fa-gas-pump text-pertamina-red text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-base tracking-wide text-white">DIGI Handover</span>
+            <span class="bg-pertamina-red text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pertamina</span>
+          </div>
+          <p class="text-xs text-blue-200">Terminal BBM Cilacap - Handover Management</p>
+        </div>
+      </div>
+
+      <!-- Quick Controls -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        
+        <!-- Switch Role Dropdown -->
+        <div class="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800 rounded-lg px-2.5 py-1.5">
+          <label for="roleSelector" class="text-xs text-blue-200 font-medium">
+            <i class="fa-solid fa-user-shield mr-1"></i>Peran:
+          </label>
+          <select id="roleSelector" title="Pilih Peran Pengguna untuk Berganti Tampilan" class="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer pr-1" onchange="switchRole(this.value)">
+            <option value="LOGIN" class="text-slate-900">🔑 Halaman Login</option>
+            <option value="AMT" class="text-slate-900">🚛 Awak Mobil Tangki (AMT)</option>
+            <option value="PENGAWAS" class="text-slate-900">📋 Pengawas Dispatcher</option>
+            <option value="ADMIN" class="text-slate-900">⚙️ Fleet Administrator</option>
+            <option value="SUPERADMIN" class="text-slate-900">👑 Super Admin Pertamina</option>
+          </select>
+        </div>
+
+        <!-- Frame View Toggle -->
+        <button id="viewToggleBtn" title="Beralih antara Tampilan Ponsel dan Layar Penuh Desktop" aria-label="Beralih antara Tampilan Ponsel dan Layar Penuh Desktop" class="bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-colors border border-white/10" onclick="toggleViewMode()">
+          <i class="fa-solid fa-mobile-screen text-amber-400" id="viewToggleIcon"></i>
+          <span id="viewToggleText">Mobile Frame</span>
+        </button>
+
+        <!-- Notification Bell -->
+        <button title="Buka Notifikasi Sistem" aria-label="Buka Notifikasi Sistem" class="relative p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors" onclick="openNotificationModal()">
+          <i class="fa-regular fa-bell text-white text-sm"></i>
+          <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-pertamina-red"></span>
+        </button>
+
+        <!-- Reset Demo Data -->
+        <button title="Reset Semua Data Simulasi ke Default Awal" aria-label="Reset Semua Data Simulasi ke Default Awal" class="bg-pertamina-red hover:bg-pertamina-darkred text-white text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center space-x-1 transition-colors" onclick="confirmResetData()">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span class="hidden sm:inline">Reset Data</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="w-full flex-1 flex flex-col items-center justify-center p-3 md:p-6">
+
+    <!-- Prototype Wrapper -->
+    <div id="deviceFrame" class="phone-container flex flex-col relative bg-slate-50">
+      
+      <!-- MOBILE NOTCH / ISLAND (Hidden in desktop mode) -->
+      <div id="mobileNotch" class="w-full h-8 bg-black flex items-center justify-between px-7 shrink-0 select-none z-40 text-white text-[11px] font-semibold">
+        <span id="statusBarClock">10:45</span>
+        <div class="w-24 h-4 bg-slate-900 rounded-full mx-auto flex items-center justify-center">
+          <div class="w-2 h-2 rounded-full bg-slate-800 mr-2"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-blue-900 border border-slate-700"></div>
+        </div>
+        <div class="flex items-center space-x-1.5 text-xs">
+          <i class="fa-solid fa-signal text-[10px]"></i>
+          <span class="text-[10px] font-bold">5G</span>
+          <i class="fa-solid fa-battery-three-quarters text-emerald-400"></i>
+        </div>
+      </div>
+
+      <!-- MAIN APP VIEWPORTS CONTAINER -->
+      <div id="appViewport" class="flex-1 w-full overflow-y-auto relative flex flex-col bg-slate-50">
+        
+        <!-- ==================== 1. LOGIN SCREEN ==================== -->
+        <section id="screen-login" class="flex-1 flex flex-col justify-between p-6 bg-gradient-to-b from-blue-50/60 to-white">
+          <div class="my-auto max-w-sm w-full mx-auto">
+            <!-- Header Brand -->
+            <div class="text-center mb-6">
+              <div class="w-16 h-16 bg-gradient-to-tr from-pertamina-blue to-blue-700 text-white rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/20 mb-3">
+                <i class="fa-solid fa-truck-droplet text-3xl"></i>
+              </div>
+              <h1 class="text-2xl font-extrabold text-slate-800">Pertamina DIGI Handover</h1>
+              <p class="text-xs text-slate-500 mt-1">Sistem Digitalisasi Serah Terima Mobil Tangki BBM Terpadu</p>
+              <div class="inline-flex items-center space-x-1.5 mt-2 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] text-pertamina-blue font-medium">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>TBBM Cilacap - Regional JBT</span>
+              </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="space-y-3.5 bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80" onsubmit="handleFormLogin(event)">
+              <div>
+                <label for="inputUsername" class="block text-xs font-semibold text-slate-700 mb-1">ID Pengguna / NIP</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">
+                    <i class="fa-solid fa-user"></i>
+                  </span>
+                  <input type="text" id="inputUsername" title="ID Pengguna atau NIP Anda" placeholder="Contoh: 617.05.0001" required class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all">
+                </div>
+              </div>
+
+              <div>
+                <label for="inputPassword" class="block text-xs font-semibold text-slate-700 mb-1">Kata Sandi</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">
+                    <i class="fa-solid fa-lock"></i>
+                  </span>
+                  <input type="password" id="inputPassword" title="Kata Sandi Pengguna" placeholder="••••••••" required class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all">
+                </div>
+              </div>
+
+              <button type="submit" title="Masuk ke Sistem DIGI Handover" class="w-full bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold py-2.5 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2">
+                <span>Masuk Sekarang</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </button>
+            </form>
+
+            <!-- Quick 1-Click Login Helper -->
+            <div class="mt-6">
+              <div class="relative flex py-2 items-center">
+                <div class="flex-grow border-t border-slate-200"></div>
+                <span class="flex-shrink mx-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Login Cepat Demo 1-Klik</span>
+                <div class="flex-grow border-t border-slate-200"></div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 mt-2">
+                <button type="button" title="Masuk sebagai Awak Mobil Tangki" class="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-left transition-all group" onclick="quickLogin('AMT')">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-blue-100 text-pertamina-blue flex items-center justify-center text-xs group-hover:bg-pertamina-blue group-hover:text-white transition-colors">
+                      <i class="fa-solid fa-truck"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs font-bold text-slate-800">AMT (Supir)</p>
+                      <p class="text-[10px] text-slate-500">617.05.0001</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button type="button" title="Masuk sebagai Pengawas Dispatcher" class="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 text-left transition-all group" onclick="quickLogin('PENGAWAS')">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-100 text-pertamina-green flex items-center justify-center text-xs group-hover:bg-pertamina-green group-hover:text-white transition-colors">
+                      <i class="fa-solid fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs font-bold text-slate-800">Pengawas</p>
+                      <p class="text-[10px] text-slate-500">sekar</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button type="button" title="Masuk sebagai Fleet Administrator" class="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 text-left transition-all group" onclick="quickLogin('ADMIN')">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs group-hover:bg-purple-700 group-hover:text-white transition-colors">
+                      <i class="fa-solid fa-gear"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs font-bold text-slate-800">Admin</p>
+                      <p class="text-[10px] text-slate-500">yoan</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button type="button" title="Masuk sebagai Super Administrator" class="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-rose-400 hover:bg-rose-50/50 text-left transition-all group" onclick="quickLogin('SUPERADMIN')">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-rose-100 text-pertamina-red flex items-center justify-center text-xs group-hover:bg-pertamina-red group-hover:text-white transition-colors">
+                      <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs font-bold text-slate-800">Super Admin</p>
+                      <p class="text-[10px] text-slate-500">superadmin</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center pt-4 border-t border-slate-200 text-[10px] text-slate-400">
+            © 2026 PT Pertamina Patra Niaga • Zero Accident HSSE Commitment
+          </div>
+        </section>
+
+
+        <!-- ==================== 2. AMT DASHBOARD ==================== -->
+        <section id="screen-amt" class="flex-1 flex flex-col p-4 space-y-4 app-hidden">
+          
+          <!-- AMT Profile Header -->
+          <div class="bg-gradient-to-r from-pertamina-blue to-blue-800 rounded-2xl p-4 text-white shadow-md">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center text-lg font-bold">
+                  <span id="amtInitial">AS</span>
+                </div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <h2 class="text-sm font-bold tracking-tight text-white leading-tight" id="amtUserName">A SYARIF HIDAYATUROHMAN</h2>
+                  </div>
+                  <p class="text-[11px] text-blue-100 mt-0.5" id="amtUserRole">Awak Mobil Tangki (AMT II) • NIP: 617.05.0001</p>
+                  <div class="flex items-center space-x-1.5 mt-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+                    <span class="text-[10px] text-emerald-300 font-semibold">Tersertifikasi HSSE Aktif</span>
+                  </div>
+                </div>
+              </div>
+              <button title="Buka Profil Pengguna" aria-label="Buka Profil Pengguna" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors" onclick="openProfileModal()">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Assigned Vehicle Status Card -->
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-truck-tank text-pertamina-blue text-sm"></i>
+                <span class="text-xs font-bold text-slate-700">Armada Penugasan Hari Ini</span>
+              </div>
+              <span id="amtVehicleBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-pertamina-blue">
+                SIAP OPERASI
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-lg font-extrabold text-slate-800 tracking-tight" id="amtVehiclePlate">B 9504 TEI</p>
+                <p class="text-xs text-slate-500 font-medium" id="amtVehicleSpec">HINO 500 FL • Kapasitas 24 KL</p>
+                <p class="text-[11px] text-slate-400 mt-1">
+                  <i class="fa-regular fa-clock mr-1"></i>Shift: <strong class="text-slate-700 font-semibold" id="amtCurrentShift">Shift 1 (Pagi)</strong>
+                </p>
+              </div>
+              <div class="text-right">
+                <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center p-1 text-center">
+                  <span class="text-[9px] uppercase font-bold text-slate-400">Kompart</span>
+                  <span class="text-sm font-extrabold text-pertamina-blue">4 / 4</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Trip Live Timer (visible only when ACTIVE) -->
+            <div id="amtTripTimerBox" class="mt-3.5 pt-3 border-t border-dashed border-slate-200 app-hidden">
+              <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-emerald-900">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-pertamina-green pulse-dot"></span>
+                  <span class="text-xs font-semibold">Sedang Bertugas</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-mono font-bold text-pertamina-darkgreen" id="amtTripTimer">01:42:15</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PRIMARY ACTION BUTTON (Mulai Pekerjaan / Akhiri Pekerjaan) -->
+          <div class="pt-1">
+            <button id="amtActionButton" title="Mulai Proses Handover Armada" class="w-full bg-pertamina-green hover:bg-pertamina-darkgreen text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-3 active:scale-[0.98]" onclick="handleAmtAction()">
+              <i class="fa-solid fa-qrcode text-lg" id="amtActionIcon"></i>
+              <span class="text-sm tracking-wide" id="amtActionText">MULAI PEKERJAAN (SCAN QR)</span>
+            </button>
+            <p class="text-center text-[10px] text-slate-400 mt-1.5" id="amtActionSubtext">
+              Pindai QR Code di dashboard unit mobil tangki untuk memulai verifikasi HSSE
+            </p>
+          </div>
+
+          <!-- HSSE Golden Rules Banner -->
+          <div class="bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 rounded-2xl p-3 border border-amber-200/80">
+            <div class="flex items-start space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs shrink-0 mt-0.5">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-amber-900">Pertamina Corporate Life Saving Rules (CLSR)</h4>
+                <p class="text-[10px] text-amber-800 leading-relaxed mt-0.5">
+                  1. Patuh pada batas kecepatan • 2. Gunakan APD lengkap • 3. Dilarang merokok/ponsel di area tangki • 4. Stop kerja jika tidak aman (Intervensi).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Handover History (3 items) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Aktivitas Handover Terakhir</h3>
+              <button title="Lihat Semua Riwayat Handover" class="text-[11px] text-pertamina-blue font-semibold hover:underline" onclick="switchNavTab('history')">
+                Lihat Semua
+              </button>
+            </div>
+
+            <div id="amtRecentList" class="space-y-2">
+              <!-- Dynamically populated by JS -->
+            </div>
+          </div>
+
+        </section>
+
+
+        <!-- ==================== 3. SCANNER SCREEN ==================== -->
+        <section id="screen-scanner" class="flex-1 flex flex-col bg-slate-950 text-white relative app-hidden">
+          
+          <!-- Scanner Header -->
+          <div class="p-4 flex items-center justify-between z-10 glass-dark">
+            <button title="Kembali ke Dashboard" aria-label="Kembali ke Dashboard" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white" onclick="closeScanner()">
+              <i class="fa-solid fa-arrow-left text-sm"></i>
+            </button>
+            <div class="text-center">
+              <h3 class="text-xs font-bold text-white tracking-wide">Pindai QR Code Mobil Tangki</h3>
+              <p class="text-[10px] text-slate-300">Arahkan kamera ke barcode unit tangki</p>
+            </div>
+            <button id="scannerTorchBtn" title="Nyalakan Lampu Senter" aria-label="Nyalakan Lampu Senter" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-amber-400" onclick="toggleTorch()">
+              <i class="fa-solid fa-bolt text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Viewfinder Camera Mockup -->
+          <div class="flex-1 flex flex-col items-center justify-center relative p-6">
+            
+            <!-- Scan Reticle Box -->
+            <div class="w-64 h-64 relative rounded-2xl overflow-hidden border border-white/20 bg-black/40 flex items-center justify-center shadow-2xl">
+              
+              <!-- Corner Brackets (Pertamina Blue) -->
+              <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-pertamina-blue rounded-tl-lg"></div>
+              <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-pertamina-blue rounded-tr-lg"></div>
+              <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-pertamina-blue rounded-bl-lg"></div>
+              <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-pertamina-blue rounded-br-lg"></div>
+
+              <!-- Animated Laser Line -->
+              <div class="laser-line"></div>
+
+              <!-- QR Code Mock Graphic in center -->
+              <div class="opacity-30 flex flex-col items-center">
+                <i class="fa-solid fa-qrcode text-6xl text-slate-300"></i>
+                <span class="text-[10px] mt-2 tracking-widest text-slate-300 uppercase">QR Armada</span>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-300 mt-4 text-center px-6">
+              Posisikan QR Code berada tepat di dalam kotak bidik untuk pemindaian otomatis
+            </p>
+
+            <!-- SIMULATION CONTROLS BOX (Required for full demo) -->
+            <div class="w-full max-w-xs mt-6 bg-slate-900/90 border border-slate-700/80 rounded-2xl p-3.5 space-y-2">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block text-center">
+                Pilih Skenario Hasil Scan (Demo)
+              </span>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" title="Simulasi Scan Berhasil B 9504 TEI" class="p-2 bg-pertamina-blue hover:bg-blue-600 rounded-xl text-white text-[11px] font-bold transition-colors flex items-center justify-center space-x-1.5" onclick="simulateScan('B 9504 TEI')">
+                  <i class="fa-solid fa-check-circle"></i>
+                  <span>B 9504 TEI</span>
+                </button>
+
+                <button type="button" title="Simulasi Scan Berhasil B 9376 TFV" class="p-2 bg-emerald-700 hover:bg-emerald-600 rounded-xl text-white text-[11px] font-bold transition-colors flex items-center justify-center space-x-1.5" onclick="simulateScan('B 9376 TFV')">
+                  <i class="fa-solid fa-truck-fast"></i>
+                  <span>B 9376 TFV</span>
+                </button>
+
+                <button type="button" title="Simulasi QR Di Luar Kotak" class="p-2 bg-amber-600 hover:bg-amber-500 rounded-xl text-white text-[11px] font-medium transition-colors flex items-center justify-center space-x-1.5" onclick="simulateScan('OUT_OF_BOUNDS')">
+                  <i class="fa-solid fa-crop-simple"></i>
+                  <span>Di Luar Kotak</span>
+                </button>
+
+                <button type="button" title="Simulasi QR Rusak atau Tidak Terbaca" class="p-2 bg-rose-700 hover:bg-rose-600 rounded-xl text-white text-[11px] font-medium transition-colors flex items-center justify-center space-x-1.5" onclick="simulateScan('DAMAGED_QR')">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                  <span>QR Rusak</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ==================== 4. FORMULIR HANDOVER (CHECKLIST HSSE) ==================== -->
+        <section id="screen-form" class="flex-1 flex flex-col p-4 space-y-4 app-hidden">
+          
+          <!-- Form Header -->
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div class="flex items-center space-x-2.5">
+              <button title="Batal & Kembali" aria-label="Batal & Kembali" class="w-8 h-8 rounded-lg bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 text-xs" onclick="confirmCancelForm()">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div>
+                <h2 class="text-sm font-extrabold text-slate-800" id="formTitle">Formulir Handover Awal</h2>
+                <p class="text-[11px] text-slate-500" id="formSubtitle">Verifikasi HSSE & Kondisi Fisik Armada</p>
+              </div>
+            </div>
+            <span id="formHandoverTypeBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-pertamina-blue text-white uppercase">
+              HANDOVER AWAL
+            </span>
+          </div>
+
+          <!-- Unit Summary & Trip Input Box -->
+          <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-bold uppercase text-slate-400">Unit Terpindai</span>
+                <p class="text-base font-extrabold text-slate-800" id="formUnitPlate">B 9504 TEI</p>
+                <p class="text-xs text-slate-500" id="formUnitDesc">HINO 500 FL • 24 KL</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] font-bold uppercase text-slate-400">Pilihan Shift</span>
+                <select id="formShiftSelect" title="Pilih Shift Kerja Saat Ini" class="block mt-0.5 text-xs font-bold text-pertamina-navy bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                  <option value="Shift 1">Shift 1 (06:00 - 14:00)</option>
+                  <option value="Shift 2">Shift 2 (14:00 - 22:00)</option>
+                  <option value="Shift 3">Shift 3 (22:00 - 06:00)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Odometer Input -->
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+              <label for="formOdometerInput" class="text-xs font-semibold text-slate-700 shrink-0">
+                <i class="fa-solid fa-gauge-high text-pertamina-blue mr-1"></i>Odometer (KM):
+              </label>
+              <div class="relative flex-1 max-w-[160px]">
+                <input type="number" id="formOdometerInput" title="Masukkan angka Odometer KM saat ini" placeholder="142580" value="142580" required class="w-full text-right text-xs font-mono font-bold pr-8 pl-3 py-1.5 rounded-lg border border-slate-300 focus:border-pertamina-blue outline-none">
+                <span class="absolute right-2.5 top-1.5 text-[10px] font-semibold text-slate-400">KM</span>
+              </div>
+            </div>
+
+            <!-- Live GPS Geolocation Box -->
+            <div class="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 flex items-start space-x-2.5 text-xs">
+              <div class="w-6 h-6 rounded-lg bg-pertamina-blue text-white flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-solid fa-location-crosshairs text-[11px]"></i>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-pertamina-navy text-[11px]">Koordinat Validasi GPS</span>
+                  <span class="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">Akurat ±3m</span>
+                </div>
+                <p class="text-[10px] font-mono text-slate-600 mt-0.5" id="formGpsCoords">-7.702812, 109.006841</p>
+                <p class="text-[10px] text-slate-500 italic mt-0.5" id="formGpsAddress">Jl. Prof. DR. Hamka, Lomanis, Cilacap Tengah, Kab. Cilacap, Jawa Tengah</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHECKLIST TAB CONTROLS & "TANDAI SEMUA BAIK" -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <!-- Tabs Navigation -->
+              <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold">
+                <button type="button" id="tabCatABtn" title="Buka Checklist Kategori A: Fisik Armada" class="px-3 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm transition-all" onclick="switchChecklistTab('A')">
+                  Kategori A: Fisik (15)
+                </button>
+                <button type="button" id="tabCatBBtn" title="Buka Checklist Kategori B: Awak & Dokumen" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all" onclick="switchChecklistTab('B')">
+                  Kategori B: Awak (9)
+                </button>
+              </div>
+
+              <!-- Quick "Mark All Good" Button -->
+              <button type="button" title="Tandai Semua Item Checklist Sebagai BAIK" class="bg-emerald-50 hover:bg-emerald-100 text-pertamina-darkgreen border border-emerald-300 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center space-x-1.5 transition-colors" onclick="markAllGood()">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                <span>Semua BAIK</span>
+              </button>
+            </div>
+
+            <!-- CHECKLIST ITEMS CONTAINER -->
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm">
+              
+              <!-- Tab A Container -->
+              <div id="checklistTabA" class="space-y-3">
+                <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span class="text-[11px] font-bold text-slate-600">Pemeriksaan Fisik & Komponen Mobil Tangki</span>
+                  <span class="text-[10px] text-slate-400">15 Item Wajib</span>
+                </div>
+                <div id="catAItemsList" class="space-y-2.5">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <!-- Tab B Container -->
+              <div id="checklistTabB" class="space-y-3 app-hidden">
+                <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span class="text-[11px] font-bold text-slate-600">Kepatuhan Awak Tangki, APD & Legalitas Dokumen</span>
+                  <span class="text-[10px] text-slate-400">9 Item Wajib</span>
+                </div>
+                <div id="catBItemsList" class="space-y-2.5">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Notes Textarea -->
+          <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm">
+            <label for="formNotes" class="block text-xs font-semibold text-slate-700 mb-1">
+              <i class="fa-solid fa-pencil text-slate-400 mr-1"></i>Catatan Tambahan Pengemudi (Opsional):
+            </label>
+            <textarea id="formNotes" title="Catatan Tambahan atau Temuan Khusus Pengemudi" rows="2" placeholder="Tuliskan catatan kondisi khusus perjalanan atau catatan armada di sini..." class="w-full text-xs p-2.5 rounded-xl border border-slate-300 focus:border-pertamina-blue outline-none resize-none"></textarea>
+          </div>
+
+          <!-- Final Submit Button -->
+          <div class="pt-1 pb-4">
+            <button type="button" title="Kirim Laporan Handover Resmi" class="w-full bg-pertamina-blue hover:bg-pertamina-navy text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 active:scale-[0.98]" onclick="submitHandoverForm()">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span class="text-sm">Kirim Laporan Handover</span>
+            </button>
+          </div>
+
+        </section>
+
+
+        <!-- ==================== 5. PENGAWAS (DISPATCHER) DASHBOARD ==================== -->
+        <section id="screen-pengawas" class="flex-1 flex flex-col p-4 space-y-4 app-hidden">
+          
+          <!-- Pengawas Header -->
+          <div class="bg-gradient-to-r from-pertamina-navy to-slate-900 rounded-2xl p-4 text-white shadow-md">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="bg-pertamina-green text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Pengawas Dispatcher
+                </span>
+                <h2 class="text-sm font-extrabold text-white mt-1" id="pengawasName">Sekar P.</h2>
+                <p class="text-[11px] text-slate-300">Fleet Dispatcher & Supervisor • TBBM Cilacap</p>
+              </div>
+              <button title="Buka Profil Pengawas" aria-label="Buka Profil Pengawas" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white" onclick="openProfileModal()">
+                <i class="fa-solid fa-user-tie"></i>
+              </button>
+            </div>
+
+            <!-- Quick Metrics -->
+            <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/60 text-center">
+              <div class="bg-white/5 rounded-xl p-1.5">
+                <span class="text-[9px] text-slate-400 uppercase font-semibold">Menunggu Review</span>
+                <p class="text-base font-extrabold text-amber-400" id="pengawasMetricPending">1</p>
+              </div>
+              <div class="bg-white/5 rounded-xl p-1.5">
+                <span class="text-[9px] text-slate-400 uppercase font-semibold">Isu Temuan</span>
+                <p class="text-base font-extrabold text-pertamina-red" id="pengawasMetricIssues">1</p>
+              </div>
+              <div class="bg-white/5 rounded-xl p-1.5">
+                <span class="text-[9px] text-slate-400 uppercase font-semibold">Armada Siap</span>
+                <p class="text-base font-extrabold text-emerald-400" id="pengawasMetricReady">2 / 4</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pengawas 3 Tabs -->
+          <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold">
+            <button id="pTab1" title="Lihat Daftar Handover Masuk" class="flex-1 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm" onclick="switchPengawasTab('incoming')">
+              Handover Masuk
+            </button>
+            <button id="pTab2" title="Lihat Daftar Isu dan Kerusakan Armada" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900" onclick="switchPengawasTab('issues')">
+              Daftar Isu
+            </button>
+            <button id="pTab3" title="Lihat Status Seluruh Armada" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900" onclick="switchPengawasTab('fleet')">
+              Status Armada
+            </button>
+          </div>
+
+          <!-- TAB CONTENT 1: Handover Masuk -->
+          <div id="pengawasTabIncoming" class="space-y-2.5">
+            <div class="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
+              <span>Daftar Verifikasi Masuk</span>
+              <span id="pengawasCountIncoming">3 Laporan</span>
+            </div>
+            <div id="pengawasIncomingList" class="space-y-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- TAB CONTENT 2: Daftar Isu (Temuan Kerusakan) -->
+          <div id="pengawasTabIssues" class="space-y-2.5 app-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
+              <span>Armada Dalam Pemeliharaan / Perbaikan</span>
+              <span id="pengawasCountIssues" class="text-pertamina-red font-bold">1 Unit</span>
+            </div>
+            <div id="pengawasIssuesList" class="space-y-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- TAB CONTENT 3: Status Seluruh Armada -->
+          <div id="pengawasTabFleet" class="space-y-2.5 app-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
+              <span>Monitoring Kesiapan Armada Tangki</span>
+              <span id="pengawasCountFleet">4 Kendaraan</span>
+            </div>
+            <div id="pengawasFleetList" class="grid grid-cols-1 gap-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </section>
+
+
+        <!-- ==================== 6. ADMIN & SUPERADMIN DASHBOARD ==================== -->
+        <section id="screen-admin" class="flex-1 flex flex-col p-4 space-y-4 app-hidden">
+          
+          <!-- Admin Header Bar -->
+          <div class="bg-gradient-to-r from-slate-900 to-pertamina-navy rounded-2xl p-4 text-white shadow-md">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span id="adminRoleBadge" class="bg-purple-600 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    FLEET ADMINISTRATOR
+                  </span>
+                  <span id="superadminExclusiveBadge" class="bg-pertamina-red text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider app-hidden">
+                    👑 SUPER ADMIN
+                  </span>
+                </div>
+                <h2 class="text-base font-extrabold text-white mt-1" id="adminUserName">Yoan Fleet Admin</h2>
+                <p class="text-[11px] text-slate-300">Fleet Operations & Safety Compliance Centre</p>
+              </div>
+              <button title="Buka Profil Administrator" aria-label="Buka Profil Administrator" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white" onclick="openProfileModal()">
+                <i class="fa-solid fa-user-shield"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Admin 4 Navigation Tabs -->
+          <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold overflow-x-auto">
+            <button id="adminTab1" title="Lihat Ringkasan Statistik" class="flex-1 py-1.5 px-2 rounded-lg bg-white text-pertamina-blue shadow-sm whitespace-nowrap" onclick="switchAdminTab('overview')">
+              Overview
+            </button>
+            <button id="adminTab2" title="Kelola Pengguna Sistem" class="flex-1 py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap" onclick="switchAdminTab('users')">
+              Pengguna
+            </button>
+            <button id="adminTab3" title="Kelola Sesi Login Aktif" class="flex-1 py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap" onclick="switchAdminTab('sessions')">
+              Sesi Aktif
+            </button>
+            <button id="adminTab4" title="Lihat Rekam Jejak Audit Log" class="flex-1 py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap" onclick="switchAdminTab('audit')">
+              Audit Log
+            </button>
+          </div>
+
+          <!-- ADMIN TAB 1: OVERVIEW & EXPORT -->
+          <div id="adminViewOverview" class="space-y-3.5">
+            <!-- 4 Stat Cards -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Total Handover</span>
+                <p class="text-xl font-extrabold text-slate-800 mt-0.5" id="adminStatTotalHandover">24</p>
+                <span class="text-[9px] text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-trend-up"></i> +4 hari ini</span>
+              </div>
+              <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Isu Menunggu</span>
+                <p class="text-xl font-extrabold text-pertamina-red mt-0.5" id="adminStatPendingIssues">1</p>
+                <span class="text-[9px] text-rose-600 font-semibold">Perlu Tindak Lanjut</span>
+              </div>
+              <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Armada Siap</span>
+                <p class="text-xl font-extrabold text-pertamina-blue mt-0.5" id="adminStatReadyFleet">2 / 4</p>
+                <span class="text-[9px] text-slate-500 font-medium">50% Kesiapan Unit</span>
+              </div>
+              <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Sesi Login Aktif</span>
+                <p class="text-xl font-extrabold text-purple-700 mt-0.5" id="adminStatActiveSessions">3</p>
+                <span class="text-[9px] text-purple-600 font-semibold">Single Active Session</span>
+              </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-2">
+              <button title="Unduh Rekap Handover Format CSV" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-colors" onclick="exportDataCSV()">
+                <i class="fa-solid fa-file-csv text-emerald-400"></i>
+                <span>Ekspor CSV</span>
+              </button>
+              <button title="Unduh Laporan Ringkasan PDF" class="flex-1 bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-colors" onclick="exportDataPDF()">
+                <i class="fa-solid fa-file-pdf text-rose-300"></i>
+                <span>Unduh PDF</span>
+              </button>
+            </div>
+
+            <!-- Recent Activity Table -->
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Aktivitas Handover Terkini</h4>
+              <div id="adminRecentHandoverList" class="space-y-2 text-xs">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- ADMIN TAB 2: PENGGUNA (USER MANAGEMENT) -->
+          <div id="adminViewUsers" class="space-y-3 app-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">Daftar Akun Pengguna</span>
+              <button title="Tambah Akun Pengguna Baru" class="bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors" onclick="openAddUserModal()">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Tambah User</span>
+              </button>
+            </div>
+
+            <div id="adminUserList" class="space-y-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- ADMIN TAB 3: SESI AKTIF (SINGLE ACTIVE SESSION MANAGEMENT) -->
+          <div id="adminViewSessions" class="space-y-3 app-hidden">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-slate-700">Sesi Login Pengguna Aktif</span>
+                <p class="text-[10px] text-slate-500">Mencegah bentrok login ganda (Single Active Session)</p>
+              </div>
+
+              <!-- Superadmin Only: Revoke All Sessions Button -->
+              <button id="btnRevokeAllSessions" title="Cabut Semua Sesi Login Pengguna Sekaligus" class="bg-pertamina-red hover:bg-pertamina-darkred text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors app-hidden" onclick="revokeAllSessions()">
+                <i class="fa-solid fa-ban"></i>
+                <span>Cabut Semua</span>
+              </button>
+            </div>
+
+            <div id="adminSessionsList" class="space-y-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- ADMIN TAB 4: AUDIT LOG (IMMUTABLE LOGS) -->
+          <div id="adminViewAudit" class="space-y-3 app-hidden">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-slate-700">Rekam Jejak Audit Sistem</span>
+                <p class="text-[10px] text-slate-500">Immutable logs untuk keamanan dan kepatuhan HSSE</p>
+              </div>
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-bold" id="auditLogCount">8 Logs</span>
+            </div>
+
+            <div id="adminAuditLogList" class="space-y-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </section>
+
+      </div> <!-- End App Viewport -->
+
+
+      <!-- ==================== BOTTOM NAVIGATION BAR (AMT & PENGAWAS) ==================== -->
+      <nav id="bottomNavBar" class="h-16 bg-white border-t border-slate-200 px-6 flex items-center justify-between shrink-0 select-none z-30">
+        
+        <button id="navHome" title="Buka Halaman Utama" aria-label="Buka Halaman Utama" class="flex flex-col items-center justify-center text-pertamina-blue" onclick="switchNavTab('home')">
+          <i class="fa-solid fa-house text-lg"></i>
+          <span class="text-[10px] font-bold mt-1">Home</span>
+        </button>
+
+        <button id="navHistory" title="Buka Riwayat Handover" aria-label="Buka Riwayat Handover" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-600" onclick="switchNavTab('history')">
+          <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          <span class="text-[10px] font-medium mt-1">Riwayat</span>
+        </button>
+
+        <button id="navMessages" title="Buka Pesan & Pengumuman" aria-label="Buka Pesan & Pengumuman" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-600 relative" onclick="switchNavTab('messages')">
+          <i class="fa-solid fa-bell text-lg"></i>
+          <span class="absolute top-0 right-1 w-2 h-2 rounded-full bg-pertamina-red"></span>
+          <span class="text-[10px] font-medium mt-1">Notifikasi</span>
+        </button>
+
+        <button id="navProfile" title="Buka Profil Saya" aria-label="Buka Profil Saya" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-600" onclick="switchNavTab('profile')">
+          <i class="fa-solid fa-user text-lg"></i>
+          <span class="text-[10px] font-medium mt-1">Profil</span>
+        </button>
+
+      </nav>
+
+    </div> <!-- End Device Frame -->
+
+  </main>
+
+
+  <!-- ==================== MODALS & OVERLAYS ==================== -->
+
+  <!-- 1. Scan Confirmation Modal -->
+  <div id="modalScanConfirm" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 app-hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in duration-200">
+      <div class="text-center">
+        <div class="w-14 h-14 bg-emerald-100 text-pertamina-green rounded-2xl flex items-center justify-center text-2xl mx-auto mb-2">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="text-base font-extrabold text-slate-800">QR Code Berhasil Terverifikasi!</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Informasi armada mobil tangki ditemukan di sistem</p>
+      </div>
+
+      <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Nomor Polisi:</span>
+          <strong class="font-bold text-slate-800" id="scanModalPlate">B 9504 TEI</strong>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Tipe & Merek:</span>
+          <span class="font-medium text-slate-700" id="scanModalSpec">HINO 500 FL</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Kapasitas Muat:</span>
+          <span class="font-semibold text-pertamina-blue" id="scanModalCapacity">24 KL (4 Kompartemen)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Status Terakhir:</span>
+          <span id="scanModalStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-pertamina-blue">SIAP OPERASI</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button type="button" title="Batal Membuka Formulir" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors" onclick="closeModalScanConfirm()">
+          Batal
+        </button>
+        <button type="button" title="Lanjutkan Pengisian Form Handover" class="w-full bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-md" onclick="proceedToHandoverForm()">
+          Lanjutkan Form
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 2. Detail Handover Modal (Full Breakdown) -->
+  <div id="modalHandoverDetail" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 app-hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col p-5 shadow-2xl">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 text-pertamina-blue flex items-center justify-center text-base">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-800" id="modalDetailTitle">Detail Handover Armada</h3>
+            <p class="text-[11px] text-slate-500" id="modalDetailSubtitle">ID: HO-20261030-001</p>
+          </div>
+        </div>
+        <button title="Tutup Detail Handover" aria-label="Tutup Detail Handover" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center" onclick="closeModalHandoverDetail()">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto py-3 space-y-3.5 pr-1 text-xs">
+        
+        <!-- Summary Card -->
+        <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Armada</span>
+              <p class="font-extrabold text-slate-800" id="mdPlate">B 9504 TEI</p>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Jenis Handover</span>
+              <p class="font-bold text-pertamina-blue" id="mdType">Handover Awal</p>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Pengemudi (AMT)</span>
+              <p class="font-semibold text-slate-700" id="mdAmt">A SYARIF HIDAYATUROHMAN</p>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Waktu & Shift</span>
+              <p class="font-medium text-slate-700" id="mdTime">30 Okt 2026, 06:15 • Shift 1</p>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Lokasi Handover:</span>
+            <p class="text-[11px] text-slate-600 mt-0.5" id="mdLocation">
+              Jl. Prof. DR. Hamka, Lomanis, Cilacap Tengah (-7.702812, 109.006841)
+            </p>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Status Hasil Pemeriksaan:</span>
+            <div class="flex items-center space-x-2 mt-1">
+              <span id="mdResultBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-pertamina-green">
+                Aman / Memenuhi Syarat
+              </span>
+              <span id="mdApprovalBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-pertamina-blue">
+                Disetujui Pengawas
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full 24 Items Breakdown Table -->
+        <div>
+          <h4 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+            Rincian 24 Item Pemeriksaan HSSE
+          </h4>
+          <div id="mdChecklistTable" class="space-y-1.5 border border-slate-200 rounded-xl p-2 bg-white">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Notes if any -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900">
+          <span class="text-[10px] uppercase font-bold text-amber-800">Catatan Pengemudi:</span>
+          <p class="text-[11px] mt-0.5" id="mdNotes">Armada dalam kondisi bersih dan siap operasi mengantar BBM ke SPBU 44.532.01.</p>
+        </div>
+
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 shrink-0">
+        <button type="button" title="Tutup Modal" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl transition-colors" onclick="closeModalHandoverDetail()">
+          Tutup Rincian
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- 3. Add User Modal (Admin) -->
+  <div id="modalAddUser" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 app-hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+        <h3 class="text-sm font-extrabold text-slate-800">Tambah Pengguna Baru</h3>
+        <button title="Tutup" aria-label="Tutup" class="text-slate-400 hover:text-slate-600" onclick="closeAddUserModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="formAddUser" class="space-y-3" onsubmit="handleAddUserSubmit(event)">
+        <div>
+          <label for="newUserName" class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+          <input type="text" id="newUserName" title="Nama Lengkap Pengguna" placeholder="Contoh: Budi Santoso" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue outline-none">
+        </div>
+
+        <div>
+          <label for="newUserUsername" class="block text-xs font-semibold text-slate-700 mb-1">Username / NIP</label>
+          <input type="text" id="newUserUsername" title="Username atau NIP" placeholder="Contoh: 617.05.0099" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue outline-none">
+        </div>
+
+        <div>
+          <label for="newUserRole" class="block text-xs font-semibold text-slate-700 mb-1">Peran Akses</label>
+          <select id="newUserRole" title="Pilih Peran Pengguna Baru" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue outline-none bg-white">
+            <option value="AMT">Awak Mobil Tangki (AMT)</option>
+            <option value="PENGAWAS">Pengawas Dispatcher</option>
+            <option value="ADMIN">Fleet Administrator</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="newUserPassword" class="block text-xs font-semibold text-slate-700 mb-1">Kata Sandi Default</label>
+          <input type="password" id="newUserPassword" title="Kata Sandi Baru" placeholder="••••••••" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-pertamina-blue outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button type="button" title="Batal" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl" onclick="closeAddUserModal()">
+            Batal
+          </button>
+          <button type="submit" title="Simpan Akun Baru" class="w-full bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold py-2.5 rounded-xl shadow-md">
+            Simpan User
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- 4. System Notification Modal -->
+  <div id="modalNotification" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 app-hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3.5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-bell text-pertamina-blue"></i>
+          <h3 class="text-sm font-extrabold text-slate-800">Notifikasi Sistem</h3>
+        </div>
+        <button title="Tutup Notifikasi" aria-label="Tutup Notifikasi" class="text-slate-400 hover:text-slate-600" onclick="closeNotificationModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-2xl">
+          <span class="text-[9px] font-bold text-pertamina-blue uppercase">Penugasan Baru</span>
+          <p class="font-bold text-slate-800 mt-0.5">Penugasan Armada B 9504 TEI Shift 1</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Silakan lakukan scan QR dan verifikasi HSSE sebelum keberangkatan.</p>
+          <span class="text-[9px] text-slate-400 block mt-1">10 menit yang lalu</span>
+        </div>
+
+        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
+          <span class="text-[9px] font-bold text-pertamina-green uppercase">Disetujui Pengawas</span>
+          <p class="font-bold text-slate-800 mt-0.5">Handover Awal B 9376 TFV Disetujui</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Pengawas Sekar P. telah menyetujui keberangkatan pengiriman.</p>
+          <span class="text-[9px] text-slate-400 block mt-1">1 jam yang lalu</span>
+        </div>
+
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-2xl">
+          <span class="text-[9px] font-bold text-amber-700 uppercase">Peringatan HSSE</span>
+          <p class="font-bold text-slate-800 mt-0.5">Pemeriksaan Berkala APAR Tangki</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Pastikan jarum tekanan APAR DCP berada di zona hijau aman.</p>
+          <span class="text-[9px] text-slate-400 block mt-1">Kemarin</span>
+        </div>
+      </div>
+
+      <button type="button" title="Tutup Notifikasi" class="w-full bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl" onclick="closeNotificationModal()">
+        Tutup
+      </button>
+    </div>
+  </div>
+
+
+  <!-- 5. User Profile Modal -->
+  <div id="modalProfile" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 app-hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="text-center pt-2">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pertamina-blue to-pertamina-navy text-white flex items-center justify-center text-xl font-extrabold mx-auto mb-2 shadow-md" id="profileModalInitial">
+          AS
+        </div>
+        <h3 class="text-base font-extrabold text-slate-800" id="profileModalName">A SYARIF HIDAYATUROHMAN</h3>
+        <p class="text-xs text-pertamina-blue font-semibold" id="profileModalRole">Awak Mobil Tangki (AMT)</p>
+      </div>
+
+      <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500">ID / NIP:</span>
+          <span class="font-semibold text-slate-700" id="profileModalUsername">617.05.0001</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Penempatan:</span>
+          <span class="font-semibold text-slate-700">Terminal BBM Cilacap</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Regional:</span>
+          <span class="font-semibold text-slate-700">Jawa Bagian Tengah (JBT)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Sertifikasi HSSE:</span>
+          <span class="font-bold text-emerald-600">Berlaku s/d 2027</span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button type="button" title="Keluar dari Akun Ini" class="w-full bg-rose-50 hover:bg-rose-100 text-pertamina-red text-xs font-bold py-2.5 rounded-xl border border-rose-200 transition-colors flex items-center justify-center space-x-1.5" onclick="logoutCurrentUser()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Keluar (Logout)</span>
+        </button>
+        <button type="button" title="Tutup Modal" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors" onclick="closeProfileModal()">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 6. Floating Toast Container (Bottom Center) -->
+  <div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none transition-all">
+    <!-- Toasts dynamically appended by showToast() -->
+  </div>
+
+
+  <!-- ==================== LOGIKA JAVASCRIPT LENGKAP ==================== -->
+  <script>
+    /* ==========================================================================
+       1. DATA DEFINITIONS & CHECKLIST ITEMS (HSSE STANDARDS)
+       ========================================================================== */
+    const HSSE_CAT_A = [
+      { id: 'rem', name: 'Kondisi Rem (Utama & Parkir)', severity: 'Major' },
+      { id: 'wiper', name: 'Kondisi Wiper & Air Wiper', severity: 'Minor' },
+      { id: 'kompartemen', name: 'Kondisi Kompartemen Tangki', severity: 'Major' },
+      { id: 'apar', name: 'Keberadaan APAR DCP / CO2', severity: 'Major' },
+      { id: 'oli', name: 'Oli Mesin & Level Pelumas', severity: 'Major' },
+      { id: 'radiator', name: 'Air Radiator & Reservoir', severity: 'Minor' },
+      { id: 'stnk', name: 'Keberadaan STNK Asli', severity: 'Major' },
+      { id: 'keur', name: 'Keberadaan Buku Uji Keur Dishub', severity: 'Major' },
+      { id: 'tera', name: 'Keberadaan Surat Tera Metrologi', severity: 'Major' },
+      { id: 'p3k', name: 'Keberadaan Kotak P3K Lengkap', severity: 'Minor' },
+      { id: 'flametrap', name: 'Flame Trap Knalpot', severity: 'Major' },
+      { id: 'toolkit', name: 'Tools Kit & Dongkrak Hidrolik', severity: 'Minor' },
+      { id: 'hose', name: 'Selang Bongkar BBM (Hose)', severity: 'Major' },
+      { id: 'grounding', name: 'Kabel Grounding / Bonding Static', severity: 'Major' },
+      { id: 'spillkit', name: 'Spill Kit / Pasir Penyerap', severity: 'Minor' }
+    ];
+
+    const HSSE_CAT_B = [
+      { id: 'sim', name: 'Membawa SIM B2 Umum Berlaku', severity: 'Major' },
+      { id: 'hsepaspot', name: 'ID Card & HSE Paspor Aktif', severity: 'Major' },
+      { id: 'kim', name: 'Dokumen KIM (Izin Masuk Terminal)', severity: 'Major' },
+      { id: 'seragam', name: 'Menggunakan Seragam Standar Pertamina', severity: 'Minor' },
+      { id: 'safetyshoes', name: 'Menggunakan Safety Shoes (ESD)', severity: 'Major' },
+      { id: 'safetyhelmet', name: 'Menggunakan Safety Helmet ber-Chinstrap', severity: 'Major' },
+      { id: 'safetyglove', name: 'Menggunakan Sarung Tangan Kulit/Karet', severity: 'Minor' },
+      { id: 'jashujan', name: 'Membawa Jas Hujan Standard', severity: 'Minor' },
+      { id: 'bukusaku', name: 'Membawa Buku Saku Keselamatan AMT', severity: 'Minor' }
+    ];
+
+    // Initial Default Seed Data
+    const DEFAULT_VEHICLES = {
+      'B 9504 TEI': {
+        plate: 'B 9504 TEI',
+        spec: 'HINO 500 FL',
+        capacity: '24 KL',
+        compartments: 4,
+        status: 'READY_TO_START', // READY_TO_START, Active, Maintenance
+        isManualMaintenance: false,
+        maintenanceReason: ''
+      },
+      'B 9376 TFV': {
+        plate: 'B 9376 TFV',
+        spec: 'HINO FG 235 TI',
+        capacity: '16 KL',
+        compartments: 2,
+        status: 'Active',
+        isManualMaintenance: false,
+        maintenanceReason: ''
+      },
+      'B 9123 TFU': {
+        plate: 'B 9123 TFU',
+        spec: 'NISSAN QUESTER GKE',
+        capacity: '32 KL',
+        compartments: 4,
+        status: 'READY_TO_START',
+        isManualMaintenance: false,
+        maintenanceReason: ''
+      },
+      'B 9876 PER': {
+        plate: 'B 9876 PER',
+        spec: 'ISUZU GIGA',
+        capacity: '16 KL',
+        compartments: 2,
+        status: 'Maintenance',
+        isManualMaintenance: true,
+        maintenanceReason: 'Penggantian kanvas rem & overhaul suspensi'
+      }
+    };
+
+    const DEFAULT_USERS = [
+      { username: '617.05.0001', name: 'A SYARIF HIDAYATUROHMAN', role: 'AMT', title: 'AMT II', status: 'Aktif' },
+      { username: 'sekar', name: 'Sekar P.', role: 'PENGAWAS', title: 'Fleet Dispatcher & Supervisor', status: 'Aktif' },
+      { username: 'yoan', name: 'Yoan Fleet Admin', role: 'ADMIN', title: 'Fleet Administrator', status: 'Aktif' },
+      { username: 'superadmin', name: 'Super Admin Pertamina', role: 'SUPERADMIN', title: 'Head of Fleet Operations', status: 'Aktif' }
+    ];
+
+    const DEFAULT_HANDOVERS = [
+      {
+        id: 'HO-20261030-001',
+        vehiclePlate: 'B 9376 TFV',
+        type: 'START',
+        amtName: 'A SYARIF HIDAYATUROHMAN',
+        shift: 'Shift 1',
+        odometer: 142580,
+        time: '30 Okt 2026, 06:15',
+        status: 'Aman',
+        approved: true,
+        approver: 'Sekar P.',
+        locationAddress: 'Jl. Prof. DR. Hamka, Lomanis, Cilacap Tengah',
+        locationCoords: '-7.702812, 109.006841',
+        notes: 'Semua APD lengkap dan kompartemen tangki bersih.',
+        defectItems: []
+      },
+      {
+        id: 'HO-20261029-004',
+        vehiclePlate: 'B 9876 PER',
+        type: 'END',
+        amtName: 'M. RIDWAN',
+        shift: 'Shift 2',
+        odometer: 188940,
+        time: '29 Okt 2026, 21:40',
+        status: 'Ada Temuan',
+        approved: false,
+        approver: '-',
+        locationAddress: 'Area Parkir Tangki Barat, TBBM Cilacap',
+        locationCoords: '-7.701920, 109.007120',
+        notes: 'Rem parkir kurang mencengkeram di tanjakan ringan.',
+        defectItems: ['rem']
+      },
+      {
+        id: 'HO-20261029-002',
+        vehiclePlate: 'B 9504 TEI',
+        type: 'END',
+        amtName: 'A SYARIF HIDAYATUROHMAN',
+        shift: 'Shift 1',
+        odometer: 142100,
+        time: '29 Okt 2026, 14:10',
+        status: 'Aman',
+        approved: true,
+        approver: 'Sekar P.',
+        locationAddress: 'Gerbang Keluar TBBM Cilacap',
+        locationCoords: '-7.703100, 109.005900',
+        notes: 'Selesai pengantaran BBM SPBU 44.532.01 Kroya.',
+        defectItems: []
+      }
+    ];
+
+    const DEFAULT_SESSIONS = [
+      { username: '617.05.0001', name: 'A SYARIF HIDAYATUROHMAN', role: 'AMT', device: 'Samsung Galaxy A54 (Android 14)', ip: '10.24.8.42', loginTime: 'Hari ini, 06:05 WIB' },
+      { username: 'sekar', name: 'Sekar P.', role: 'PENGAWAS', device: 'Chrome on Windows 11', ip: '10.24.1.18', loginTime: 'Hari ini, 06:10 WIB' },
+      { username: 'yoan', name: 'Yoan Fleet Admin', role: 'ADMIN', device: 'Chrome on macOS Sonoma', ip: '10.24.1.05', loginTime: 'Hari ini, 07:30 WIB' }
+    ];
+
+    const DEFAULT_AUDIT_LOGS = [
+      { time: '30 Okt 2026 06:15:22', user: '617.05.0001', action: 'HANDOVER_SUBMIT', detail: 'Handover Awal disubmit untuk unit B 9376 TFV (Status: Aman)' },
+      { time: '30 Okt 2026 06:18:04', user: 'sekar', action: 'HANDOVER_APPROVE', detail: 'Pengawas menyetujui Handover Awal HO-20261030-001' },
+      { time: '29 Okt 2026 21:40:15', user: 'm_ridwan', action: 'DEFECT_REPORTED', detail: 'Temuan kerusakan Kategori A dilaporkan: Kondisi Rem pada unit B 9876 PER' },
+      { time: '29 Okt 2026 21:42:00', user: 'system', action: 'VEHICLE_STATUS_CHANGE', detail: 'Unit B 9876 PER diubah ke status Maintenance secara otomatis' },
+      { time: '29 Okt 2026 14:15:30', user: 'yoan', action: 'REPORT_EXPORT', detail: 'Admin mengunduh rekap handover periode mingguan (Format CSV)' },
+      { time: '29 Okt 2026 08:00:11', user: 'superadmin', action: 'USER_ROLE_UPDATE', detail: 'Role pengguna yoan dipromosikan menjadi Fleet Administrator' },
+      { time: '29 Okt 2026 06:00:00', user: 'system', action: 'SHIFT_START', detail: 'Inisialisasi operasional Shift 1 TBBM Cilacap' },
+      { time: '28 Okt 2026 18:30:45', user: 'sekar', action: 'SESSION_REVOKE', detail: 'Sesi pengguna kadaluarsa pada IP 10.24.8.10 dicabut pengawas' }
+    ];
+
+    /* ==========================================================================
+       2. APPLICATION STATE INITIALIZATION (LOCALSTORAGE PERSISTENCE)
+       ========================================================================== */
+    let AppState = {
+      currentUser: null, // null = Login Screen
+      vehicles: {},
+      users: [],
+      handovers: [],
+      sessions: [],
+      auditLogs: [],
+      viewMode: 'mobile', // 'mobile' or 'desktop'
+      scannedVehicle: null,
+      handoverType: 'START', // 'START' or 'END'
+      checklistValues: {}, // item_id -> { status: 'BAIK'|'RUSAK', note: '' }
+      activeChecklistTab: 'A'
+    };
+
+    function loadStateFromStorage() {
+      try {
+        const storedVehicles = localStorage.getItem('pertamina_vehicles');
+        const storedUsers = localStorage.getItem('pertamina_users');
+        const storedHandovers = localStorage.getItem('pertamina_handovers');
+        const storedSessions = localStorage.getItem('pertamina_sessions');
+        const storedAuditLogs = localStorage.getItem('pertamina_audit_logs');
+        const storedUser = localStorage.getItem('pertamina_current_user');
+
+        AppState.vehicles = storedVehicles ? JSON.parse(storedVehicles) : JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
+        AppState.users = storedUsers ? JSON.parse(storedUsers) : JSON.parse(JSON.stringify(DEFAULT_USERS));
+        AppState.handovers = storedHandovers ? JSON.parse(storedHandovers) : JSON.parse(JSON.stringify(DEFAULT_HANDOVERS));
+        AppState.sessions = storedSessions ? JSON.parse(storedSessions) : JSON.parse(JSON.stringify(DEFAULT_SESSIONS));
+        AppState.auditLogs = storedAuditLogs ? JSON.parse(storedAuditLogs) : JSON.parse(JSON.stringify(DEFAULT_AUDIT_LOGS));
+        
+        if (storedUser) {
+          AppState.currentUser = JSON.parse(storedUser);
+        }
+      } catch (e) {
+        console.error('Gagal membaca localStorage, menggunakan data default.', e);
+        resetStateToDefaults();
+      }
+    }
+
+    function saveStateToStorage() {
+      try {
+        localStorage.setItem('pertamina_vehicles', JSON.stringify(AppState.vehicles));
+        localStorage.setItem('pertamina_users', JSON.stringify(AppState.users));
+        localStorage.setItem('pertamina_handovers', JSON.stringify(AppState.handovers));
+        localStorage.setItem('pertamina_sessions', JSON.stringify(AppState.sessions));
+        localStorage.setItem('pertamina_audit_logs', JSON.stringify(AppState.auditLogs));
+        if (AppState.currentUser) {
+          localStorage.setItem('pertamina_current_user', JSON.stringify(AppState.currentUser));
+        } else {
+          localStorage.removeItem('pertamina_current_user');
+        }
+      } catch (e) {
+        console.error('Gagal menyimpan ke localStorage.', e);
+      }
+    }
+
+    function resetStateToDefaults() {
+      AppState.vehicles = JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
+      AppState.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
+      AppState.handovers = JSON.parse(JSON.stringify(DEFAULT_HANDOVERS));
+      AppState.sessions = JSON.parse(JSON.stringify(DEFAULT_SESSIONS));
+      AppState.auditLogs = JSON.parse(JSON.stringify(DEFAULT_AUDIT_LOGS));
+      AppState.currentUser = null;
+      saveStateToStorage();
+    }
+
+    /* ==========================================================================
+       3. NAVIGATION, ROLE SWITCHING & VIEW MODES
+       ========================================================================== */
+    function initApp() {
+      loadStateFromStorage();
+      updateClock();
+      setInterval(updateClock, 1000);
+      setInterval(updateTripTimer, 1000);
+
+      // Sinkronisasi peran dropdown dan render view
+      if (!AppState.currentUser) {
+        renderScreen('screen-login');
+        document.getElementById('roleSelector').value = 'LOGIN';
+        setBottomNavVisibility(false);
+      } else {
+        document.getElementById('roleSelector').value = AppState.currentUser.role;
+        renderRoleDashboard();
+      }
+    }
+
+    function renderScreen(screenId) {
+      const screens = ['screen-login', 'screen-amt', 'screen-scanner', 'screen-form', 'screen-pengawas', 'screen-admin'];
+      screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (id === screenId) {
+            el.classList.remove('app-hidden');
+            el.classList.add('app-flex');
+          } else {
+            el.classList.add('app-hidden');
+            el.classList.remove('app-flex');
+          }
+        }
+      });
+    }
+
+    function setBottomNavVisibility(visible) {
+      const nav = document.getElementById('bottomNavBar');
+      if (visible) {
+        nav.classList.remove('app-hidden');
+        nav.classList.add('app-flex');
+      } else {
+        nav.classList.add('app-hidden');
+        nav.classList.remove('app-flex');
+      }
+    }
+
+    function switchRole(roleKey) {
+      if (roleKey === 'LOGIN') {
+        AppState.currentUser = null;
+        saveStateToStorage();
+        renderScreen('screen-login');
+        setBottomNavVisibility(false);
+        showToast('Beralih ke Halaman Login', 'info');
+        return;
+      }
+
+      const foundUser = AppState.users.find(u => u.role === roleKey);
+      if (foundUser) {
+        AppState.currentUser = foundUser;
+        saveStateToStorage();
+        renderRoleDashboard();
+        showToast(`Beralih peran sebagai: ${foundUser.name} (${foundUser.role})`, 'success');
+      }
+    }
+
+    function renderRoleDashboard() {
+      if (!AppState.currentUser) {
+        renderScreen('screen-login');
+        setBottomNavVisibility(false);
+        return;
+      }
+
+      const role = AppState.currentUser.role;
+      if (role === 'AMT') {
+        renderScreen('screen-amt');
+        setBottomNavVisibility(true);
+        populateAmtDashboard();
+      } else if (role === 'PENGAWAS') {
+        renderScreen('screen-pengawas');
+        setBottomNavVisibility(true);
+        populatePengawasDashboard();
+      } else if (role === 'ADMIN' || role === 'SUPERADMIN') {
+        renderScreen('screen-admin');
+        setBottomNavVisibility(false);
+        populateAdminDashboard();
+      }
+    }
+
+    function toggleViewMode() {
+      const frame = document.getElementById('deviceFrame');
+      const text = document.getElementById('viewToggleText');
+      const icon = document.getElementById('viewToggleIcon');
+      const notch = document.getElementById('mobileNotch');
+
+      if (AppState.viewMode === 'mobile') {
+        AppState.viewMode = 'desktop';
+        frame.classList.add('desktop-container');
+        notch.classList.add('app-hidden');
+        text.textContent = 'Desktop View';
+        icon.className = 'fa-solid fa-desktop text-emerald-400';
+        showToast('Mode tampilan: Fullscreen Desktop Dashboard', 'info');
+      } else {
+        AppState.viewMode = 'mobile';
+        frame.classList.remove('desktop-container');
+        notch.classList.remove('app-hidden');
+        text.textContent = 'Mobile Frame';
+        icon.className = 'fa-solid fa-mobile-screen text-amber-400';
+        showToast('Mode tampilan: Mobile Smartphone Frame (430x890)', 'info');
+      }
+    }
+
+    function confirmResetData() {
+      if (confirm('Apakah Anda yakin ingin mereset seluruh data demo (handover, unit armada, sesi) kembali ke kondisi awal?')) {
+        localStorage.clear();
+        resetStateToDefaults();
+        showToast('Seluruh data simulasi berhasil direset ke default!', 'success');
+        setTimeout(() => {
+          location.reload();
+        }, 600);
+      }
+    }
+
+    function handleLogoClick() {
+      showToast('Pertamina DIGI Handover v2.4 (Regional JBT Cilacap)', 'info');
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const clockEl = document.getElementById('statusBarClock');
+      if (clockEl) clockEl.textContent = `${hours}:${minutes}`;
+    }
+
+    function updateTripTimer() {
+      const timerEl = document.getElementById('amtTripTimer');
+      if (timerEl && AppState.vehicles['B 9504 TEI'] && AppState.vehicles['B 9504 TEI'].status === 'Active') {
+        // live mock ticking
+        const now = new Date();
+        const s = String(now.getSeconds()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        timerEl.textContent = `01:${m}:${s}`;
+      }
+    }
+
+    /* ==========================================================================
+       4. AUTHENTICATION & LOGIN WORKFLOW
+       ========================================================================== */
+    function handleFormLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('inputUsername').value.trim();
+      
+      // Match or fallback to first user
+      let matched = AppState.users.find(x => x.username.toLowerCase() === u.toLowerCase());
+      if (!matched) {
+        matched = {
+          username: u,
+          name: 'Pengguna Demo (' + u + ')',
+          role: 'AMT',
+          title: 'Awak Mobil Tangki',
+          status: 'Aktif'
+        };
+      }
+
+      AppState.currentUser = matched;
+      saveStateToStorage();
+      document.getElementById('roleSelector').value = matched.role;
+      renderRoleDashboard();
+      showToast(`Selamat datang kembali, ${matched.name}!`, 'success');
+    }
+
+    function quickLogin(roleKey) {
+      const found = AppState.users.find(u => u.role === roleKey);
+      if (found) {
+        AppState.currentUser = found;
+        saveStateToStorage();
+        document.getElementById('roleSelector').value = found.role;
+        renderRoleDashboard();
+        showToast(`Login berhasil sebagai ${found.name}`, 'success');
+      }
+    }
+
+    function logoutCurrentUser() {
+      closeProfileModal();
+      AppState.currentUser = null;
+      saveStateToStorage();
+      document.getElementById('roleSelector').value = 'LOGIN';
+      renderScreen('screen-login');
+      setBottomNavVisibility(false);
+      showToast('Anda telah keluar dari akun.', 'info');
+    }
+
+    /* ==========================================================================
+       5. AMT (AWAK MOBIL TANGKI) WORKFLOW
+       ========================================================================== */
+    function populateAmtDashboard() {
+      if (!AppState.currentUser) return;
+
+      document.getElementById('amtUserName').textContent = AppState.currentUser.name;
+      document.getElementById('amtUserRole').textContent = `${AppState.currentUser.title} • NIP: ${AppState.currentUser.username}`;
+      document.getElementById('amtInitial').textContent = getInitials(AppState.currentUser.name);
+
+      // Default vehicle assigned to AMT
+      const v = AppState.vehicles['B 9504 TEI'] || Object.values(AppState.vehicles)[0];
+      document.getElementById('amtVehiclePlate').textContent = v.plate;
+      document.getElementById('amtVehicleSpec').textContent = `${v.spec} • Kapasitas ${v.capacity}`;
+
+      const badge = document.getElementById('amtVehicleBadge');
+      const actionBtn = document.getElementById('amtActionButton');
+      const actionText = document.getElementById('amtActionText');
+      const actionIcon = document.getElementById('amtActionIcon');
+      const actionSubtext = document.getElementById('amtActionSubtext');
+      const tripBox = document.getElementById('amtTripTimerBox');
+
+      if (v.status === 'READY_TO_START') {
+        badge.textContent = 'SIAP OPERASI';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-pertamina-blue';
+        
+        actionBtn.className = 'w-full bg-pertamina-green hover:bg-pertamina-darkgreen text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-3 active:scale-[0.98]';
+        actionText.textContent = 'MULAI PEKERJAAN (SCAN QR)';
+        actionIcon.className = 'fa-solid fa-qrcode text-lg';
+        actionSubtext.textContent = 'Pindai QR Code di dashboard unit mobil tangki untuk memulai verifikasi HSSE';
+        tripBox.classList.add('app-hidden');
+      } else if (v.status === 'Active') {
+        badge.textContent = 'DALAM PERJALANAN';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-pertamina-darkgreen';
+
+        actionBtn.className = 'w-full bg-pertamina-red hover:bg-pertamina-darkred text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-3 active:scale-[0.98]';
+        actionText.textContent = 'AKHIRI PEKERJAAN (SCAN QR)';
+        actionIcon.className = 'fa-solid fa-flag-checkered text-lg';
+        actionSubtext.textContent = 'Pindai QR unit setelah kembali ke TBBM untuk menyerahkan armada';
+        tripBox.classList.remove('app-hidden');
+      } else {
+        badge.textContent = 'DALAM PERBAIKAN';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-pertamina-red';
+
+        actionBtn.className = 'w-full bg-slate-600 hover:bg-slate-700 text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-3 active:scale-[0.98]';
+        actionText.textContent = 'CEK STATUS PERBAIKAN (SCAN QR)';
+        actionIcon.className = 'fa-solid fa-wrench text-lg';
+        actionSubtext.textContent = 'Unit memiliki temuan kerusakan. Menunggu verifikasi perbaikan oleh pengawas';
+        tripBox.classList.add('app-hidden');
+      }
+
+      // Recent 3 handovers
+      const recentContainer = document.getElementById('amtRecentList');
+      recentContainer.innerHTML = '';
+      const list = AppState.handovers.slice(0, 3);
+      if (list.length === 0) {
+        recentContainer.innerHTML = `<div class="p-3 text-center text-xs text-slate-400 bg-white rounded-xl border border-slate-200">Belum ada riwayat handover</div>`;
+      } else {
+        list.forEach(ho => {
+          const isAman = ho.status === 'Aman';
+          const card = document.createElement('div');
+          card.className = 'bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-300 transition-colors';
+          card.onclick = () => openModalHandoverDetail(ho.id);
+          card.innerHTML = `
+            <div class="flex items-center space-x-3">
+              <div class="w-9 h-9 rounded-xl ${isAman ? 'bg-emerald-100 text-pertamina-green' : 'bg-rose-100 text-pertamina-red'} flex items-center justify-center text-sm font-bold">
+                <i class="${isAman ? 'fa-solid fa-check' : 'fa-solid fa-triangle-exclamation'}"></i>
+              </div>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-xs font-bold text-slate-800">${ho.vehiclePlate}</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${ho.type === 'START' ? 'bg-blue-100 text-pertamina-blue' : 'bg-purple-100 text-purple-700'}">${ho.type === 'START' ? 'AWAL' : 'AKHIR'}</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-0.5">${ho.time} • ${ho.shift}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-bold ${isAman ? 'text-emerald-600' : 'text-rose-600'}">${ho.status}</span>
+              <p class="text-[9px] text-slate-400">${ho.approved ? 'Disetujui' : 'Menunggu'}</p>
+            </div>
+          `;
+          recentContainer.appendChild(card);
+        });
+      }
+    }
+
+    function handleAmtAction() {
+      const v = AppState.vehicles['B 9504 TEI'] || Object.values(AppState.vehicles)[0];
+      AppState.handoverType = (v.status === 'Active') ? 'END' : 'START';
+      openScanner();
+    }
+
+    /* ==========================================================================
+       6. SCANNER WORKFLOW & SIMULATION CONTROLS
+       ========================================================================== */
+    function openScanner() {
+      renderScreen('screen-scanner');
+      setBottomNavVisibility(false);
+      showToast('Kamera aktif. Silakan bidik QR Code armada.', 'info');
+    }
+
+    function closeScanner() {
+      renderRoleDashboard();
+    }
+
+    let torchOn = false;
+    function toggleTorch() {
+      torchOn = !torchOn;
+      const btn = document.getElementById('scannerTorchBtn');
+      if (torchOn) {
+        btn.classList.add('bg-amber-400', 'text-slate-900');
+        btn.classList.remove('bg-white/10', 'text-amber-400');
+        showToast('Lampu senter dinyalakan', 'info');
+      } else {
+        btn.classList.remove('bg-amber-400', 'text-slate-900');
+        btn.classList.add('bg-white/10', 'text-amber-400');
+        showToast('Lampu senter dimatikan', 'info');
+      }
+    }
+
+    function simulateScan(scenario) {
+      if (scenario === 'OUT_OF_BOUNDS') {
+        showToast('Gagal: QR Code berada di luar area kotak bidik! Arahkan kamera lebih dekat.', 'error');
+        return;
+      }
+      if (scenario === 'DAMAGED_QR') {
+        showToast('Gagal: Kode QR rusak atau kotor! Harap bersihkan stiker barcode pada unit.', 'error');
+        return;
+      }
+
+      // Valid vehicle
+      const v = AppState.vehicles[scenario];
+      if (!v) {
+        showToast(`Kendaraan ${scenario} tidak terdaftar di sistem.`, 'error');
+        return;
+      }
+
+      AppState.scannedVehicle = v;
+      openModalScanConfirm(v);
+    }
+
+    function openModalScanConfirm(v) {
+      document.getElementById('scanModalPlate').textContent = v.plate;
+      document.getElementById('scanModalSpec').textContent = v.spec;
+      document.getElementById('scanModalCapacity').textContent = `${v.capacity} (${v.compartments} Kompartemen)`;
+      
+      const badge = document.getElementById('scanModalStatusBadge');
+      if (v.status === 'READY_TO_START') {
+        badge.textContent = 'SIAP OPERASI';
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-pertamina-blue';
+      } else if (v.status === 'Active') {
+        badge.textContent = 'DALAM PERJALANAN';
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-pertamina-green';
+      } else {
+        badge.textContent = 'DALAM PERBAIKAN';
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-pertamina-red';
+      }
+
+      document.getElementById('modalScanConfirm').classList.remove('app-hidden');
+    }
+
+    function closeModalScanConfirm() {
+      document.getElementById('modalScanConfirm').classList.add('app-hidden');
+    }
+
+    function proceedToHandoverForm() {
+      closeModalScanConfirm();
+      renderHandoverForm();
+    }
+
+    /* ==========================================================================
+       7. HANDOVER CHECKLIST FORM WORKFLOW
+       ========================================================================== */
+    function renderHandoverForm() {
+      const v = AppState.scannedVehicle || AppState.vehicles['B 9504 TEI'];
+      renderScreen('screen-form');
+      setBottomNavVisibility(false);
+
+      const isStart = (AppState.handoverType === 'START');
+      document.getElementById('formTitle').textContent = isStart ? 'Formulir Handover Awal' : 'Formulir Handover Akhir';
+      document.getElementById('formSubtitle').textContent = isStart ? 'Verifikasi HSSE Keberangkatan Armada Tangki' : 'Pemeriksaan Kepulangan & Penyerahan Armada';
+      
+      const typeBadge = document.getElementById('formHandoverTypeBadge');
+      typeBadge.textContent = isStart ? 'HANDOVER AWAL' : 'HANDOVER AKHIR';
+      typeBadge.className = isStart ? 'px-2.5 py-1 rounded-full text-[10px] font-bold bg-pertamina-blue text-white uppercase' : 'px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-700 text-white uppercase';
+
+      document.getElementById('formUnitPlate').textContent = v.plate;
+      document.getElementById('formUnitDesc').textContent = `${v.spec} • ${v.capacity}`;
+
+      // Reset checklist state to all BAIK/SESUAI by default
+      AppState.checklistValues = {};
+      HSSE_CAT_A.forEach(item => {
+        AppState.checklistValues[item.id] = { status: 'BAIK', note: '' };
+      });
+      HSSE_CAT_B.forEach(item => {
+        AppState.checklistValues[item.id] = { status: 'SESUAI', note: '' };
+      });
+
+      populateChecklistItems();
+      switchChecklistTab('A');
+    }
+
+    function populateChecklistItems() {
+      // Render Category A
+      const containerA = document.getElementById('catAItemsList');
+      containerA.innerHTML = '';
+      HSSE_CAT_A.forEach((item, idx) => {
+        const val = AppState.checklistValues[item.id] || { status: 'BAIK', note: '' };
+        const isGood = (val.status === 'BAIK');
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold">${idx + 1}</span>
+              <div>
+                <p class="text-xs font-bold text-slate-800 leading-tight">${item.name}</p>
+                <span class="text-[9px] font-semibold ${item.severity === 'Major' ? 'text-pertamina-red' : 'text-amber-700'}">${item.severity} Risk</span>
+              </div>
+            </div>
+            <!-- Toggle Group -->
+            <div class="flex bg-slate-200 p-0.5 rounded-lg text-[10px] font-bold">
+              <button type="button" title="Set Baik" class="px-2.5 py-1 rounded-md transition-colors ${isGood ? 'bg-pertamina-green text-white shadow-sm' : 'text-slate-600'}" onclick="setItemChecklist('${item.id}', 'BAIK')">
+                BAIK
+              </button>
+              <button type="button" title="Set Rusak" class="px-2.5 py-1 rounded-md transition-colors ${!isGood ? 'bg-pertamina-red text-white shadow-sm' : 'text-slate-600'}" onclick="setItemChecklist('${item.id}', 'RUSAK')">
+                RUSAK
+              </button>
+            </div>
+          </div>
+          <!-- Defect Detail Field (Visible when RUSAK) -->
+          <div id="defectBox_${item.id}" class="${isGood ? 'app-hidden' : 'space-y-1.5 pt-1.5 border-t border-slate-200'}">
+            <input type="text" id="defectNote_${item.id}" title="Deskripsi Kerusakan ${item.name}" placeholder="Jelaskan detail kerusakan/kebocoran..." value="${val.note || ''}" oninput="updateItemNote('${item.id}', this.value)" class="w-full text-xs p-2 rounded-lg border border-rose-300 focus:border-pertamina-red outline-none bg-rose-50/40">
+            <div class="flex items-center justify-between text-[10px] text-slate-500">
+              <span class="text-pertamina-red font-semibold"><i class="fa-solid fa-camera mr-1"></i>Foto Bukti Kerusakan Terlampir (Simulasi)</span>
+              <span class="bg-rose-100 text-pertamina-red px-1.5 py-0.2 rounded font-bold">Wajib Diperbaiki</span>
+            </div>
+          </div>
+        `;
+        containerA.appendChild(card);
+      });
+
+      // Render Category B
+      const containerB = document.getElementById('catBItemsList');
+      containerB.innerHTML = '';
+      HSSE_CAT_B.forEach((item, idx) => {
+        const val = AppState.checklistValues[item.id] || { status: 'SESUAI', note: '' };
+        const isGood = (val.status === 'SESUAI');
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold">${idx + 1}</span>
+              <div>
+                <p class="text-xs font-bold text-slate-800 leading-tight">${item.name}</p>
+                <span class="text-[9px] font-semibold ${item.severity === 'Major' ? 'text-pertamina-red' : 'text-amber-700'}">${item.severity} Standard</span>
+              </div>
+            </div>
+            <!-- Toggle Group -->
+            <div class="flex bg-slate-200 p-0.5 rounded-lg text-[10px] font-bold">
+              <button type="button" title="Set Sesuai" class="px-2.5 py-1 rounded-md transition-colors ${isGood ? 'bg-pertamina-green text-white shadow-sm' : 'text-slate-600'}" onclick="setItemChecklist('${item.id}', 'SESUAI')">
+                SESUAI
+              </button>
+              <button type="button" title="Set Tidak Sesuai" class="px-2.5 py-1 rounded-md transition-colors ${!isGood ? 'bg-pertamina-red text-white shadow-sm' : 'text-slate-600'}" onclick="setItemChecklist('${item.id}', 'TIDAK')">
+                TIDAK
+              </button>
+            </div>
+          </div>
+          <!-- Defect Detail Field -->
+          <div id="defectBox_${item.id}" class="${isGood ? 'app-hidden' : 'space-y-1.5 pt-1.5 border-t border-slate-200'}">
+            <input type="text" id="defectNote_${item.id}" title="Keterangan Ketidaksesuaian ${item.name}" placeholder="Alasan ketidaksesuaian..." value="${val.note || ''}" oninput="updateItemNote('${item.id}', this.value)" class="w-full text-xs p-2 rounded-lg border border-rose-300 focus:border-pertamina-red outline-none bg-rose-50/40">
+          </div>
+        `;
+        containerB.appendChild(card);
+      });
+    }
+
+    function setItemChecklist(itemId, status) {
+      if (!AppState.checklistValues[itemId]) {
+        AppState.checklistValues[itemId] = { status, note: '' };
+      } else {
+        AppState.checklistValues[itemId].status = status;
+      }
+      populateChecklistItems();
+    }
+
+    function updateItemNote(itemId, noteText) {
+      if (AppState.checklistValues[itemId]) {
+        AppState.checklistValues[itemId].note = noteText;
+      }
+    }
+
+    function switchChecklistTab(tabKey) {
+      AppState.activeChecklistTab = tabKey;
+      const tabABtn = document.getElementById('tabCatABtn');
+      const tabBBtn = document.getElementById('tabCatBBtn');
+      const containerA = document.getElementById('checklistTabA');
+      const containerB = document.getElementById('checklistTabB');
+
+      if (tabKey === 'A') {
+        tabABtn.className = 'px-3 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm transition-all';
+        tabBBtn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+        containerA.classList.remove('app-hidden');
+        containerB.classList.add('app-hidden');
+      } else {
+        tabBBtn.className = 'px-3 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm transition-all';
+        tabABtn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+        containerB.classList.remove('app-hidden');
+        containerA.classList.add('app-hidden');
+      }
+    }
+
+    function markAllGood() {
+      HSSE_CAT_A.forEach(item => {
+        AppState.checklistValues[item.id] = { status: 'BAIK', note: '' };
+      });
+      HSSE_CAT_B.forEach(item => {
+        AppState.checklistValues[item.id] = { status: 'SESUAI', note: '' };
+      });
+      populateChecklistItems();
+      showToast('Seluruh 24 item pemeriksaan ditandai BAIK & SESUAI!', 'success');
+    }
+
+    function confirmCancelForm() {
+      if (confirm('Batalkan pengisian form handover? Perubahan belum tersimpan.')) {
+        renderRoleDashboard();
+      }
+    }
+
+    function submitHandoverForm() {
+      const v = AppState.scannedVehicle || AppState.vehicles['B 9504 TEI'];
+      const odo = document.getElementById('formOdometerInput').value;
+      const shift = document.getElementById('formShiftSelect').value;
+      const notes = document.getElementById('formNotes').value.trim();
+
+      if (!odo) {
+        showToast('Harap masukkan angka odometer KM armada!', 'error');
+        return;
+      }
+
+      // Check if any defect
+      const defectItems = [];
+      Object.keys(AppState.checklistValues).forEach(k => {
+        const val = AppState.checklistValues[k];
+        if (val.status === 'RUSAK' || val.status === 'TIDAK') {
+          defectItems.push(k);
+        }
+      });
+
+      const hasDefect = (defectItems.length > 0);
+      const isStart = (AppState.handoverType === 'START');
+      const nowStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+                     new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+      // Update vehicle state
+      if (isStart) {
+        if (hasDefect) {
+          v.status = 'Maintenance';
+          v.isManualMaintenance = true;
+          v.maintenanceReason = 'Ditemukan kerusakan HSSE saat handover awal.';
+        } else {
+          v.status = 'Active';
+          v.isManualMaintenance = false;
+        }
+      } else {
+        // Handover END
+        if (hasDefect) {
+          v.status = 'Maintenance';
+          v.isManualMaintenance = true;
+          v.maintenanceReason = 'Kerusakan dilaporkan pada handover kepulangan.';
+        } else {
+          v.status = 'READY_TO_START';
+          v.isManualMaintenance = false;
+        }
+      }
+
+      // Record Handover
+      const newHo = {
+        id: `HO-${Date.now().toString().slice(-8)}`,
+        vehiclePlate: v.plate,
+        type: AppState.handoverType,
+        amtName: AppState.currentUser ? AppState.currentUser.name : 'A SYARIF HIDAYATUROHMAN',
+        shift: shift,
+        odometer: parseInt(odo, 10),
+        time: nowStr,
+        status: hasDefect ? 'Ada Temuan' : 'Aman',
+        approved: false,
+        approver: '-',
+        locationAddress: 'Jl. Prof. DR. Hamka, Lomanis, Cilacap Tengah',
+        locationCoords: '-7.702812, 109.006841',
+        notes: notes || (hasDefect ? 'Terdapat catatan temuan pemeriksaan.' : 'Pemeriksaan lengkap tanpa kendala.'),
+        defectItems: defectItems,
+        checklistSnapshot: JSON.parse(JSON.stringify(AppState.checklistValues))
+      };
+
+      AppState.handovers.unshift(newHo);
+
+      // Audit Log
+      AppState.auditLogs.unshift({
+        time: nowStr,
+        user: AppState.currentUser ? AppState.currentUser.username : '617.05.0001',
+        action: 'HANDOVER_SUBMIT',
+        detail: `Handover ${isStart ? 'Awal' : 'Akhir'} unit ${v.plate} disubmit (Status: ${newHo.status})`
+      });
+
+      saveStateToStorage();
+      showToast(`Laporan Handover berhasil dikirim! Status unit: ${v.status}`, 'success');
+
+      // Return to AMT dashboard
+      renderRoleDashboard();
+    }
+
+    /* ==========================================================================
+       8. PENGAWAS (DISPATCHER) WORKFLOW
+       ========================================================================== */
+    function populatePengawasDashboard() {
+      if (!AppState.currentUser) return;
+      document.getElementById('pengawasName').textContent = AppState.currentUser.name;
+
+      // Calculate Metrics
+      const pendingReview = AppState.handovers.filter(h => !h.approved).length;
+      const issuesCount = AppState.handovers.filter(h => h.status === 'Ada Temuan').length;
+      const readyFleetCount = Object.values(AppState.vehicles).filter(v => v.status === 'READY_TO_START').length;
+      const totalFleetCount = Object.keys(AppState.vehicles).length;
+
+      document.getElementById('pengawasMetricPending').textContent = pendingReview;
+      document.getElementById('pengawasMetricIssues').textContent = issuesCount;
+      document.getElementById('pengawasMetricReady').textContent = `${readyFleetCount} / ${totalFleetCount}`;
+
+      // Tab 1: Incoming List
+      const incomingList = document.getElementById('pengawasIncomingList');
+      incomingList.innerHTML = '';
+      document.getElementById('pengawasCountIncoming').textContent = `${AppState.handovers.length} Laporan`;
+
+      AppState.handovers.forEach(ho => {
+        const isAman = ho.status === 'Aman';
+        const card = document.createElement('div');
+        card.className = 'bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-extrabold text-slate-800">${ho.vehiclePlate}</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${ho.type === 'START' ? 'bg-blue-100 text-pertamina-blue' : 'bg-purple-100 text-purple-700'}">${ho.type === 'START' ? 'AWAL' : 'AKHIR'}</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${isAman ? 'bg-emerald-100 text-pertamina-green' : 'bg-rose-100 text-pertamina-red'}">${ho.status}</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-medium">${ho.time}</span>
+          </div>
+
+          <div class="text-xs text-slate-600 space-y-0.5">
+            <p><i class="fa-solid fa-user-gear mr-1.5 text-slate-400"></i>AMT: <strong class="text-slate-700">${ho.amtName}</strong> (${ho.shift})</p>
+            <p><i class="fa-solid fa-gauge mr-1.5 text-slate-400"></i>Odo: <strong class="font-mono text-slate-700">${ho.odometer} KM</strong></p>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+            <button type="button" title="Lihat Rincian Handover" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-1.5 rounded-xl transition-colors" onclick="openModalHandoverDetail('${ho.id}')">
+              <i class="fa-solid fa-eye mr-1"></i>Rincian
+            </button>
+            ${!ho.approved ? `
+              <button type="button" title="Setujui Laporan Handover" class="flex-1 bg-pertamina-green hover:bg-pertamina-darkgreen text-white text-xs font-bold py-1.5 rounded-xl transition-colors shadow-sm" onclick="approveHandover('${ho.id}')">
+                <i class="fa-solid fa-check mr-1"></i>Setujui
+              </button>
+            ` : `
+              <span class="text-[10px] font-bold text-pertamina-green bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
+                <i class="fa-solid fa-check-double mr-1"></i>Disetujui
+              </span>
+            `}
+          </div>
+        `;
+        incomingList.appendChild(card);
+      });
+
+      // Tab 2: Issues List
+      const issuesList = document.getElementById('pengawasIssuesList');
+      issuesList.innerHTML = '';
+      const issues = AppState.handovers.filter(h => h.status === 'Ada Temuan');
+      document.getElementById('pengawasCountIssues').textContent = `${issues.length} Unit`;
+
+      if (issues.length === 0) {
+        issuesList.innerHTML = `<div class="p-6 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200"><i class="fa-solid fa-circle-check text-2xl text-emerald-400 mb-1 block"></i>Tidak ada laporan isu / kerusakan aktif. Seluruh armada aman.</div>`;
+      } else {
+        issues.forEach(ho => {
+          const card = document.createElement('div');
+          card.className = 'bg-white p-3.5 rounded-2xl border border-rose-200 shadow-sm space-y-2';
+          card.innerHTML = `
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-extrabold text-slate-800">${ho.vehiclePlate}</span>
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-rose-100 text-pertamina-red">PERLU PERBAIKAN</span>
+              </div>
+              <span class="text-[10px] text-slate-400">${ho.time}</span>
+            </div>
+
+            <p class="text-xs text-slate-700 bg-rose-50/60 p-2 rounded-lg border border-rose-100">
+              <strong class="text-pertamina-red">Temuan:</strong> ${ho.notes}
+            </p>
+
+            <div class="pt-1 flex items-center justify-between gap-2">
+              <button type="button" title="Lihat Rincian Isu" class="text-xs text-pertamina-blue font-bold hover:underline" onclick="openModalHandoverDetail('${ho.id}')">
+                Detail Temuan
+              </button>
+              <button type="button" title="Tandai Bahwa Perbaikan Selesai Dilakukan" class="bg-pertamina-blue hover:bg-pertamina-navy text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors shadow-sm" onclick="resolveVehicleIssue('${ho.vehiclePlate}', '${ho.id}')">
+                <i class="fa-solid fa-wrench mr-1"></i>Tandai Perbaikan Selesai
+              </button>
+            </div>
+          `;
+          issuesList.appendChild(card);
+        });
+      }
+
+      // Tab 3: Fleet Status Cards
+      const fleetList = document.getElementById('pengawasFleetList');
+      fleetList.innerHTML = '';
+      Object.values(AppState.vehicles).forEach(v => {
+        let statusBadge = '';
+        if (v.status === 'READY_TO_START') {
+          statusBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-pertamina-blue">SIAP OPERASI</span>';
+        } else if (v.status === 'Active') {
+          statusBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-pertamina-green">DALAM PERJALANAN</span>';
+        } else {
+          statusBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-pertamina-red">MAINTENANCE</span>';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <h4 class="text-xs font-extrabold text-slate-800">${v.plate}</h4>
+              ${statusBadge}
+            </div>
+            <p class="text-[11px] text-slate-500 mt-0.5">${v.spec} • Kapasitas: <strong>${v.capacity}</strong></p>
+            ${v.isManualMaintenance ? `<p class="text-[10px] text-rose-600 mt-1 italic"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${v.maintenanceReason}</p>` : ''}
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] text-slate-400 block">${v.compartments} Kompartemen</span>
+          </div>
+        `;
+        fleetList.appendChild(card);
+      });
+    }
+
+    function switchPengawasTab(tabKey) {
+      const t1 = document.getElementById('pTab1');
+      const t2 = document.getElementById('pTab2');
+      const t3 = document.getElementById('pTab3');
+      const c1 = document.getElementById('pengawasTabIncoming');
+      const c2 = document.getElementById('pengawasTabIssues');
+      const c3 = document.getElementById('pengawasTabFleet');
+
+      [t1, t2, t3].forEach(btn => btn.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900');
+      [c1, c2, c3].forEach(c => c.classList.add('app-hidden'));
+
+      if (tabKey === 'incoming') {
+        t1.className = 'flex-1 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm';
+        c1.classList.remove('app-hidden');
+      } else if (tabKey === 'issues') {
+        t2.className = 'flex-1 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm';
+        c2.classList.remove('app-hidden');
+      } else {
+        t3.className = 'flex-1 py-1.5 rounded-lg bg-white text-pertamina-blue shadow-sm';
+        c3.classList.remove('app-hidden');
+      }
+    }
+
+    function approveHandover(hoId) {
+      const ho = AppState.handovers.find(h => h.id === hoId);
+      if (ho) {
+        ho.approved = true;
+        ho.approver = AppState.currentUser ? AppState.currentUser.name : 'Sekar P.';
+
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: AppState.currentUser ? AppState.currentUser.username : 'sekar',
+          action: 'HANDOVER_APPROVE',
+          detail: `Pengawas menyetujui Handover ${ho.id} armada ${ho.vehiclePlate}`
+        });
+
+        saveStateToStorage();
+        populatePengawasDashboard();
+        showToast(`Handover ${ho.id} berhasil disetujui!`, 'success');
+      }
+    }
+
+    function resolveVehicleIssue(plate, hoId) {
+      const v = AppState.vehicles[plate];
+      if (v) {
+        v.status = 'READY_TO_START';
+        v.isManualMaintenance = false;
+        v.maintenanceReason = '';
+
+        const ho = AppState.handovers.find(h => h.id === hoId);
+        if (ho) {
+          ho.status = 'Aman';
+          ho.notes += ' (Perbaikan telah diselesaikan oleh tim mekanik TBBM)';
+        }
+
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: AppState.currentUser ? AppState.currentUser.username : 'sekar',
+          action: 'ISSUE_RESOLVED',
+          detail: `Perbaikan armada ${plate} selesai. Status kembali READY_TO_START.`
+        });
+
+        saveStateToStorage();
+        populatePengawasDashboard();
+        showToast(`Perbaikan armada ${plate} telah diselesaikan! Unit kini SIAP OPERASI.`, 'success');
+      }
+    }
+
+    /* ==========================================================================
+       9. ADMIN & SUPERADMIN WORKFLOW
+       ========================================================================== */
+    function populateAdminDashboard() {
+      if (!AppState.currentUser) return;
+      
+      const isSuper = (AppState.currentUser.role === 'SUPERADMIN');
+      document.getElementById('adminUserName').textContent = AppState.currentUser.name;
+      
+      const superBadge = document.getElementById('superadminExclusiveBadge');
+      const revokeAllBtn = document.getElementById('btnRevokeAllSessions');
+      if (isSuper) {
+        superBadge.classList.remove('app-hidden');
+        revokeAllBtn.classList.remove('app-hidden');
+      } else {
+        superBadge.classList.add('app-hidden');
+        revokeAllBtn.classList.add('app-hidden');
+      }
+
+      // Tab 1: Overview Stats
+      document.getElementById('adminStatTotalHandover').textContent = AppState.handovers.length;
+      document.getElementById('adminStatPendingIssues').textContent = AppState.handovers.filter(h => h.status === 'Ada Temuan').length;
+      const readyFleetCount = Object.values(AppState.vehicles).filter(v => v.status === 'READY_TO_START').length;
+      document.getElementById('adminStatReadyFleet').textContent = `${readyFleetCount} / ${Object.keys(AppState.vehicles).length}`;
+      document.getElementById('adminStatActiveSessions').textContent = AppState.sessions.length;
+
+      // Overview Recent Table
+      const recentList = document.getElementById('adminRecentHandoverList');
+      recentList.innerHTML = '';
+      AppState.handovers.slice(0, 4).forEach(ho => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100';
+        item.innerHTML = `
+          <div>
+            <span class="font-extrabold text-slate-800">${ho.vehiclePlate}</span>
+            <span class="text-[10px] text-slate-400 ml-1.5">${ho.amtName}</span>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] font-bold ${ho.status === 'Aman' ? 'text-emerald-600' : 'text-rose-600'}">${ho.status}</span>
+            <span class="text-[9px] text-slate-400 block">${ho.time}</span>
+          </div>
+        `;
+        recentList.appendChild(item);
+      });
+
+      // Tab 2: Users List
+      const userList = document.getElementById('adminUserList');
+      userList.innerHTML = '';
+      AppState.users.forEach(u => {
+        let roleBadgeClass = 'bg-blue-100 text-pertamina-blue';
+        if (u.role === 'PENGAWAS') roleBadgeClass = 'bg-emerald-100 text-pertamina-green';
+        if (u.role === 'ADMIN') roleBadgeClass = 'bg-purple-100 text-purple-700';
+        if (u.role === 'SUPERADMIN') roleBadgeClass = 'bg-rose-100 text-pertamina-red';
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <strong class="text-xs font-bold text-slate-800">${u.name}</strong>
+              <span class="text-[9px] font-bold px-2 py-0.2 rounded ${roleBadgeClass}">${u.role}</span>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-0.5">Username: <span class="font-mono text-slate-600">${u.username}</span> • ${u.title || '-'}</p>
+          </div>
+          <div class="flex items-center space-x-1">
+            ${isSuper && u.role !== 'SUPERADMIN' ? `
+              <button type="button" title="Promosi / Demosi Akses Pengguna" class="p-1.5 text-xs text-pertamina-blue hover:bg-blue-50 rounded-lg" onclick="togglePromoteUser('${u.username}')">
+                <i class="fa-solid fa-crown"></i>
+              </button>
+            ` : ''}
+            <button type="button" title="Hapus Pengguna" class="p-1.5 text-xs text-rose-500 hover:bg-rose-50 rounded-lg" onclick="deleteUser('${u.username}')">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        userList.appendChild(card);
+      });
+
+      // Tab 3: Sessions List
+      const sessionList = document.getElementById('adminSessionsList');
+      sessionList.innerHTML = '';
+      AppState.sessions.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <strong class="text-xs font-bold text-slate-800">${s.name}</strong>
+              <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">${s.role}</span>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-0.5">
+              <i class="fa-solid fa-mobile-screen mr-1"></i>${s.device} • IP: <span class="font-mono">${s.ip}</span>
+            </p>
+            <p class="text-[9px] text-slate-400">Login: ${s.loginTime}</p>
+          </div>
+          <button type="button" title="Cabut Sesi Pengguna Ini" class="bg-rose-50 hover:bg-rose-100 text-pertamina-red text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-rose-200 transition-colors" onclick="revokeSession('${s.username}')">
+            Cabut Sesi
+          </button>
+        `;
+        sessionList.appendChild(card);
+      });
+
+      // Tab 4: Audit Logs
+      const auditContainer = document.getElementById('adminAuditLogList');
+      auditContainer.innerHTML = '';
+      document.getElementById('auditLogCount').textContent = `${AppState.auditLogs.length} Logs`;
+      AppState.auditLogs.forEach(log => {
+        const card = document.createElement('div');
+        card.className = 'bg-white p-2.5 rounded-xl border border-slate-200 text-xs space-y-1';
+        card.innerHTML = `
+          <div class="flex items-center justify-between text-[10px] text-slate-400">
+            <span><i class="fa-regular fa-clock mr-1"></i>${log.time}</span>
+            <span class="font-mono bg-slate-100 px-1.5 py-0.2 rounded text-slate-600 font-bold">${log.action}</span>
+          </div>
+          <p class="text-slate-700 leading-snug">${log.detail}</p>
+          <span class="text-[9px] text-slate-400 block">Pelaku: <strong class="text-slate-600">${log.user}</strong></span>
+        `;
+        auditContainer.appendChild(card);
+      });
+    }
+
+    function switchAdminTab(tabKey) {
+      const tabs = ['adminTab1', 'adminTab2', 'adminTab3', 'adminTab4'];
+      const views = ['adminViewOverview', 'adminViewUsers', 'adminViewSessions', 'adminViewAudit'];
+
+      tabs.forEach(t => document.getElementById(t).className = 'flex-1 py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap');
+      views.forEach(v => document.getElementById(v).classList.add('app-hidden'));
+
+      if (tabKey === 'overview') {
+        document.getElementById('adminTab1').className = 'flex-1 py-1.5 px-2 rounded-lg bg-white text-pertamina-blue shadow-sm whitespace-nowrap';
+        document.getElementById('adminViewOverview').classList.remove('app-hidden');
+      } else if (tabKey === 'users') {
+        document.getElementById('adminTab2').className = 'flex-1 py-1.5 px-2 rounded-lg bg-white text-pertamina-blue shadow-sm whitespace-nowrap';
+        document.getElementById('adminViewUsers').classList.remove('app-hidden');
+      } else if (tabKey === 'sessions') {
+        document.getElementById('adminTab3').className = 'flex-1 py-1.5 px-2 rounded-lg bg-white text-pertamina-blue shadow-sm whitespace-nowrap';
+        document.getElementById('adminViewSessions').classList.remove('app-hidden');
+      } else if (tabKey === 'audit') {
+        document.getElementById('adminTab4').className = 'flex-1 py-1.5 px-2 rounded-lg bg-white text-pertamina-blue shadow-sm whitespace-nowrap';
+        document.getElementById('adminViewAudit').classList.remove('app-hidden');
+      }
+    }
+
+    function exportDataCSV() {
+      let csv = 'ID_Handover,Nopol,Tipe,AMT,Shift,Odometer_KM,Status,Waktu,Disetujui\n';
+      AppState.handovers.forEach(h => {
+        csv += `"${h.id}","${h.vehiclePlate}","${h.type}","${h.amtName}","${h.shift}","${h.odometer}","${h.status}","${h.time}","${h.approved ? 'YA' : 'TIDAK'}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Rekap_Handover_Pertamina_Cilacap_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('File CSV laporan handover berhasil diunduh!', 'success');
+    }
+
+    function exportDataPDF() {
+      showToast('Simulasi: Dokumen PDF Ringkasan HSSE Compliance siap diunduh.', 'success');
+    }
+
+    function openAddUserModal() {
+      document.getElementById('modalAddUser').classList.remove('app-hidden');
+    }
+
+    function closeAddUserModal() {
+      document.getElementById('modalAddUser').classList.add('app-hidden');
+    }
+
+    function handleAddUserSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('newUserName').value.trim();
+      const username = document.getElementById('newUserUsername').value.trim();
+      const role = document.getElementById('newUserRole').value;
+
+      AppState.users.push({
+        username,
+        name,
+        role,
+        title: role === 'AMT' ? 'Awak Mobil Tangki' : (role === 'PENGAWAS' ? 'Fleet Dispatcher' : 'Fleet Administrator'),
+        status: 'Aktif'
+      });
+
+      AppState.auditLogs.unshift({
+        time: new Date().toLocaleString('id-ID'),
+        user: AppState.currentUser ? AppState.currentUser.username : 'admin',
+        action: 'USER_CREATE',
+        detail: `User baru ${name} (${username}) dibuat dengan peran ${role}`
+      });
+
+      saveStateToStorage();
+      closeAddUserModal();
+      populateAdminDashboard();
+      showToast(`User baru ${name} berhasil ditambahkan!`, 'success');
+    }
+
+    function deleteUser(username) {
+      if (confirm(`Apakah Anda yakin ingin menghapus user ${username}?`)) {
+        AppState.users = AppState.users.filter(u => u.username !== username);
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: AppState.currentUser ? AppState.currentUser.username : 'admin',
+          action: 'USER_DELETE',
+          detail: `User ${username} dihapus dari sistem`
+        });
+        saveStateToStorage();
+        populateAdminDashboard();
+        showToast(`User ${username} berhasil dihapus`, 'info');
+      }
+    }
+
+    function togglePromoteUser(username) {
+      const u = AppState.users.find(x => x.username === username);
+      if (u) {
+        u.role = (u.role === 'ADMIN') ? 'PENGAWAS' : 'ADMIN';
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: 'superadmin',
+          action: 'USER_ROLE_CHANGE',
+          detail: `Role ${username} diubah menjadi ${u.role}`
+        });
+        saveStateToStorage();
+        populateAdminDashboard();
+        showToast(`Peran ${username} diubah menjadi ${u.role}`, 'success');
+      }
+    }
+
+    function revokeSession(username) {
+      if (confirm(`Cabut sesi login aktif untuk pengguna ${username}?`)) {
+        AppState.sessions = AppState.sessions.filter(s => s.username !== username);
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: AppState.currentUser ? AppState.currentUser.username : 'admin',
+          action: 'SESSION_REVOKE',
+          detail: `Sesi login ${username} dicabut secara paksa`
+        });
+        saveStateToStorage();
+        populateAdminDashboard();
+        showToast(`Sesi login ${username} berhasil dicabut.`, 'info');
+      }
+    }
+
+    function revokeAllSessions() {
+      if (confirm('CABUT SEMUA SESI: Semua pengguna akan otomatis logout dari sistem. Lanjutkan?')) {
+        AppState.sessions = [];
+        AppState.auditLogs.unshift({
+          time: new Date().toLocaleString('id-ID'),
+          user: 'superadmin',
+          action: 'REVOKE_ALL_SESSIONS',
+          detail: 'Superadmin mencabut seluruh sesi login pengguna aktif di TBBM Cilacap'
+        });
+        saveStateToStorage();
+        populateAdminDashboard();
+        showToast('Seluruh sesi aktif berhasil dicabut!', 'success');
+      }
+    }
+
+    /* ==========================================================================
+       10. DETAIL HANDOVER MODAL & FULL 24 CHECKLIST RENDERER
+       ========================================================================== */
+    function openModalHandoverDetail(hoId) {
+      const ho = AppState.handovers.find(h => h.id === hoId);
+      if (!ho) return;
+
+      document.getElementById('modalDetailTitle').textContent = `Handover ${ho.vehiclePlate}`;
+      document.getElementById('modalDetailSubtitle').textContent = `ID Laporan: ${ho.id}`;
+      document.getElementById('mdPlate').textContent = ho.vehiclePlate;
+      document.getElementById('mdType').textContent = ho.type === 'START' ? 'Handover Awal (Keberangkatan)' : 'Handover Akhir (Kepulangan)';
+      document.getElementById('mdAmt').textContent = ho.amtName;
+      document.getElementById('mdTime').textContent = `${ho.time} • ${ho.shift}`;
+      document.getElementById('mdLocation').textContent = `${ho.locationAddress} (${ho.locationCoords})`;
+      document.getElementById('mdNotes').textContent = ho.notes || 'Tidak ada catatan tambahan.';
+
+      const resBadge = document.getElementById('mdResultBadge');
+      if (ho.status === 'Aman') {
+        resBadge.textContent = 'Aman / Memenuhi Syarat';
+        resBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-pertamina-green';
+      } else {
+        resBadge.textContent = 'Ada Temuan Kerusakan';
+        resBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-pertamina-red';
+      }
+
+      const appBadge = document.getElementById('mdApprovalBadge');
+      if (ho.approved) {
+        appBadge.textContent = `Disetujui oleh ${ho.approver}`;
+        appBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-pertamina-blue';
+      } else {
+        appBadge.textContent = 'Menunggu Review Pengawas';
+        appBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700';
+      }
+
+      // Render 24 Items in detail
+      const table = document.getElementById('mdChecklistTable');
+      table.innerHTML = '';
+
+      const allItems = [
+        ...HSSE_CAT_A.map(x => ({ ...x, category: 'Fisik Tangki' })),
+        ...HSSE_CAT_B.map(x => ({ ...x, category: 'Awak & Dokumen' }))
+      ];
+
+      allItems.forEach((item, idx) => {
+        let isDamaged = false;
+        if (ho.defectItems && ho.defectItems.includes(item.id)) {
+          isDamaged = true;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-1.5 rounded-lg border-b border-slate-100 last:border-b-0 text-xs';
+        row.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="text-[10px] text-slate-400 font-mono w-4">${idx + 1}.</span>
+            <div>
+              <span class="font-medium text-slate-800">${item.name}</span>
+              <span class="text-[9px] text-slate-400 block">${item.category} • ${item.severity}</span>
+            </div>
+          </div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded ${isDamaged ? 'bg-rose-100 text-pertamina-red' : 'bg-emerald-100 text-pertamina-green'}">
+            ${isDamaged ? 'RUSAK / TIDAK' : 'BAIK / SESUAI'}
+          </span>
+        `;
+        table.appendChild(row);
+      });
+
+      document.getElementById('modalHandoverDetail').classList.remove('app-hidden');
+    }
+
+    function closeModalHandoverDetail() {
+      document.getElementById('modalHandoverDetail').classList.add('app-hidden');
+    }
+
+    /* ==========================================================================
+       11. MODALS & TOAST NOTIFICATION HELPERS
+       ========================================================================== */
+    function openNotificationModal() {
+      document.getElementById('modalNotification').classList.remove('app-hidden');
+    }
+
+    function closeNotificationModal() {
+      document.getElementById('modalNotification').classList.add('app-hidden');
+    }
+
+    function openProfileModal() {
+      if (!AppState.currentUser) return;
+      document.getElementById('profileModalName').textContent = AppState.currentUser.name;
+      document.getElementById('profileModalRole').textContent = AppState.currentUser.title;
+      document.getElementById('profileModalUsername').textContent = AppState.currentUser.username;
+      document.getElementById('profileModalInitial').textContent = getInitials(AppState.currentUser.name);
+      document.getElementById('modalProfile').classList.remove('app-hidden');
+    }
+
+    function closeProfileModal() {
+      document.getElementById('modalProfile').classList.add('app-hidden');
+    }
+
+    function switchNavTab(tabKey) {
+      const h = document.getElementById('navHome');
+      const r = document.getElementById('navHistory');
+      const m = document.getElementById('navMessages');
+      const p = document.getElementById('navProfile');
+
+      [h, r, m, p].forEach(b => b.className = 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-600');
+
+      if (tabKey === 'home') {
+        h.className = 'flex flex-col items-center justify-center text-pertamina-blue';
+        renderRoleDashboard();
+      } else if (tabKey === 'history') {
+        r.className = 'flex flex-col items-center justify-center text-pertamina-blue';
+        if (AppState.handovers.length > 0) {
+          openModalHandoverDetail(AppState.handovers[0].id);
+        } else {
+          showToast('Belum ada riwayat handover.', 'info');
+        }
+      } else if (tabKey === 'messages') {
+        m.className = 'flex flex-col items-center justify-center text-pertamina-blue';
+        openNotificationModal();
+      } else if (tabKey === 'profile') {
+        p.className = 'flex flex-col items-center justify-center text-pertamina-blue';
+        openProfileModal();
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      let bg = 'bg-slate-900 text-white';
+      let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+
+      if (type === 'success') {
+        bg = 'bg-emerald-900/95 border border-emerald-600 text-white';
+        icon = '<i class="fa-solid fa-circle-check text-emerald-300"></i>';
+      } else if (type === 'error') {
+        bg = 'bg-rose-900/95 border border-rose-600 text-white';
+        icon = '<i class="fa-solid fa-circle-xmark text-rose-300"></i>';
+      }
+
+      toast.className = `${bg} px-4 py-2.5 rounded-2xl shadow-xl flex items-center space-x-2.5 text-xs font-semibold pointer-events-auto transform transition-all duration-300 ease-out translate-y-4 opacity-0`;
+      toast.innerHTML = `${icon}<span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      // Animate in
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      }, 20);
+
+      // Dismiss after 3.2s
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+      }, 3200);
+    }
+
+    function getInitials(name) {
+      if (!name) return 'PT';
+      const parts = name.trim().split(' ');
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    // Run On Load
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+
+</body>
+</html>
+

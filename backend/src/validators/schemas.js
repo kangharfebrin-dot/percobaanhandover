@@ -40,7 +40,11 @@ const submitHandoverSchema = Joi.object({
   }),
   amt1: Joi.string().allow(null, ''),
   amt2: Joi.string().allow(null, ''),
-  userId: Joi.string().allow(null, '')
+  userId: Joi.string().allow(null, ''),
+  plateTokenFront: Joi.string().allow(null, ''),
+  plateTokenBack: Joi.string().allow(null, ''),
+  plateOverride: Joi.alternatives().try(Joi.boolean(), Joi.string()).allow(null, ''),
+  plateOverrideReason: Joi.string().allow(null, '')
 }).unknown(true);
 
 const vehicleSchema = Joi.object({

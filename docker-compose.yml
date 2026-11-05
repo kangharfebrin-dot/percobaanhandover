@@ -47,6 +47,9 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - JWT_SECRET=${JWT_SECRET}
       - REFRESH_SECRET=${REFRESH_SECRET}
+      - ALPR_SERVICE_URL=${ALPR_SERVICE_URL:-http://alpr:8000}
+      - ALPR_ENABLED=${ALPR_ENABLED:-true}
+      - ALPR_ENFORCEMENT_MODE=${ALPR_ENFORCEMENT_MODE:-shadow}
     depends_on:
       mysql:
         condition: service_healthy
@@ -56,6 +59,25 @@ services:
       - ./backend/uploads:/app/uploads
       - ./backend/barcodes:/app/barcodes
       - ./backend/logs:/app/logs
+
+  alpr:
+    build:
+      context: ./alpr-service
+      dockerfile: Dockerfile
+    container_name: pertamina_handover_alpr
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ALPR_PORT=8000
+      - ALPR_DETECTION_THRESHOLD=0.60
+      - ALPR_OCR_THRESHOLD=0.65
+      - ALPR_MIN_CONFIDENCE=0.55
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
 volumes:
   mysql_data:

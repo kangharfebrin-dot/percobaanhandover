@@ -11,6 +11,7 @@ const { sendNotification, sendAmtComplianceNotification } = require('../services
 const scanTokenService = require('../services/scanTokenService');
 const { reconcileVehicleOperationalStatus } = require('../services/vehicleStatusService');
 const geocodingService = require('../services/geocodingService');
+const plateRecognitionService = require('../services/plateRecognitionService');
 
 const normalizeName = (name) => {
   if (!name) return '';
@@ -171,7 +172,7 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
     }
 
     if (process.env.NODE_ENV !== 'test' || scanToken) {
-      const tokenResult = scanTokenService.consume(
+      const tokenResult = scanTokenService.verify(
         scanToken,
         String(userId),
         vehicleForTokenCheck.id,
@@ -382,6 +383,165 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
       }
     }
 
+    // -------------------------------------------------------------
+    // ALPR VALIDATION & ENFORCEMENT
+    // -------------------------------------------------------------
+    const alprEnabled = plateRecognitionService.enabled;
+    const enforcementMode = plateRecognitionService.enforcementMode; // 'shadow' or 'enforce'
+
+    const plateTokenFront = req.body.plateTokenFront;
+    const plateTokenBack = req.body.plateTokenBack;
+    const isOverrideRequested = req.body.plateOverride === true || req.body.plateOverride === 'true' || req.body.plateOverride === '1';
+    const plateOverrideReason = typeof req.body.plateOverrideReason === 'string' ? req.body.plateOverrideReason.trim() : '';
+
+    // Cari file foto depan & belakang dari validFiles
+    const frontFile = validFiles.find(f => {
+      const orig = decodeURIComponent(f.originalname || '').toLowerCase();
+      return orig.includes('photo_depan') || orig.includes('photo_front');
+    });
+    const backFile = validFiles.find(f => {
+      const orig = decodeURIComponent(f.originalname || '').toLowerCase();
+      return orig.includes('photo_belakang') || orig.includes('photo_back');
+    });
+
+    let frontPayload = null;
+    let backPayload = null;
+
+    if (plateTokenFront) {
+      const frontVerification = plateRecognitionService.verifyPlateToken(plateTokenFront, {
+        userId,
+        noPolisi,
+        side: 'FRONT',
+        photoBuffer: frontFile ? frontFile.buffer : null
+      });
+      if (!frontVerification.valid) {
+        if (enforcementMode === 'enforce') {
+          return res.status(400).json({
+            error: `Verifikasi Plat Depan tidak valid: ${frontVerification.reason}`
+          });
+        }
+      } else {
+        frontPayload = frontVerification.payload;
+      }
+    }
+
+    if (plateTokenBack) {
+      const backVerification = plateRecognitionService.verifyPlateToken(plateTokenBack, {
+        userId,
+        noPolisi,
+        side: 'BACK',
+        photoBuffer: backFile ? backFile.buffer : null
+      });
+      if (!backVerification.valid) {
+        if (enforcementMode === 'enforce') {
+          return res.status(400).json({
+            error: `Verifikasi Plat Belakang tidak valid: ${backVerification.reason}`
+          });
+        }
+      } else {
+        backPayload = backVerification.payload;
+      }
+    }
+
+    // Evaluasi status ALPR
+    // Jika ALPR disabled: default MATCH
+    // Jika tidak ada token & enforce mode: default UNREADABLE
+    const frontStatus = frontPayload ? frontPayload.status : (alprEnabled ? 'UNREADABLE' : 'MATCH');
+    const backStatus = backPayload ? backPayload.status : (alprEnabled ? 'UNREADABLE' : 'MATCH');
+
+    const hasMismatch = frontStatus === 'MISMATCH' || backStatus === 'MISMATCH';
+    const hasUnreadable = frontStatus === 'UNREADABLE' || backStatus === 'UNREADABLE';
+    const hasServiceUnavailable = frontStatus === 'SERVICE_UNAVAILABLE' || backStatus === 'SERVICE_UNAVAILABLE';
+
+    let overallPlateStatus = 'MATCH';
+    let overallPlateMatch = true;
+    let verificationMethod = 'AUTOMATIC_AI';
+    let finalOverrideReason = null;
+    let finalOverrideBy = null;
+
+    if (!alprEnabled) {
+      overallPlateStatus = 'MATCH';
+      overallPlateMatch = true;
+      verificationMethod = 'ALPR_DISABLED';
+    } else if (hasMismatch) {
+      overallPlateStatus = 'MISMATCH';
+      overallPlateMatch = false;
+    } else if (hasUnreadable) {
+      overallPlateStatus = 'UNREADABLE';
+      overallPlateMatch = false;
+    } else if (hasServiceUnavailable) {
+      overallPlateStatus = 'SERVICE_UNAVAILABLE';
+      overallPlateMatch = false;
+      verificationMethod = 'SERVICE_FALLBACK';
+    } else if (frontStatus === 'MATCH' && backStatus === 'MATCH') {
+      overallPlateStatus = 'MATCH';
+      overallPlateMatch = true;
+      verificationMethod = 'AUTOMATIC_AI';
+    }
+
+    // Tangani Kebijakan Enforcement & Override
+    if (overallPlateStatus === 'MISMATCH' || overallPlateStatus === 'UNREADABLE') {
+      if (isOverrideRequested) {
+        if (!isAdminOrPengawas) {
+          return res.status(403).json({
+            error: 'Akses ditolak: Awak Mobil Tangki (AMT) dilarang mengesahkan secara sepihak ketidakcocokan plat nomor. Harap hubungi Pengawas atau Admin.'
+          });
+        }
+
+        if (!plateOverrideReason || plateOverrideReason.length < 5) {
+          return res.status(400).json({
+            error: 'Alasan verifikasi manual (override) wajib diisi dengan jelas dan lengkap (minimal 5 karakter).'
+          });
+        }
+
+        overallPlateStatus = 'MANUAL_OVERRIDE';
+        overallPlateMatch = true;
+        verificationMethod = 'MANUAL_OVERRIDE';
+        finalOverrideReason = plateOverrideReason;
+        finalOverrideBy = existingUser.name || existingUser.username;
+
+        try {
+          await prisma.auditLog.create({
+            data: {
+              userId: String(userId),
+              action: 'ALPR_OVERRIDE',
+              actionType: 'HANDOVER_ALPR',
+              noPolisi,
+              details: `Manual override plat nomor (${hasMismatch ? 'MISMATCH' : 'UNREADABLE'}) oleh ${existingUser.name} (${existingUser.role}). Alasan: ${plateOverrideReason}`
+            }
+          });
+        } catch (auditErr) {
+          console.error('[AuditLog ALPR Override Error]:', auditErr.message);
+        }
+      } else if (enforcementMode === 'enforce') {
+        if (overallPlateStatus === 'MISMATCH') {
+          return res.status(400).json({
+            error: `Verifikasi Plat Nomor Gagal (MISMATCH): Plat nomor pada foto tidak sesuai dengan data kendaraan (${noPolisi}). Harap ambil ulang foto plat yang benar.`
+          });
+        } else if (overallPlateStatus === 'UNREADABLE') {
+          return res.status(400).json({
+            error: 'Plat nomor pada foto Depan atau Belakang tidak terbaca secara jelas (UNREADABLE). Harap ambil ulang foto dengan posisi tegak lurus dan pencahayaan yang cukup.'
+          });
+        }
+      }
+    }
+
+    // Konsumsi scanToken secara final setelah semua validasi (termasuk ALPR) lulus
+    if (process.env.NODE_ENV !== 'test' || scanToken) {
+      const consumeResult = scanTokenService.consume(
+        scanToken,
+        String(userId),
+        vehicleForTokenCheck.id,
+        type || 'mulai'
+      );
+      if (!consumeResult.valid) {
+        return res.status(403).json({
+          error: `Akses ditolak: ${consumeResult.reason}`,
+          requireScan: true
+        });
+      }
+    }
+
     const handoverNo = await generateHandoverNo();
 
     // Jalankan seluruh penyimpanan dalam database transaction untuk integritas penuh
@@ -421,6 +581,19 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
           locationCity: locationCity || null,
           locationProvince: locationProvince || null,
           locationCountry: locationCountry || null,
+          plateStatus: overallPlateStatus,
+          plateOverallMatch: overallPlateMatch,
+          frontPlateDetected: frontPayload?.detectedPlate || null,
+          frontPlateConfidence: frontPayload?.confidence !== undefined ? frontPayload.confidence : null,
+          frontPlateStatus: frontStatus,
+          backPlateDetected: backPayload?.detectedPlate || null,
+          backPlateConfidence: backPayload?.confidence !== undefined ? backPayload.confidence : null,
+          backPlateStatus: backStatus,
+          plateModel: frontPayload?.modelInfo || backPayload?.modelInfo || 'YOLO+PaddleOCR',
+          plateVerifiedAt: new Date(),
+          plateVerificationMethod: verificationMethod,
+          plateOverrideReason: finalOverrideReason,
+          plateOverrideBy: finalOverrideBy,
           items: {
             create: parsedItems.map(item => ({
               category: item.category || 'A',
@@ -446,12 +619,37 @@ router.post('/', authenticateToken, upload.any(), optimizeImages, async (req, re
                     photoType = nameWithoutExt;
                   }
                 }
+                const decodedNameLower = decodeURIComponent(file.originalname || '').toLowerCase();
+                const isFrontPhoto = decodedNameLower.includes('photo_depan') || decodedNameLower.includes('photo_front');
+                const isBackPhoto = decodedNameLower.includes('photo_belakang') || decodedNameLower.includes('photo_back');
+
+                let detectedPlate = null;
+                let plateConfidence = null;
+                let plateMatch = null;
+                let pStatus = null;
+
+                if (isFrontPhoto && frontPayload) {
+                  detectedPlate = frontPayload.detectedPlate || null;
+                  plateConfidence = frontPayload.confidence !== undefined ? frontPayload.confidence : null;
+                  plateMatch = frontPayload.status === 'MATCH';
+                  pStatus = frontPayload.status || null;
+                } else if (isBackPhoto && backPayload) {
+                  detectedPlate = backPayload.detectedPlate || null;
+                  plateConfidence = backPayload.confidence !== undefined ? backPayload.confidence : null;
+                  plateMatch = backPayload.status === 'MATCH';
+                  pStatus = backPayload.status || null;
+                }
+
                 return {
                   type: photoType,
                   url: (file.path || '').replace(/\\/g, '/'),
                   thumbnailUrl: file.thumbnailUrl ? file.thumbnailUrl.replace(/\\/g, '/') : null,
                   previewUrl: file.previewUrl ? file.previewUrl.replace(/\\/g, '/') : null,
-                  originalSize: file.originalSize || 0
+                  originalSize: file.originalSize || 0,
+                  detectedPlate,
+                  plateConfidence,
+                  plateMatch,
+                  plateStatus: pStatus
                 };
               }),
               ...inheritedPhotos.map(ip => ({

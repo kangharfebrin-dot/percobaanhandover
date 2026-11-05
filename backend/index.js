@@ -113,10 +113,12 @@ const notificationRoutes = require('./src/routes/notifications');
 const passwordResetRoutes = require('./src/routes/passwordReset');
 const auditLogRoutes = require('./src/routes/auditLogs');
 const locationRoutes = require('./src/routes/location');
+const plateRecognitionRoutes = require('./src/routes/plateRecognition');
 
 // Mount Modular Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/location', locationRoutes);
+app.use('/api/plate-recognition', plateRecognitionRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
@@ -128,6 +130,27 @@ app.use('/api/checklists', checklistRoutes);
 app.use('/api/issues', issueRoutes);
 app.use('/api/amt-issues', amtIssueRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// Serve frontend static web build (dist) if available
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/barcodes') ||
+      req.path.startsWith('/health') ||
+      req.path.startsWith('/metrics')
+    ) {
+      return next();
+    }
+    if (req.method === 'GET') {
+      return res.sendFile(path.join(frontendDist, 'index.html'));
+    }
+    next();
+  });
+}
 
 // Global Error Handler Middleware
 app.use(errorHandler);

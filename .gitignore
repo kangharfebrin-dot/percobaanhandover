@@ -88,3 +88,16 @@ tampilan aplikasi DIGIHandover/
 scratch/
 reportController_backup.js
 scratch_extract_logo.ps1
+
+# ALPR Models & Python Virtual Environments
+alpr-service/venv/
+alpr-service/.venv/
+alpr-service/models/*.onnx
+alpr-service/models/*.pt
+alpr-service/models/*.bin
+alpr-service/models/*.weights
+alpr-service/__pycache__/
+alpr-service/app/__pycache__/
+alpr-service/tests/__pycache__/
+*.pyc
+.pytest_cache/

@@ -13,6 +13,9 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://127.0.0.1:6379}
       - JWT_SECRET=${JWT_SECRET}
       - REFRESH_SECRET=${REFRESH_SECRET}
+      - ALPR_SERVICE_URL=${ALPR_SERVICE_URL:-http://127.0.0.1:8000}
+      - ALPR_ENABLED=${ALPR_ENABLED:-true}
+      - ALPR_ENFORCEMENT_MODE=${ALPR_ENFORCEMENT_MODE:-shadow}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://pertamina-handover.com,https://www.pertamina-handover.com}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@pertamina.com}
       - EMAIL_USER=${EMAIL_USER}
@@ -66,6 +69,23 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  alpr:
+    image: ghcr.io/gwennstacy969-dotcom/handover-app/alpr:latest
+    container_name: pertamina_handover_alpr
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - ALPR_PORT=8000
+      - ALPR_DETECTION_THRESHOLD=0.60
+      - ALPR_OCR_THRESHOLD=0.65
+      - ALPR_MIN_CONFIDENCE=0.55
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   mysql_data:
