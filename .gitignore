@@ -89,9 +89,13 @@ scratch/
 reportController_backup.js
 scratch_extract_logo.ps1
 
-# ALPR Models & Python Virtual Environments
+# ALPR Models, Training, Datasets & Python Virtual Environments
 alpr-service/venv/
 alpr-service/.venv/
+alpr-service/.venv-training/
+alpr-service/datasets/raw/
+alpr-service/datasets/processed/
+alpr-service/training/runs/
 alpr-service/models/*.onnx
 alpr-service/models/*.pt
 alpr-service/models/*.bin
